@@ -14,6 +14,10 @@ function findappbundleid() {
 	echo "id of app $@"
 }
 
+function gitsetglobalignorefile() {
+	git config --global core.excludesfile $1
+}
+
 alias sublime='open -a "/Applications/Sublime Text.app"'
 #Preferred text editor of choice : 
 alias texteditor='sublime'
