@@ -1,0 +1,308 @@
+export CURRENT_RELEASE=rel-1.139
+export LSB_MASTER=lsb/master
+export LSB_CURRENT_RELEASE=$lsb/$CURRENT_RELEASE
+
+# This is only an issue if you usually extract std from stacks and upgrade has to process lot of std versions
+# In that case, there might be out of memory problems while building java
+export UPGRADE_MAX_MEMORY_GB=8
+
+# Git related functions
+function gitskipworktree() {
+  git update-index --skip-worktree "$1"
+}
+
+function gitunskipworktree() {
+  git update-index --no-skip-worktree $1
+} 
+
+runupgrade() {
+  gradle runDocumentUpgrade -Donshape.upgrade.exitwhenfinished=true
+}
+
+runretrieval() {
+  gradle runProductionRetrieval -Donshape.productionretrieval.local=true -Donshape.productionretrieval.exitwhenfinished=true
+}
+
+function makelikeproduction() {
+  mongobackup
+  stopbelcad
+  mongoDropAll
+  mongoDropToProduction
+  export SKIP_INTERNAL_MODULES=1
+}
+
+function makelikeproductionwithbuild() {
+  makelikeproduction
+  buildgradleparallel
+}
+
+function openconfigpropertiesjson() {
+  sublime $REPO_NEWTON/project/web/WEB-INF/config/config-properties.json
+}
+
+function setupforproductionretrieval() {
+  echo "setting SKIP_INTERNAL_MODULES to 1"
+  export SKIP_INTERNAL_MODULES=1
+  sublime $REPO_NEWTON/project/web/WEB-INF/config/config-properties.json
+  echo "Change the defaultValue of productionretrieval.write-s3 from false to true in the opened config-properties.json"
+  waitforenterkey "Press enter when done"
+  echo "Build (gradle) manually now using buildgradleparallel"
+  #buildgradleparallel
+  #waitforenterkey "Press enter when done"
+  echo "call runupgrade to run document upgrade"
+  #runupgrade
+  #waitforenterkey "Press enter when upgrade has been done"
+  echo "You can now see upgrade logs in $STAGE/ModelingSvc/logs/btserver.log"
+  echo "Also, the upgrade data should be written to $STAGE/MockS3/onshape-us-east-1/test/operations/myenv/regen-data"
+  #open "$STAGE/MockS3/onshape-us-east-1/test/operations/myenv/regen-data"
+  echo "Finally, run the local production retrieval process by calling runretrieval"
+  #runretrieval
+}
+
+function waitforenterkey() {
+  read -p "$1"
+}
+
+runjunittest() {
+    gradle safelyRunSpecificTests -Dtest=$1
+}
+
+awsconfigure() {
+  btAws configure --profile codebuild
+}
+
+myprecommit() {
+  checkTidy
+  gradle :java:pmd
+  grunt checkJsCode
+}
+
+addstaticroutetojumpbox() {
+  sudo route -n add 54.187.217.158/32 $1
+}
+
+function checkoutfromlsbbranch() {
+  if [ -z "$1" ]
+  then
+    echo "Please provide new branch name"
+  elif [ -z "$2" ]
+  then
+    echo "Please provide the base branch name"
+  else
+    gitBranchLsb $1 $2
+    echo "Created new branch based $1 off $2"
+  fi
+}
+
+function checkoutfromlsbmaster() {
+  checkoutfromlsbbranch "$1" "master"
+}
+
+function checkoutfromlsbrelease() {
+  checkoutfromlsbbranch "$1" "$CURRENT_RELEASE"
+}
+
+rebaselatestlsbmaster() {
+  pullmerge $LSB_MASTER --rebase
+}
+
+rebaselatestlsbrelease() {
+  pullmerge $LSB_CURRENT_RELEASE --rebase
+}
+
+pulllatestlsbrelease() {
+  pullmerge $LSB_CURRENT_RELEASE
+}
+
+rebaselatestrelease() {
+  pullmerge $CURRENT_RELEASE --rebase
+}
+
+pulllatestrelease() {
+  pullmerge $CURRENT_RELEASE
+}
+
+function rbtupdate() {
+  if [ -z "$1" ]
+  then
+    echo "Please give the review request id"
+  else
+    #rebaselatestmaster
+    echo "calling rbt post -u -r $1"
+    rbt post -u -r $1
+  fi
+}
+
+function rbtupdatewithrebase() {
+  if [ -z "$1" ]
+  then
+    echo "Please give the review request id"
+  else
+    rebaselatestmaster
+    rbt post -u -r $1
+  fi
+}
+
+rbtpostfromlsbmaster() {
+  echo "Calling rbt post $CURRENT_RELEASE...HEAD"
+  rbt post $LSB_MASTER...HEAD
+}
+
+rbtpostfromlsbrelease() {
+  echo "Calling rbt post $CURRENT_RELEASE...HEAD"
+  rbt post $CURRENT_RELEASE...HEAD
+}
+
+
+rbtupdatefrombranch() {
+  if [ -z "$1" ]
+  then
+    echo "Please give the review request id"
+  elif [ -z "$2" ]
+  then
+    echo "Please provide the branch name"
+  else
+    echo "Calling rbt post -u -r $1 $2...HEAD"
+    rbt post -u -r $1 $2...HEAD
+  fi
+}
+
+rbtupdatefromlsbrelease() {
+  rbtupdatefrombranch $1 $LSB_CURRENT_RELEASE
+}
+
+rbtupdatefromlsbmaster() {
+  rbtupdatefrombranch $1 $LSB_MASTER
+}
+
+rbtupdatefromlsbreleasewithrebase() {
+  rebaselatestlsbrelease
+  rbtupdatefromlsbrelease
+}
+
+rbtupdatefromlsbmasterwithrebase() {
+  rebaselatestlsbmaster
+  rbtupdatefromlsbmaster
+}
+
+setupjumpboxcertificates() {
+  export USERNAME=pisoni
+  scp $USERNAME@jumpbox-primary.dev.onshape.com:$USERNAME.key /tmp
+  scp $USERNAME@jumpbox-primary.dev.onshape.com:$USERNAME.crt /tmp
+  scp $USERNAME@jumpbox-primary.dev.onshape.com:ca.crt /tmp
+  scp $USERNAME@jumpbox-primary.dev.onshape.com:tls-auth.key /tmp  
+}
+
+restartbelcad() {
+  stopbelcad
+  startbelcad
+}
+
+playfinishsound() {
+  tput bel;tput bel;
+  say "Build Complete"
+}
+
+buildgradleparallel() {
+  gradle --parallel
+  playfinishsound
+}
+
+#functions
+startservers() {
+    startbelcad
+    grunt quickServe
+}
+
+buildjavaonly() {
+    export SKIP_CPP=1
+    export SKIP_JSLIB=1
+    buildgradleparallel
+    unset SKIP_CPP
+    unset SKIP_JSLIB
+}
+
+buildjsonly() {
+    export SKIP_CPP=1
+    export SKIP_JAVA=1
+    buildgradleparallel
+    unset SKIP_CPP
+    unset SKIP_JAVA
+}
+
+buildcpponly() {
+    export SKIP_JSLIB=1
+    export SKIP_JAVA=1
+    buildgradleparallel
+    unset SKIP_JSLIB
+    unset SKIP_JAVA
+}
+
+buildjavaandjsonly() {
+    export SKIP_CPP=1
+    buildgradleparallel
+    unset SKIP_CPP
+}
+
+
+
+
+alias bsserverpath='/Users/pisoni/stage/BSServer/bin/BSServer'
+alias buildall='cd $REPO_NEWTON;buildgradleparallel'
+#alias buildjavaonly='grdlu gen java' #defined as a function in .profile
+#alias buildjsonly='grdlu gen js' #defined as a function in .profile
+alias checkJSCode='grunt checkJsCode'
+alias checkjs='grunt eslint:javascript'
+alias checkts='grunt eslint:typescript'
+alias clion='open -a /Users/pisoni/Applications/JetBrains\ Toolbox/CLion.app'
+alias cppbuild='buildcpponly'
+alias droptoproduction='mongoDropToProduction'
+alias eclipse='open -a /Applications/Eclipse.app'
+alias eslintfix='grunt eslint:fix'
+alias fixjs='grunt eslint:fix'
+alias fixts='grunt eslint:fix'
+alias fixpo='grunt xgettext --fix'
+alias generateserializables='grunt generateSerializables'
+alias genser='grunt generateSerializables'
+alias gitlistskipignoredfiles='git ls-files -v . | grep ^S'
+alias gruntQuickServe='grunt quickServe'
+alias inteli='intellij'
+alias intellij='open -a /Applications/IntelliJ\ IDEA.app'
+alias javabuild='buildjavaonly'
+alias jsbuild='buildjsonly'
+alias jumpboxaddstaticroute='addstaticroutetojumpbox'
+alias jumpboxnetstat='netstat -rn | grep 52.210.113.201'
+alias jumpboxssh='sshjumpbox'
+alias localprecommit='yarn precommit'
+alias lsbreleasecheckout='checkoutfromlsbrelease'
+alias lsbreleaserebaselatest='rebaselatestlsbrelease'
+alias lsbreleasepulllatest='pulllatestlsbrelease'
+alias lsbreleaserbtupdate='rbtupdatefromlsbrelease'
+alias lsbreleaserbtpost='rbtpostfromlsbrelease'
+alias mergelatestmaster='pullmerge master'
+alias mongodump='mongoDump'
+alias mongobackup='mongoDump'
+alias mongorestore='mongoRestore'
+alias backupmongo='mongoDump'
+alias restoremongo='mongoRestore'
+alias newton='cd $REPO_NEWTON'
+alias pofix='fixpo'
+alias prepeclipse='gradle prepEclipse'
+alias prepclion='gradle :cpp:prepCLion --parallel'
+alias pulllatestmaster='pullmerge master'
+alias pulllatestlsbmaster='pullmerge $LSB_MASTER'
+alias pullmaster='pullmerge master'
+alias pullmergemaster='pullmerge master'
+alias pushtobuild='pushToBuildFarm @precommit @uitest @mocha'
+alias quickserve='grunt quickServe'
+alias rebaselatestmaster='pullmerge master --rebase'
+alias rebasemaster='pullmerge master --rebase'
+alias serial='grunt generateSerializables'
+alias serialize='grunt generateSerializables'
+alias sshjumpbox='ssh -X pisoni@jumpbox-primary.dev.onshape.com'
+alias startServices='btEnvUp'
+alias startallservers='startservers'
+alias startfrontend='grunt quickServe'
+alias testgraphicsspec='ptor graphicsSpec --verbose --flags=fastFail'
+alias updaterbt='rbt post -u -r'
+alias xcode='open -a Xcode $STAGE/build/cppServer/DebugXcodeCCache/BTcppServer.xcodeproj/'

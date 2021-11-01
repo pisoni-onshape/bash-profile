@@ -1,0 +1,44 @@
+#Common
+alias aliases='source $ALIAS_PATH/.all'
+alias redoaliases='aliases'
+alias refreshaliases='aliases'
+alias sourcealiases='aliases'
+alias wstorm='webstorm'
+alias inteli='idea'
+alias intelli='idea'
+alias intellij='idea'
+
+function findappbundleid() {
+	#osascript -e 'id of app \"$1\"'
+	echo 'id of app $1'
+	echo "id of app $@"
+}
+
+alias sublime='open -a "/Applications/Sublime Text.app"'
+#Preferred text editor of choice : 
+alias texteditor='sublime'
+alias refreshadb='source $ALIAS_PATH/.adb'
+alias refreshpersonal='source $ALIAS_PATH/.personal'
+alias refreshwork='source $ALIAS_PATH/.work'
+alias refreshall='source $ALIAS_PATH/.all'
+alias refresheverything='refreshall'
+alias te='texteditor'
+alias editor='texteditor'
+
+alias openadbalias='texteditor $ALIAS_PATH/.adb'
+alias openaliasall='texteditor $ALIAS_PATH/.all'
+alias openpersonalalias='texteditor $ALIAS_PATH/.personal'
+alias openworkalias='texteditor $ALIAS_PATH/.work'
+alias openallaliases='openworkalias; openpersonalalias; openaliasall; openadbalias;'
+
+#adb aliases
+source $ALIAS_PATH/.adb
+
+#Personal aliases
+source $ALIAS_PATH/.personal
+
+#Work Aliases
+source $ALIAS_PATH/.work
+
+#Jetbrains IDEs
+export PATH=$PATH:~/jetbrains-launchers/
