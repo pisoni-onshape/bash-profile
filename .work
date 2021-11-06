@@ -95,7 +95,7 @@ function checkoutfromlsbbranch() {
 }
 
 function checkoutfromlsbmaster() {
-  checkoutfromlsbbranch "$1" "master"
+  checkoutfromlsbbranch "$1" "$LSB_MASTER"
 }
 
 function checkoutfromlsbrelease() {
@@ -143,14 +143,18 @@ function rbtupdatewithrebase() {
   fi
 }
 
+rbtpost() {
+  rbt post -o
+}
+
 rbtpostfromlsbmaster() {
-  echo "Calling rbt post $CURRENT_RELEASE...HEAD"
-  rbt post $LSB_MASTER...HEAD
+  echo "Calling rbt post $LSB_MASTER...HEAD"
+  rbt post -o $LSB_MASTER...HEAD
 }
 
 rbtpostfromlsbrelease() {
-  echo "Calling rbt post $CURRENT_RELEASE...HEAD"
-  rbt post $CURRENT_RELEASE...HEAD
+  echo "Calling rbt post $LSB_CURRENT_RELEASE...HEAD"
+  rbt post -o $LSB_CURRENT_RELEASE...HEAD
 }
 
 
@@ -160,7 +164,7 @@ rbtupdatefrombranch() {
     echo "Please give the review request id"
   elif [ -z "$2" ]
   then
-    echo "Please provide the branch name"
+    echo "Please ppvide the branch name"
   else
     echo "Calling rbt post -u -r $1 $2...HEAD"
     rbt post -u -r $1 $2...HEAD
@@ -267,7 +271,7 @@ alias genser='grunt generateSerializables'
 alias gitlistskipignoredfiles='git ls-files -v . | grep ^S'
 alias gruntQuickServe='grunt quickServe'
 alias inteli='intellij'
-alias intellij='open -a /Applications/IntelliJ\ IDEA.app'
+alias intellij='idea' #Jetbrains Toolbox generates the script 'idea' for version dependent IntelliJ IDEA
 alias javabuild='buildjavaonly'
 alias jsbuild='buildjsonly'
 alias jumpboxaddstaticroute='addstaticroutetojumpbox'

@@ -9,9 +9,9 @@ alias intelli='idea'
 alias intellij='idea'
 
 function findappbundleid() {
-	#osascript -e 'id of app \"$1\"'
-	echo 'id of app $1'
-	echo "id of app $@"
+	osascript -e "id of app \"$1\""
+	#echo 'id of app' "$1" 'is something'
+	#echo "id of app $@"
 }
 
 function gitsetglobalignorefile() {
@@ -34,6 +34,8 @@ alias openaliasall='texteditor $ALIAS_PATH/.all'
 alias openpersonalalias='texteditor $ALIAS_PATH/.personal'
 alias openworkalias='texteditor $ALIAS_PATH/.work'
 alias openallaliases='openworkalias; openpersonalalias; openaliasall; openadbalias;'
+
+alias appbundleid='findappbundleid'
 
 #adb aliases
 source $ALIAS_PATH/.adb
