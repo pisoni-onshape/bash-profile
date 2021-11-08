@@ -95,11 +95,11 @@ function checkoutfromlsbbranch() {
 }
 
 function checkoutfromlsbmaster() {
-  checkoutfromlsbbranch "$1" "$LSB_MASTER"
+  checkoutfromlsbbranch "$1" "master" #lsb/ is eventually appended by gitBranchLsb
 }
 
 function checkoutfromlsbrelease() {
-  checkoutfromlsbbranch "$1" "$CURRENT_RELEASE"
+  checkoutfromlsbbranch "$1" "$CURRENT_RELEASE" #lsb/ is eventually appended by gitBranchLsb
 }
 
 rebaselatestlsbmaster() {
@@ -310,3 +310,6 @@ alias startfrontend='grunt quickServe'
 alias testgraphicsspec='ptor graphicsSpec --verbose --flags=fastFail'
 alias updaterbt='rbt post -u -r'
 alias xcode='open -a Xcode $STAGE/build/cppServer/DebugXcodeCCache/BTcppServer.xcodeproj/'
+alias web='webstorm'
+alias webs='webstorm'
+alias storm='webstorm'
