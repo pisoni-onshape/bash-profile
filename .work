@@ -89,8 +89,8 @@ function checkoutfromlsbbranch() {
   then
     echo "Please provide the base branch name"
   else
-    gitBranchLsb $1 $2
-    echo "Created new branch based $1 off $2"
+    gitBranchLsb $1-lsb-$2 $2
+    echo "Created new branch $1-lsb-$2 based off lsb/$2"
   fi
 }
 
@@ -127,7 +127,6 @@ function rbtupdate() {
   then
     echo "Please give the review request id"
   else
-    #rebaselatestmaster
     echo "calling rbt post -u -r $1"
     rbt post -u -r $1
   fi
