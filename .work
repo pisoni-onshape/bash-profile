@@ -90,7 +90,6 @@ function checkoutfromlsbbranch() {
     echo "Please provide the base branch name"
   else
     gitBranchLsb $1-lsb-$2 $2
-    echo "Created new branch $1-lsb-$2 based off lsb/$2"
   fi
 }
 
@@ -297,6 +296,7 @@ alias pulllatestlsbmaster='pullmerge $LSB_MASTER'
 alias pullmaster='pullmerge master'
 alias pullmergemaster='pullmerge master'
 alias pushtobuild='pushToBuildFarm @precommit @uitest @mocha'
+alias pushtos3='pushToBuildFarm @promote-to-s3-test'
 alias quickserve='grunt quickServe'
 alias rebaselatestmaster='pullmerge master --rebase'
 alias rebasemaster='pullmerge master --rebase'
