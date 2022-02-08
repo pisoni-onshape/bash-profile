@@ -16,7 +16,7 @@ function gitunskipworktree() {
 }
 
 function backupbranch() {
-  currentbranch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+  currentbranch=$(getcurrentbranch)
   replacestring=pisoni/backup
   separator=/
   curdate=$(date +'%m-%d-%Y-%T')
@@ -141,20 +141,34 @@ pulllatestrelease() {
   pullmerge $CURRENT_RELEASE
 }
 
+function getcurrentreviewrequestid() {
+  globalcurrentreviewrequestid=$(rbt status | tr '\n' '\r' | sed -E 's|.*r\/([[:digit:]]+).*|\1|')
+  echo $globalcurrentreviewrequestid
+}
+
+function getcurrentbranch() {
+  globalcurrentbranch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+  echo $globalcurrentbranch
+}
+
 function rbtupdate() {
   if [ -z "$1" ]
   then
-    echo "Please give the review request id"
+    waitforenterkey "#####Review request id not provided. Press enter if you want to use the first open review request (use if you KNOW only 1 review request is open)#####"
+    reviewrequestid=$(getcurrentreviewrequestid)
+    rbtupdate $reviewrequestid
   else
     echo "calling rbt post -u -r $1"
-    rbt post -u -r $1
+    rbt post -o -u -r $1
   fi
 }
 
 function rbtupdatewithrebase() {
   if [ -z "$1" ]
   then
-    echo "Please give the review request id"
+    waitforenterkey "#####Review request id not provided. Press enter if you want to use the first open review request (use if you KNOW only 1 review request is open)#####"
+    reviewrequestid=$(getcurrentreviewrequestid)
+    rbtupdatewithrebase $reviewrequestid
   else
     rebaselatestmaster
     rbt post -u -r $1
@@ -182,10 +196,12 @@ rbtupdatefrombranch() {
     echo "Please give the branch name"
   elif [ -z "$2" ]
   then
-    echo "Please provide the review request id"
+    waitforenterkey "#####Review request id not provided. Press enter if you want to use the first open review request (use if you KNOW only 1 review request is open)#####"
+    reviewrequestid=$(getcurrentreviewrequestid)
+    rbtupdatefrombranch $1 $reviewrequestid
   else
     echo "Calling rbt post -u -r $2 $1...HEAD"
-    rbt post -u -r $2 $1...HEAD
+    #rbt post -o -u -r $2 $1...HEADref
   fi
 }
 
@@ -237,9 +253,11 @@ buildgradleparallel() {
 mergetomaster() {
   if [ -z "$1" ]
   then
-    echo "Please give the review request id"
+    waitforenterkey "#####Review request id not provided. Press enter if you want to use the first open review request (use if you KNOW only 1 review request is open)#####"
+    reviewrequestid=$(getcurrentreviewrequestid)
+    mergetomaster $reviewrequestid
   else
-    currentbranch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+    currentbranch=$(getcurrentbranch)
     rebaselatestmaster
     waitforenterkey "Press enter if and when rebase is successful"
     git checkout master
@@ -253,7 +271,7 @@ mergetomaster() {
 #  then
 #    echo "Please give the review request id"
 #  else
-#    currentbranch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+#    currentbranch=$(getcurrentbranch)
 #    rebaselatestrelease
 #    waitforenterkey "Press enter if and when rebase is successful"
 #    git checkout $CURRENT_RELEASE
