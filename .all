@@ -1,4 +1,8 @@
 #Common
+
+export karabinerconfigfile=/Users/pisoni/.config/karabiner/karabiner.json
+export globalgitignorefile=/Users/pisoni/.gitignore
+
 alias aliases='source $ALIAS_PATH/.all'
 alias redoaliases='aliases'
 alias refreshaliases='aliases'
@@ -12,6 +16,10 @@ function findappbundleid() {
 	osascript -e "id of app \"$1\""
 	#echo 'id of app' "$1" 'is something'
 	#echo "id of app $@"
+}
+
+function findfolder() {
+	mdfind kind:folder "$1"
 }
 
 function gitsetglobalignorefile() {
@@ -28,14 +36,21 @@ alias refreshall='source $ALIAS_PATH/.all'
 alias refresheverything='refreshall'
 alias te='texteditor'
 alias editor='texteditor'
+alias bundleid='findappbundleid'
+alias appbundleid='findappbundleid'
 
+
+alias karabinerconfig='texteditor "$karabinerconfigfile"'
+alias openkarabinerconfig='texteditor "$karabinerconfigfile"'
 alias openadbalias='texteditor $ALIAS_PATH/.adb'
 alias openaliasall='texteditor $ALIAS_PATH/.all'
 alias openpersonalalias='texteditor $ALIAS_PATH/.personal'
 alias openworkalias='texteditor $ALIAS_PATH/.work'
 alias openallaliases='openworkalias; openpersonalalias; openaliasall; openadbalias;'
 
-alias appbundleid='findappbundleid'
+alias opengitglobalignorefile='texteditor $gitsetglobalignorefile'
+alias opengitignorefile='opengitglobalignorefile'
+
 
 #adb aliases
 source $ALIAS_PATH/.adb

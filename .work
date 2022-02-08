@@ -1,6 +1,6 @@
-export CURRENT_RELEASE=rel-1.139
+export CURRENT_RELEASE=rel-1.143
 export LSB_MASTER=lsb/master
-export LSB_CURRENT_RELEASE=$lsb/$CURRENT_RELEASE
+export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
 
 # This is only an issue if you usually extract std from stacks and upgrade has to process lot of std versions
 # In that case, there might be out of memory problems while building java
@@ -13,7 +13,27 @@ function gitskipworktree() {
 
 function gitunskipworktree() {
   git update-index --no-skip-worktree $1
-} 
+}
+
+function backupbranch() {
+  currentbranch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+  replacestring=pisoni/backup
+  separator=/
+  curdate=$(date +'%m-%d-%Y-%T')
+  curdate="${curdate//:/-}"
+  newbranch="${currentbranch/pisoni/$replacestring}/$curdate"
+  echo $newbranch
+  # create new backup branch
+  git checkout -b $newbranch
+  # go back to our branch
+  git checkout $currentbranch
+}
+
+function fixDiskImagesJS() {
+  diskImageUmountAll
+  rm ~/build_tools/diskimage/onshape-javascript_*
+  source buildenv.bash  
+}
 
 runupgrade() {
   gradle runDocumentUpgrade -Donshape.upgrade.exitwhenfinished=true
@@ -159,22 +179,22 @@ rbtpostfromlsbrelease() {
 rbtupdatefrombranch() {
   if [ -z "$1" ]
   then
-    echo "Please give the review request id"
+    echo "Please give the branch name"
   elif [ -z "$2" ]
   then
-    echo "Please ppvide the branch name"
+    echo "Please provide the review request id"
   else
-    echo "Calling rbt post -u -r $1 $2...HEAD"
-    rbt post -u -r $1 $2...HEAD
+    echo "Calling rbt post -u -r $2 $1...HEAD"
+    rbt post -u -r $2 $1...HEAD
   fi
 }
 
 rbtupdatefromlsbrelease() {
-  rbtupdatefrombranch $1 $LSB_CURRENT_RELEASE
+  rbtupdatefrombranch $LSB_CURRENT_RELEASE $1
 }
 
 rbtupdatefromlsbmaster() {
-  rbtupdatefrombranch $1 $LSB_MASTER
+  rbtupdatefrombranch $LSB_MASTER $1
 }
 
 rbtupdatefromlsbreleasewithrebase() {
@@ -200,8 +220,12 @@ restartbelcad() {
   startbelcad
 }
 
+beep() {
+  tput bel
+}
+
 playfinishsound() {
-  tput bel;tput bel;
+  beep;beep;
   say "Build Complete"
 }
 
@@ -210,7 +234,41 @@ buildgradleparallel() {
   playfinishsound
 }
 
-#functions
+mergetomaster() {
+  if [ -z "$1" ]
+  then
+    echo "Please give the review request id"
+  else
+    currentbranch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+    rebaselatestmaster
+    waitforenterkey "Press enter if and when rebase is successful"
+    git checkout master
+    mergepush $currentbranch -r $1
+  fi
+}
+
+#Not complete yet
+#mergetoreleasethenmaster() {
+#  if [ -z "$1" ]
+#  then
+#    echo "Please give the review request id"
+#  else
+#    currentbranch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+#    rebaselatestrelease
+#    waitforenterkey "Press enter if and when rebase is successful"
+#    git checkout $CURRENT_RELEASE
+#    mergepush $currentbranch -r $1
+#
+#    #Push changes to master
+#    waitforenterkey "Pushing changes to master now, press enter when ready"
+#    git checkout master
+#    git pull
+#    git checkout -b
+#  fi
+#}
+
+
+
 startservers() {
     startbelcad
     grunt quickServe
@@ -246,14 +304,15 @@ buildjavaandjsonly() {
     unset SKIP_CPP
 }
 
-
-
+ptortest() {
+ ptor $1 --verbose --flags=fastFail --target=http://localhost.dev.onshape.com:8000/
+}
 
 alias bsserverpath='/Users/pisoni/stage/BSServer/bin/BSServer'
 alias buildall='cd $REPO_NEWTON;buildgradleparallel'
 #alias buildjavaonly='grdlu gen java' #defined as a function in .profile
 #alias buildjsonly='grdlu gen js' #defined as a function in .profile
-alias checkJSCode='grunt checkJsCode'
+alias checkJsCode='grunt checkJsCode'
 alias checkjs='grunt eslint:javascript'
 alias checkts='grunt eslint:typescript'
 alias clion='open -a /Users/pisoni/Applications/JetBrains\ Toolbox/CLion.app'
@@ -291,6 +350,9 @@ alias newton='cd $REPO_NEWTON'
 alias pofix='fixpo'
 alias prepeclipse='gradle prepEclipse'
 alias prepclion='gradle :cpp:prepCLion --parallel'
+alias protractortest='ptortest'
+alias runprotractortest='ptortest'
+alias runptortest='ptortest'
 alias pulllatestmaster='pullmerge master'
 alias pulllatestlsbmaster='pullmerge $LSB_MASTER'
 alias pullmaster='pullmerge master'
@@ -303,12 +365,15 @@ alias rebasemaster='pullmerge master --rebase'
 alias serial='grunt generateSerializables'
 alias serialize='grunt generateSerializables'
 alias sshjumpbox='ssh -X pisoni@jumpbox-primary.dev.onshape.com'
+alias startenv='startServices;startservers';
 alias startServices='btEnvUp'
+alias stopServices='btEnvDown'
 alias startallservers='startservers'
+alias restartServices='stopServices;startServices'
 alias startfrontend='grunt quickServe'
-alias testgraphicsspec='ptor graphicsSpec --verbose --flags=fastFail'
 alias updaterbt='rbt post -u -r'
 alias xcode='open -a Xcode $STAGE/build/cppServer/DebugXcodeCCache/BTcppServer.xcodeproj/'
 alias web='webstorm'
 alias webs='webstorm'
 alias storm='webstorm'
+alias productionretrievalconfigfile='$STAGE/ModelingSvc/webapps/root/WEB-INF/config/applicationContext.xml'
