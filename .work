@@ -141,8 +141,18 @@ pulllatestrelease() {
   pullmerge $CURRENT_RELEASE
 }
 
+# Get the review request id associated with the current branch
+# but only if it's in "Ship It!" state (to prevent accidentally 
+# merging changes that are not yet approved)
 function getcurrentreviewrequestid() {
-  globalcurrentreviewrequestid=$(rbt status | tr '\n' '\r' | sed -E 's|.*r\/([[:digit:]]+).*|\1|')
+  # convert multiline rbt status output to single line
+  globalrbtstatus=$(rbt status | tr '\n' '\r')
+  currentbranch=$(getcurrentbranch)
+  shipitStr='Ship It\!'
+  pendingStr='Pending'
+
+  # sed syntax : "s,search_string,replace_string,regex_flags" (most other characters allowed as separator instead of ,)
+  globalcurrentreviewrequestid=$(echo $globalrbtstatus | sed -En "s,.*$shipitStr[^|]+\| r\/([[:digit:]]+) [^|]+ \| $currentbranch \|.*,\1,p")
   echo $globalcurrentreviewrequestid
 }
 
@@ -151,12 +161,18 @@ function getcurrentbranch() {
   echo $globalcurrentbranch
 }
 
+# Unless otherwise specified, default branch for rbt is master
 function rbtupdate() {
   if [ -z "$1" ]
   then
-    waitforenterkey "#####Review request id not provided. Press enter if you want to use the first open review request (use if you KNOW only 1 review request is open)#####"
     reviewrequestid=$(getcurrentreviewrequestid)
-    rbtupdate $reviewrequestid
+    if [ -z "$reviewrequestid" ]
+    then
+      echo "Didn't find an approved review request for the branch, enter manually."
+    else
+      echo "Automatically found approved review request id: $reviewrequestid for current branch"
+      rbtupdate $reviewrequestid
+    fi
   else
     echo "calling rbt post -u -r $1"
     rbt post -o -u -r $1
@@ -164,15 +180,8 @@ function rbtupdate() {
 }
 
 function rbtupdatewithrebase() {
-  if [ -z "$1" ]
-  then
-    waitforenterkey "#####Review request id not provided. Press enter if you want to use the first open review request (use if you KNOW only 1 review request is open)#####"
-    reviewrequestid=$(getcurrentreviewrequestid)
-    rbtupdatewithrebase $reviewrequestid
-  else
-    rebaselatestmaster
-    rbt post -u -r $1
-  fi
+  rebaselatestmaster
+  rbtupdate
 }
 
 rbtpost() {
@@ -196,12 +205,17 @@ rbtupdatefrombranch() {
     echo "Please give the branch name"
   elif [ -z "$2" ]
   then
-    waitforenterkey "#####Review request id not provided. Press enter if you want to use the first open review request (use if you KNOW only 1 review request is open)#####"
     reviewrequestid=$(getcurrentreviewrequestid)
-    rbtupdatefrombranch $1 $reviewrequestid
+    if [ -z "$reviewrequestid" ]
+    then
+      echo "Didn't find an approved review request for the branch, enter manually."
+    else
+      echo "Automatically found approved review request id: $reviewrequestid for current branch"
+      rbtupdatefrombranch $1 $reviewrequestid
+    fi
   else
     echo "Calling rbt post -u -r $2 $1...HEAD"
-    #rbt post -o -u -r $2 $1...HEADref
+    rbt post -o -u -r $2 $1...HEAD
   fi
 }
 
@@ -253,14 +267,20 @@ buildgradleparallel() {
 mergetomaster() {
   if [ -z "$1" ]
   then
-    waitforenterkey "#####Review request id not provided. Press enter if you want to use the first open review request (use if you KNOW only 1 review request is open)#####"
     reviewrequestid=$(getcurrentreviewrequestid)
-    mergetomaster $reviewrequestid
+    if [ -z "$reviewrequestid" ]
+    then
+      echo "Didn't find an approved review request for the branch, enter manually."
+    else
+      echo "Automatically found approved review request id: $reviewrequestid for current branch, merging with the same"
+      mergetomaster $reviewrequestid      
+    fi
   else
     currentbranch=$(getcurrentbranch)
     rebaselatestmaster
-    waitforenterkey "Press enter if and when rebase is successful"
+    waitforenterkey "Press enter if and when rebase is successful to continue to merge to master"
     git checkout master
+    echo "calling mergepush $currentbranch -r $1"
     mergepush $currentbranch -r $1
   fi
 }
@@ -284,6 +304,15 @@ mergetomaster() {
 #    git checkout -b
 #  fi
 #}
+
+testfunc() {
+  if [[ "$1" == "piyush" ]]
+  then
+    echo 'yes'
+  else
+    echo 'no'
+  fi
+}
 
 
 
