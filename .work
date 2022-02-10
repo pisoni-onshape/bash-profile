@@ -20,7 +20,7 @@ function backupbranch() {
   searchstring=pisoni
   replacestring=backup/pisoni
   separator=/
-  curdate=$(date +'%m-%d-%Y-%T')
+  curdate=$(date +'%Y-%m-%d-%T')
   curdate="${curdate//:/-}"
   newbranch="${currentbranch/$searchstring/$replacestring}/$curdate"
   echo $newbranch
