@@ -17,11 +17,12 @@ function gitunskipworktree() {
 
 function backupbranch() {
   currentbranch=$(getcurrentbranch)
-  replacestring=pisoni/backup
+  searchstring=pisoni
+  replacestring=backup/pisoni
   separator=/
   curdate=$(date +'%m-%d-%Y-%T')
   curdate="${curdate//:/-}"
-  newbranch="${currentbranch/pisoni/$replacestring}/$curdate"
+  newbranch="${currentbranch/$searchstring/$replacestring}/$curdate"
   echo $newbranch
   # create new backup branch
   git checkout -b $newbranch

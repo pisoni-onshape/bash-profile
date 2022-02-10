@@ -51,6 +51,8 @@ alias openallaliases='openworkalias; openpersonalalias; openaliasall; openadbali
 alias opengitglobalignorefile='texteditor $gitsetglobalignorefile'
 alias opengitignorefile='opengitglobalignorefile'
 
+alias finddir='findfolder'
+
 
 #adb aliases
 source $ALIAS_PATH/.adb
