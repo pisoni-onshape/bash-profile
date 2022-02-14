@@ -1,3 +1,5 @@
+#Bash Shell only! 
+
 #Common
 
 export karabinerconfigfile=/Users/pisoni/.config/karabiner/karabiner.json
@@ -31,7 +33,23 @@ function beginswith() {
 	testString=$2
 	# Directly return true or false so that 
 	# it can be used with if 
- 	[[ $input = $testString* ]]
+ 	[[ $input == $testString* ]]
+}
+
+function endswith() {
+	input=$1
+	testString=$2
+	# Directly return true or false so that 
+	# it can be used with if 
+ 	[[ $input == *$testString ]]
+}
+
+function stringcontains() {
+	input=$1
+	testString=$2
+	# Directly return true or false so that 
+	# it can be used with if 
+ 	[[ $input == *$testString* ]]
 }
 
 function isemptyorblank() {
