@@ -42,6 +42,10 @@ function stringlength() {
 	echo ${#1}
 }
 
+function isnotemptyorblank() {
+  	[ ! -z "$1" ]
+}
+
 function getcurrentdate() {
   globalcurrentdate=$(date +'%Y-%m-%d-%T')
   globalcurrentdate="${globalcurrentdate//:/-}"

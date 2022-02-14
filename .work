@@ -113,6 +113,7 @@ getnewbranchname() {
   inputbranchname=$(simplereplace $inputbranchname "-lsb-*" "")
   inputbranchname=$(simplereplace $inputbranchname "-master" "")
   inputbranchname=$(simplereplace $inputbranchname "-release" "")
+  inputbranchname=$(simplereplace $inputbranchname "-rel-[1-9]*" "")
   targetbranch=$(simplereplace $targetbranch "/" "-")
   inputbranchname=$inputbranchname-$targetbranch
 
@@ -123,6 +124,12 @@ function checkoutfrommaster() {
   git checkout master
   git pull
   git checkout -b $(getnewbranchname $1 "master")
+}
+
+function checkoutfromrelease() {
+  git checkout $CURRENT_RELEASE
+  git pull
+  git checkout -b $(getnewbranchname $1 $CURRENT_RELEASE)
 }
 
 function checkoutfromlsbbranch() {
