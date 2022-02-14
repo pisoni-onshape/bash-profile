@@ -18,6 +18,36 @@ function findappbundleid() {
 	#echo "id of app $@"
 }
 
+# basic wild card characters seems to work
+function simplereplace() {
+	input=$1
+	searchstring=$2
+	replacestring=$3
+	echo "${input//$searchstring/$replacestring}"
+}
+
+function beginswith() {
+	input=$1
+	testString=$2
+	# Directly return true or false so that 
+	# it can be used with if 
+ 	[[ $input = $testString* ]]
+}
+
+function isemptyorblank() {
+  	[ -z "$1" ]
+}
+
+function stringlength() {
+	echo ${#1}
+}
+
+function getcurrentdate() {
+  globalcurrentdate=$(date +'%Y-%m-%d-%T')
+  globalcurrentdate="${globalcurrentdate//:/-}"
+  echo $globalcurrentdate
+}
+
 function findfolder() {
 	mdfind kind:folder "$1"
 }

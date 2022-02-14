@@ -102,15 +102,38 @@ addstaticroutetojumpbox() {
   sudo route -n add 54.187.217.158/32 $1
 }
 
+getnewbranchname() {
+  inputbranchname=$1
+  targetbranch=$2
+  if ! (beginswith $inputbranchname "pisoni/")
+  then
+    inputbranchname=pisoni/$inputbranchname
+  fi
+
+  inputbranchname=$(simplereplace $inputbranchname "-lsb-*" "")
+  inputbranchname=$(simplereplace $inputbranchname "-master" "")
+  inputbranchname=$(simplereplace $inputbranchname "-release" "")
+  targetbranch=$(simplereplace $targetbranch "/" "-")
+  inputbranchname=$inputbranchname-$targetbranch
+
+  echo $inputbranchname
+}
+
+function checkoutfrommaster() {
+  git checkout master
+  git pull
+  git checkout -b $(getnewbranchname $1 "master")
+}
+
 function checkoutfromlsbbranch() {
-  if [ -z "$1" ]
+  if isemptyorblank $1
   then
     echo "Please provide new branch name"
-  elif [ -z "$2" ]
+  elif isemptyorblank $2
   then
     echo "Please provide the base branch name"
   else
-    gitBranchLsb $1-lsb-$2 $2
+    gitBranchLsb $(getnewbranchname $1 "lsb/$2") $2
   fi
 }
 
@@ -164,10 +187,10 @@ function getcurrentbranch() {
 
 # Unless otherwise specified, default branch for rbt is master
 function rbtupdate() {
-  if [ -z "$1" ]
+  if isemptyorblank $1
   then
     reviewrequestid=$(getcurrentreviewrequestid)
-    if [ -z "$reviewrequestid" ]
+    if isemptyorblank $reviewrequestid
     then
       echo "Didn't find an approved review request for the branch, enter manually."
     else
@@ -189,6 +212,11 @@ rbtpost() {
   rbt post -o
 }
 
+rbtpostwithrebase() {
+  rebaselatestmaster
+  rbtpost
+}
+
 rbtpostfromlsbmaster() {
   echo "Calling rbt post $LSB_MASTER...HEAD"
   rbt post -o $LSB_MASTER...HEAD
@@ -201,13 +229,13 @@ rbtpostfromlsbrelease() {
 
 
 rbtupdatefrombranch() {
-  if [ -z "$1" ]
+  if isemptyorblank $1
   then
     echo "Please give the branch name"
-  elif [ -z "$2" ]
+  elif isemptyorblank $2
   then
     reviewrequestid=$(getcurrentreviewrequestid)
-    if [ -z "$reviewrequestid" ]
+    if isemptyorblank $reviewrequestid
     then
       echo "Didn't find an approved review request for the branch, enter manually."
     else
@@ -266,10 +294,10 @@ buildgradleparallel() {
 }
 
 mergetomaster() {
-  if [ -z "$1" ]
+  if isemptyorblank $1
   then
     reviewrequestid=$(getcurrentreviewrequestid)
-    if [ -z "$reviewrequestid" ]
+    if isemptyorblank $reviewrequestid
     then
       echo "Didn't find an approved review request for the branch, enter manually."
     else
@@ -288,7 +316,7 @@ mergetomaster() {
 
 #Not complete yet
 #mergetoreleasethenmaster() {
-#  if [ -z "$1" ]
+#  if isemptyorblank $1
 #  then
 #    echo "Please give the review request id"
 #  else
