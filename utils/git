@@ -5,3 +5,7 @@ function git.getcurrentbranch() {
   local currentbranch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
   echo $currentbranch
 }
+
+function git.hasUncommittedChanges() {
+	[ -n "$(git status --porcelain)" ]	
+}
