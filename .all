@@ -5,6 +5,7 @@
 #Load Modules
 source $BASH_PROFILE_PATH/utils/string
 source $BASH_PROFILE_PATH/utils/system
+source $BASH_PROFILE_PATH/utils/git
 
 export karabinerconfigfile=/Users/pisoni/.config/karabiner/karabiner.json
 export globalgitignorefile=/Users/pisoni/.gitignore

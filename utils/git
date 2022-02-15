@@ -1,0 +1,7 @@
+#git utilities
+
+
+function git.getcurrentbranch() {
+  local currentbranch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+  echo $currentbranch
+}

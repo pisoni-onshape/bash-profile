@@ -11,6 +11,12 @@ export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
 # In that case, there might be out of memory problems while building java
 export UPGRADE_MAX_MEMORY_GB=8
 
+
+# Other variables
+REVIEW_STATUS_PENDING="pending"
+REVIEW_STATUS_APPROVED="approved"
+REVIEW_STATUS_ANY="any"
+
 # Git related functions
 function gitskipworktree() {
   git update-index --skip-worktree "$1"
@@ -21,7 +27,7 @@ function gitunskipworktree() {
 }
 
 function backupbranch() {
-  currentbranch=$(getcurrentbranch)
+  currentbranch=$(git.getcurrentbranch)
   searchstring=pisoni
   replacestring=backup/pisoni
   separator=/
@@ -177,30 +183,47 @@ pulllatestrelease() {
 }
 
 # Get the review request id associated with the current branch
-# but only if it's in "Ship It!" state (to prevent accidentally 
-# merging changes that are not yet approved)
 function getcurrentreviewrequestid() {
+  local statusString=$1
+
   # convert multiline rbt status output to single line
-  globalrbtstatus=$(rbt status | tr '\n' '\r')
-  currentbranch=$(getcurrentbranch)
-  shipitStr='Ship It\!'
-  pendingStr='Pending'
+  local rbtstatus=$(rbt status | tr '\n' '\r')
+  currentbranch=$(git.getcurrentbranch)
+
+case $statusString in
+
+  $REVIEW_STATUS_APPROVED)
+    statusString='Ship It\!'
+    echo 'Finding an approved review request for the current git branch'
+    ;;
+
+  $REVIEW_STATUS_PENDING)
+    statusString='Pending'
+    echo 'Finding a pending review request for the current git branch'
+    ;;
+
+  $REVIEW_STATUS_ANY)
+    statusString=''
+    echo 'Finding a review request for the current git branch with any status'
+    ;;
+
+  *)
+    statusString=''
+    echo 'Finding a review request for the current git branch with any status'
+    ;;
+esac
+
 
   # sed syntax : "s,search_string,replace_string,regex_flags" (most other characters allowed as separator instead of ,)
-  globalcurrentreviewrequestid=$(echo $globalrbtstatus | sed -En "s,.*$shipitStr[^|]+\| r\/([[:digit:]]+) [^|]+ \| $currentbranch \|.*,\1,p")
-  echo $globalcurrentreviewrequestid
-}
-
-function getcurrentbranch() {
-  globalcurrentbranch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
-  echo $globalcurrentbranch
+  local reviewrequestid=$(echo $rbtstatus | sed -En "s,.*statusString[^|]+\| r\/([[:digit:]]+) [^|]+ \| $currentbranch \|.*,\1,p")
+  echo $reviewrequestid
 }
 
 # Unless otherwise specified, default branch for rbt is master
 function rbtupdate() {
   if string.isemptyorblank $1
   then
-    reviewrequestid=$(getcurrentreviewrequestid)
+    reviewrequestid=$(getcurrentreviewrequestid $REVIEW_STATUS_ANY)
     if string.isemptyorblank $reviewrequestid
     then
       echo "Didn't find an approved review request for the branch, enter manually."
@@ -245,7 +268,7 @@ rbtupdatefrombranch() {
     echo "Please give the branch name"
   elif string.isemptyorblank $2
   then
-    reviewrequestid=$(getcurrentreviewrequestid)
+    reviewrequestid=$(getcurrentreviewrequestid $REVIEW_STATUS_ANY)
     if string.isemptyorblank $reviewrequestid
     then
       echo "Didn't find an approved review request for the branch, enter manually."
@@ -307,7 +330,7 @@ buildgradleparallel() {
 mergetomaster() {
   if string.isemptyorblank $1
   then
-    reviewrequestid=$(getcurrentreviewrequestid)
+    reviewrequestid=$(getcurrentreviewrequestid $REVIEW_STATUS_APPROVED)
     if string.isemptyorblank $reviewrequestid
     then
       echo "Didn't find an approved review request for the branch, enter manually."
@@ -316,7 +339,7 @@ mergetomaster() {
       mergetomaster $reviewrequestid      
     fi
   else
-    currentbranch=$(getcurrentbranch)
+    currentbranch=$(git.getcurrentbranch)
     rebaselatestmaster
     waitforenterkey "Press enter if and when rebase is successful to continue to merge to master"
     git checkout master
@@ -331,7 +354,7 @@ mergetomaster() {
 #  then
 #    echo "Please give the review request id"
 #  else
-#    currentbranch=$(getcurrentbranch)
+#    currentbranch=$(git.getcurrentbranch)
 #    rebaselatestrelease
 #    waitforenterkey "Press enter if and when rebase is successful"
 #    git checkout $CURRENT_RELEASE
