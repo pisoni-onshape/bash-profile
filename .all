@@ -2,10 +2,14 @@
 
 #Common
 
+#Load Modules
+source $BASH_PROFILE_PATH/utils/string
+source $BASH_PROFILE_PATH/utils/system
+
 export karabinerconfigfile=/Users/pisoni/.config/karabiner/karabiner.json
 export globalgitignorefile=/Users/pisoni/.gitignore
 
-alias aliases='source $ALIAS_PATH/.all'
+alias aliases='source $BASH_PROFILE_PATH/.all'
 alias redoaliases='aliases'
 alias refreshaliases='aliases'
 alias sourcealiases='aliases'
@@ -14,66 +18,6 @@ alias inteli='idea'
 alias intelli='idea'
 alias intellij='idea'
 
-function findappbundleid() {
-	osascript -e "id of app \"$1\""
-	#echo 'id of app' "$1" 'is something'
-	#echo "id of app $@"
-}
-
-# basic wild card characters seems to work
-function simplereplace() {
-	input=$1
-	searchstring=$2
-	replacestring=$3
-	echo "${input//$searchstring/$replacestring}"
-}
-
-function beginswith() {
-	input=$1
-	testString=$2
-	# Directly return true or false so that 
-	# it can be used with if 
- 	[[ $input == $testString* ]]
-}
-
-function endswith() {
-	input=$1
-	testString=$2
-	# Directly return true or false so that 
-	# it can be used with if 
- 	[[ $input == *$testString ]]
-}
-
-function stringcontains() {
-	input=$1
-	testString=$2
-	# Directly return true or false so that 
-	# it can be used with if 
- 	[[ $input == *$testString* ]]
-}
-
-function isemptyorblank() {
-  	[ -z "$1" ]
-}
-
-function stringlength() {
-	echo ${#1}
-}
-
-function isnotemptyorblank() {
-  	[ ! -z "$1" ]
-}
-
-function getcurrentdate() {
-  globalcurrentdate=$(date +'%Y-%m-%d-%T')
-  globalcurrentdate="${globalcurrentdate//:/-}"
-  echo $globalcurrentdate
-}
-
-function findfolder() {
-	mdfind kind:folder "$1"
-}
-
 function gitsetglobalignorefile() {
 	git config --global core.excludesfile $1
 }
@@ -81,10 +25,10 @@ function gitsetglobalignorefile() {
 alias sublime='open -a "/Applications/Sublime Text.app"'
 #Preferred text editor of choice : 
 alias texteditor='sublime'
-alias refreshadb='source $ALIAS_PATH/.adb'
-alias refreshpersonal='source $ALIAS_PATH/.personal'
-alias refreshwork='source $ALIAS_PATH/.work'
-alias refreshall='source $ALIAS_PATH/.all'
+alias refreshadb='source $BASH_PROFILE_PATH/.adb'
+alias refreshpersonal='source $BASH_PROFILE_PATH/.personal'
+alias refreshwork='source $BASH_PROFILE_PATH/.work'
+alias refreshall='source $BASH_PROFILE_PATH/.all'
 alias refresheverything='refreshall'
 alias te='texteditor'
 alias editor='texteditor'
@@ -94,10 +38,10 @@ alias appbundleid='findappbundleid'
 
 alias karabinerconfig='texteditor "$karabinerconfigfile"'
 alias openkarabinerconfig='texteditor "$karabinerconfigfile"'
-alias openadbalias='texteditor $ALIAS_PATH/.adb'
-alias openaliasall='texteditor $ALIAS_PATH/.all'
-alias openpersonalalias='texteditor $ALIAS_PATH/.personal'
-alias openworkalias='texteditor $ALIAS_PATH/.work'
+alias openadbalias='texteditor $BASH_PROFILE_PATH/.adb'
+alias openaliasall='texteditor $BASH_PROFILE_PATH/.all'
+alias openpersonalalias='texteditor $BASH_PROFILE_PATH/.personal'
+alias openworkalias='texteditor $BASH_PROFILE_PATH/.work'
 alias openallaliases='openworkalias; openpersonalalias; openaliasall; openadbalias;'
 
 alias opengitglobalignorefile='texteditor $gitsetglobalignorefile'
@@ -107,13 +51,13 @@ alias finddir='findfolder'
 
 
 #adb aliases
-source $ALIAS_PATH/.adb
+source $BASH_PROFILE_PATH/.adb
 
 #Personal aliases
-source $ALIAS_PATH/.personal
+source $BASH_PROFILE_PATH/.personal
 
 #Work Aliases
-source $ALIAS_PATH/.work
+source $BASH_PROFILE_PATH/.work
 
 #Jetbrains IDEs
 export PATH=$PATH:~/jetbrains-launchers/

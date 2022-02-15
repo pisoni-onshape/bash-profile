@@ -1,0 +1,49 @@
+# String utils
+
+function string.equals() {
+	[[ "$1" == "$2" ]]
+}
+
+# basic wild card characters seems to work
+function string.simplereplace() {
+	input=$1
+	searchstring=$2
+	replacestring=$3
+	echo "${input//$searchstring/$replacestring}"
+}
+
+function string.beginswith() {
+	input=$1
+	testString=$2
+	# Directly return true or false so that 
+	# it can be used with if 
+ 	[[ $input == $testString* ]]
+}
+
+function string.endswith() {
+	input=$1
+	testString=$2
+	# Directly return true or false so that 
+	# it can be used with if 
+ 	[[ $input == *$testString ]]
+}
+
+function string.contains() {
+	input=$1
+	testString=$2
+	# Directly return true or false so that 
+	# it can be used with if 
+ 	[[ $input == *$testString* ]]
+}
+
+function string.isemptyorblank() {
+  	[ -z "$1" ]
+}
+
+function string.isnotemptyorblank() {
+  	[ ! -z "$1" ]
+}
+
+function string.length() {
+	echo ${#1}
+}

@@ -19,5 +19,4 @@ source buildenv.bash
 
 
 #Aliases
-export ALIAS_PATH=$BASH_PROFILE_PATH
-source $ALIAS_PATH/.all
+source $BASH_PROFILE_PATH/.all

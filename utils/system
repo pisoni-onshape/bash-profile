@@ -1,0 +1,17 @@
+# System utils
+
+system.findappbundleid() {
+	osascript -e "id of app \"$1\""
+	#echo 'id of app' "$1" 'is something'
+	#echo "id of app $@"
+}
+
+system.getcurrentdate() {
+  local curdate=$(date +'%Y-%m-%d-%T')
+  curdate="${curdate//:/-}"
+  echo $curdate
+}
+
+system.findfolder() {
+	mdfind kind:folder "$1"
+}
