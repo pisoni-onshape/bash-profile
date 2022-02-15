@@ -215,7 +215,7 @@ esac
 
 
   # sed syntax : "s,search_string,replace_string,regex_flags" (most other characters allowed as separator instead of ,)
-  local reviewrequestid=$(echo $rbtstatus | sed -En "s,.*statusString[^|]+\| r\/([[:digit:]]+) [^|]+ \| $currentbranch \|.*,\1,p")
+  local reviewrequestid=$(echo $rbtstatus | sed -En "s,.*$statusString[^|]+\| r\/([[:digit:]]+) [^|]+ \| $currentbranch \|.*,\1,p")
   echo $reviewrequestid
 }
 
@@ -226,7 +226,7 @@ function rbtupdate() {
     reviewrequestid=$(getcurrentreviewrequestid $REVIEW_STATUS_ANY)
     if string.isemptyorblank $reviewrequestid
     then
-      echo "Didn't find an approved review request for the branch, enter manually."
+      echo "Didn't find a matching review request for the branch, enter manually."
     else
       echo "Automatically found approved review request id: $reviewrequestid for current branch"
       rbtupdate $reviewrequestid
@@ -271,7 +271,7 @@ rbtupdatefrombranch() {
     reviewrequestid=$(getcurrentreviewrequestid $REVIEW_STATUS_ANY)
     if string.isemptyorblank $reviewrequestid
     then
-      echo "Didn't find an approved review request for the branch, enter manually."
+      echo "Didn't find a matching review request for the branch, enter manually."
     else
       echo "Automatically found approved review request id: $reviewrequestid for current branch"
       rbtupdatefrombranch $1 $reviewrequestid
