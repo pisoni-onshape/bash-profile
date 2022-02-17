@@ -9,3 +9,8 @@ function git.getcurrentbranch() {
 function git.hasUncommittedChanges() {
 	[ -n "$(git status --porcelain)" ]	
 }
+
+function git.getlatestcommitid() {
+	local latestSHAId=$(git rev-parse HEAD | cut -c 1-8)
+	echo $latestSHAId
+}

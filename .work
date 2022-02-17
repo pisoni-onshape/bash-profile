@@ -104,8 +104,12 @@ awsconfigure() {
 }
 
 myprecommit() {
+  # Remove this first line once yarn precommit starts catching 
+  # typescript errors again
+  #npx tsc --noEmit --project $REPO_NEWTON/project/web/tsconfig.json
   checkTidy
   gradle :java:pmd
+  #gradle :java:codeChecker
   grunt checkJsCode
 }
 
@@ -234,7 +238,7 @@ function rbtupdate() {
     then
       echo "Didn't find a matching review request for the branch, enter manually."
     else
-      echo "Automatically found approved review request id: $reviewrequestid for current branch"
+      echo "Automatically found review request id: $reviewrequestid for current branch"
       rbtupdate $reviewrequestid
     fi
   else
@@ -279,7 +283,7 @@ rbtupdatefrombranch() {
     then
       echo "Didn't find a matching review request for the branch, enter manually."
     else
-      echo "Automatically found approved review request id: $reviewrequestid for current branch"
+      echo "Automatically found review request id: $reviewrequestid for current branch"
       rbtupdatefrombranch $1 $reviewrequestid
     fi
   else
@@ -333,6 +337,19 @@ buildgradleparallel() {
   playfinishsound
 }
 
+# There's no reason to keep merged branches
+# but we can keep for a few days just for reference purposes
+markbranchmerged() {
+  git branch -m $1 $1-merged
+}
+
+createlsbreleasebranchfromlsbmastertopchange() {
+  topSHAId=$(git.getlatestcommitid)
+  currentbranch=$(git.getcurrentbranch)
+  checkoutfromlsbrelease $(getnewbranchname $currentbranch $LSB_CURRENT_RELEASE)
+  git cherry-pick $topSHAId
+}
+
 mergetomaster() {
   if git.hasUncommittedChanges 
   then
@@ -358,6 +375,9 @@ mergetomaster() {
     git checkout master
     echo "calling mergepush $currentbranch -r $1"
     mergepush $currentbranch -r $1
+    git checkout $currentbranch
+    # rename the current branch as 'merged' to keep for a few days
+    markbranchmerged $currentbranch
   fi
 }
 
@@ -390,6 +410,10 @@ mergetoreleasethenmaster() {
     # Merge changes back to master
     waitforenterkey "Merging changes to master now, press enter when ready"
     checkoutfromlatestmaster $currentbranch
+
+    #Rename the current branch before reassigning
+    markbranchmerged $currentbranch
+
     currentbranch=$(git.getcurrentbranch)    
     git merge $CURRENT_RELEASE
 
@@ -400,6 +424,9 @@ mergetoreleasethenmaster() {
 
     git checkout master
     mergepush $currentbranch -r $reviewrequestid --no-resolve # don't resolve the bug again, so fixed-in hash keeps pointing to the rel branch
+
+    git checkout $currentbranch
+    markbranchmerged $currentbranch
   fi
 }
 
