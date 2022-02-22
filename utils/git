@@ -1,5 +1,7 @@
 #git utilities
 
+# Mostly it would already be sourced, but doesn't hurt to call again
+source $BASH_PROFILE_PATH/utils/string
 
 function git.getcurrentbranch() {
   local currentbranch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
@@ -13,4 +15,26 @@ function git.hasUncommittedChanges() {
 function git.getlatestcommitid() {
 	local latestSHAId=$(git rev-parse HEAD | cut -c 1-8)
 	echo $latestSHAId
+}
+
+function git.branchislsbreleasebased() {
+	local currentbranch=$(git.getcurrentbranch)
+	string.endswith $currentbranch "-lsb-rel-[0-9].[0-9]*"
+}
+
+function git.branchislsbmasterbased() {
+	local currentbranch=$(git.getcurrentbranch)
+	#echo $currentbranch
+	string.endswith $currentbranch "-lsb-master"
+}
+
+
+function git.branchisreleasebased() {
+	local currentbranch=$(git.getcurrentbranch)
+	! git.branchislsbreleasebased && string.endswith $currentbranch "-rel-[0-9].[0-9]*"
+}
+
+function git.branchismasterbased() {
+	local currentbranch=$(git.getcurrentbranch)
+	! git.branchislsbmasterbased && string.endswith $currentbranch "-master"
 }
