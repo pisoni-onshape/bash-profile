@@ -7,8 +7,8 @@ source $BASH_PROFILE_PATH/utils/string
 source $BASH_PROFILE_PATH/utils/system
 source $BASH_PROFILE_PATH/utils/git
 
-export karabinerconfigfile=/Users/pisoni/.config/karabiner/karabiner.json
-export globalgitignorefile=/Users/pisoni/.gitignore
+export karabinerconfigfile=/Users/$USER/.config/karabiner/karabiner.json
+export globalgitignorefile=/Users/$USER/.gitignore
 
 alias aliases='source $BASH_PROFILE_PATH/.all'
 alias redoaliases='aliases'
