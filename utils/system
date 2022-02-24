@@ -1,5 +1,11 @@
 # System utils
 
+#include guard
+string.isnotemptyorblank $system_defined && return 0
+export system_defined=1
+
+
+
 function system.findappbundleid() {
 	osascript -e "id of app \"$1\""
 	#echo 'id of app' "$1" 'is something'
@@ -14,4 +20,8 @@ function system.getcurrentdate() {
 
 function system.findfolder() {
 	mdfind kind:folder "$1"
+}
+
+function system.whoisusingport8080() {
+	lsof -i tcp:8080
 }

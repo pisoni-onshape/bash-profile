@@ -1,0 +1,71 @@
+#rbt (rbcommons review) utilities
+
+#include guard
+string.isnotemptyorblank $rbt_defined && return 0
+export rbt_defined=1
+
+importutility string
+importutility git
+
+
+# Other variables
+rbt.REVIEW_STATUS_PENDING="pending"
+rbt.REVIEW_STATUS_APPROVED="approved"
+rbt.REVIEW_STATUS_ANY="any"
+
+
+# Get the review request id associated with the current branch
+# and the given status 
+# parameters : rbt.REVIEW_STATUS_* (defined above)
+function rbt.getcurrentid() {
+  local statusString=$1
+
+  # convert multiline rbt status output to single line
+  local rbtstatus=$(rbt status | tr '\n' '\r')
+  currentbranch=$(git.getcurrentbranch)
+
+case $statusString in
+
+  $rbt.REVIEW_STATUS_APPROVED)
+    statusString='Ship It\!'
+    ;;
+
+  $rbt.REVIEW_STATUS_PENDING)
+    statusString='Pending'
+    ;;
+
+  $rbt.REVIEW_STATUS_ANY)
+    statusString=''
+    ;;
+
+  *)
+    statusString=''
+    ;;
+esac
+
+
+  # sed syntax : "s,search_string,replace_string,regex_flags" (most other characters allowed as separator instead of ,)
+  local reviewrequestid=$(echo $rbtstatus | sed -En "s,.*$statusString[^|]+\| r\/([[:digit:]]+) [^|]+ \| $currentbranch \|.*,\1,p")
+
+  # It'll be quite usual that we'd get an lsb/master or master based branch and want to merge in both.
+  # Handle the case that we got the lsb/master branch reviewed but are merging in release, or
+  # we got reviewed in lsb/rel-* but merging in 
+  if string.isemptyorblank $reviewrequestid #&& string.endswith $currentbranch "-rel*"
+  then
+    local testbranch=$(getnewbranchname $currentbranch "")
+    # Even if the lsb/master based branch is approved for this branch, then also we accept it as approved.
+    reviewrequestid=$(echo $rbtstatus | sed -En "s,.*$statusString[^|]+\| r\/([[:digit:]]+) [^|]+ \| $testbranch.*,\1,p")
+  fi
+
+  echo $reviewrequestid
+}
+
+function rbt.openreviewrequest() {
+  currentreviewrequestid=$(rbt.getcurrentid)
+  if string.isnotemptyorblank $currentreviewrequestid
+  then
+    open -a firefox -g "https://rbcommons.com/s/bti/r/$currentreviewrequestid"
+  else
+    echo "Can't find a valid review request id matching the current branch"
+  fi
+}

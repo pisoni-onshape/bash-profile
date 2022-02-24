@@ -1,5 +1,10 @@
 # String utils
 
+#include guard
+string.isnotemptyorblank $string_defined && return 0
+export string_defined=1
+
+
 function string.equals() {
 	[[ "$1" == "$2" ]]
 }
@@ -46,4 +51,16 @@ function string.isnotemptyorblank() {
 
 function string.length() {
 	echo ${#1}
+}
+
+function string.tolower() {
+	echo $1 | tr '[:upper:]' '[:lower:]'
+}
+
+function string.toupper() {
+	echo $1 | tr '[:lower:]' '[:upper:]'
+}
+
+function string.concatenate() {
+	echo $1$2
 }

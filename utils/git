@@ -1,7 +1,14 @@
 #git utilities
 
-# Mostly it would already be sourced, but doesn't hurt to call again
-source $BASH_PROFILE_PATH/utils/string
+#include guard
+string.isnotemptyorblank $git_defined && return 0
+export git_defined=1
+
+
+
+# Import utility modules
+importutility string
+importutility system
 
 function git.getcurrentbranch() {
   local currentbranch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
@@ -37,4 +44,26 @@ function git.branchisreleasebased() {
 function git.branchismasterbased() {
 	local currentbranch=$(git.getcurrentbranch)
 	! git.branchislsbmasterbased && string.endswith $currentbranch "-master"
+}
+
+function git.skipworktree() {
+  git update-index --skip-worktree "$1"
+}
+
+function git.unskipworktree() {
+  git update-index --no-skip-worktree $1
+}
+
+function git.backupbranch() {
+  currentbranch=$(git.getcurrentbranch)
+  searchstring=$USER
+  replacestring=backup/$USER
+  separator=/
+  curdate=$(system.getcurrentdate)
+  newbranch="${currentbranch/$searchstring/$replacestring}/$curdate"
+  echo $newbranch
+  # create new backup branch
+  git checkout -b $newbranch
+  # go back to our branch
+  git checkout $currentbranch
 }

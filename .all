@@ -1,11 +1,9 @@
 #Bash Shell only! 
 
 #Common
-
-#Load Modules
-source $BASH_PROFILE_PATH/utils/string
-source $BASH_PROFILE_PATH/utils/system
-source $BASH_PROFILE_PATH/utils/git
+function importutility() {
+	source $BASH_PROFILE_PATH/utils/$1
+}
 
 export karabinerconfigfile=/Users/$USER/.config/karabiner/karabiner.json
 export globalgitignorefile=/Users/$USER/.gitignore

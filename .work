@@ -1,7 +1,6 @@
 #official exports:
 
 
-
 #unofficial exports:
 #export USER=pisoni #This should already be set
 export CURRENT_RELEASE=rel-1.143
@@ -9,38 +8,18 @@ export LSB_MASTER=lsb/master
 export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
 export GIT_MERGE_AUTOEDIT=no
 
+
+# Import Utility modules
+importutility string
+importutility system
+importutility git
+importutility rbt
+
+
 # This is only an issue if you usually extract std from stacks and upgrade has to process lot of std versions
 # In that case, there might be out of memory problems while building java
 export UPGRADE_MAX_MEMORY_GB=8
 
-
-# Other variables
-REVIEW_STATUS_PENDING="pending"
-REVIEW_STATUS_APPROVED="approved"
-REVIEW_STATUS_ANY="any"
-
-# Git related functions
-function gitskipworktree() {
-  git update-index --skip-worktree "$1"
-}
-
-function gitunskipworktree() {
-  git update-index --no-skip-worktree $1
-}
-
-function backupbranch() {
-  currentbranch=$(git.getcurrentbranch)
-  searchstring=$USER
-  replacestring=backup/$USER
-  separator=/
-  curdate=$(system.getcurrentdate)
-  newbranch="${currentbranch/$searchstring/$replacestring}/$curdate"
-  echo $newbranch
-  # create new backup branch
-  git checkout -b $newbranch
-  # go back to our branch
-  git checkout $currentbranch
-}
 
 function fixDiskImagesJS() {
   diskImageUmountAll
@@ -119,8 +98,8 @@ addstaticroutetojumpbox() {
 }
 
 getnewbranchname() {
-  inputbranchname=$1
-  targetbranch=$2
+  inputbranchname=$(string.tolower $1)
+  targetbranch=$(string.tolower $2)
   if ! (string.beginswith $inputbranchname "$USER/")
   then
     inputbranchname=$USER/$inputbranchname
@@ -191,55 +170,11 @@ pulllatestrelease() {
   pullmerge $CURRENT_RELEASE
 }
 
-# Get the review request id associated with the current branch
-function getcurrentreviewrequestid() {
-  local statusString=$1
-
-  # convert multiline rbt status output to single line
-  local rbtstatus=$(rbt status | tr '\n' '\r')
-  currentbranch=$(git.getcurrentbranch)
-
-case $statusString in
-
-  $REVIEW_STATUS_APPROVED)
-    statusString='Ship It\!'
-    ;;
-
-  $REVIEW_STATUS_PENDING)
-    statusString='Pending'
-    ;;
-
-  $REVIEW_STATUS_ANY)
-    statusString=''
-    ;;
-
-  *)
-    statusString=''
-    ;;
-esac
-
-
-  # sed syntax : "s,search_string,replace_string,regex_flags" (most other characters allowed as separator instead of ,)
-  local reviewrequestid=$(echo $rbtstatus | sed -En "s,.*$statusString[^|]+\| r\/([[:digit:]]+) [^|]+ \| $currentbranch \|.*,\1,p")
-
-  # It'll be quite usual that we'd get an lsb/master or master based branch and want to merge in both.
-  # Handle the case that we got the lsb/master branch reviewed but are merging in release, or
-  # we got reviewed in lsb/rel-* but merging in 
-  if string.isemptyorblank $reviewrequestid #&& string.endswith $currentbranch "-rel*"
-  then
-    local testbranch=$(getnewbranchname $currentbranch "")
-    # Even if the lsb/master based branch is approved for this branch, then also we accept it as approved.
-    reviewrequestid=$(echo $rbtstatus | sed -En "s,.*$statusString[^|]+\| r\/([[:digit:]]+) [^|]+ \| $testbranch.*,\1,p")
-  fi
-
-  echo $reviewrequestid
-}
-
 # Unless otherwise specified, default branch for rbt is master
 function rbtupdate() {
   if string.isemptyorblank $1
   then
-    reviewrequestid=$(getcurrentreviewrequestid $REVIEW_STATUS_ANY)
+    reviewrequestid=$(rbt.getcurrentid $REVIEW_STATUS_ANY)
     if string.isemptyorblank $reviewrequestid
     then
       echo "Didn't find a matching review request for the branch, enter manually."
@@ -256,6 +191,32 @@ function rbtupdate() {
 function rbtupdatewithrebase() {
   rebaselatestmaster
   rbtupdate
+}
+
+function testregex() {
+
+  var1='rel-1'
+  var2='rel-[0-9]*'
+  if [[ 'rel-1' =~ 'rel-[0-9]*' ]]
+  then 
+    echo yes
+  else 
+    echo no
+  fi
+
+
+  check_dec='^rel-[0-9]\.[0-9]+'
+  input=0
+  
+  echo "Please enter a digit: "
+  read input
+ 
+  if [[ $input =~ $check_dec ]]
+  then
+           echo "The value is a decimal"
+  else
+          echo "The value is something else"
+  fi
 }
 
 rbtpost() {
@@ -284,7 +245,7 @@ rbtupdatefrombranch() {
     echo "Please give the branch name"
   elif string.isemptyorblank $2
   then
-    reviewrequestid=$(getcurrentreviewrequestid $REVIEW_STATUS_ANY)
+    reviewrequestid=$(rbt.getcurrentid $REVIEW_STATUS_ANY)
     if string.isemptyorblank $reviewrequestid
     then
       echo "Didn't find a matching review request for the branch, enter manually."
@@ -304,6 +265,17 @@ rbtupdatefromlsbrelease() {
 
 rbtupdatefromlsbmaster() {
   rbtupdatefrombranch $LSB_MASTER $1
+}
+
+
+rbtpostfromlsbreleasewithrebase() {
+  rebaselatestlsbrelease
+  rbtpostfromlsbrelease
+}
+
+rbtpostfromlsbmasterwithrebase() {
+  rebaselatestlsbmaster
+  rbtpostfromlsbmaster
 }
 
 rbtupdatefromlsbreleasewithrebase() {
@@ -372,7 +344,7 @@ mergetomaster() {
 
   if string.isemptyorblank $1
   then
-    reviewrequestid=$(getcurrentreviewrequestid $REVIEW_STATUS_APPROVED)
+    reviewrequestid=$(rbt.getcurrentid $REVIEW_STATUS_APPROVED)
     if string.isemptyorblank $reviewrequestid
     then
       echo "Didn't find an approved review request for the branch, enter manually."
@@ -411,7 +383,7 @@ mergetoreleasethenmaster() {
 
   if string.isemptyorblank $1
   then
-    reviewrequestid=$(getcurrentreviewrequestid $REVIEW_STATUS_APPROVED)
+    reviewrequestid=$(rbt.getcurrentid $REVIEW_STATUS_APPROVED)
     if string.isemptyorblank $reviewrequestid
     then
       echo "Didn't find an approved review request for the branch, enter manually."
