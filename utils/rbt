@@ -7,11 +7,10 @@ export rbt_defined=1
 importutility string
 importutility git
 
-
 # Other variables
-rbt.REVIEW_STATUS_PENDING="pending"
-rbt.REVIEW_STATUS_APPROVED="approved"
-rbt.REVIEW_STATUS_ANY="any"
+rbt_REVIEW_STATUS_PENDING="pending"
+rbt_REVIEW_STATUS_APPROVED="approved"
+rbt_REVIEW_STATUS_ANY="any"
 
 
 # Get the review request id associated with the current branch
@@ -26,15 +25,15 @@ function rbt.getcurrentid() {
 
 case $statusString in
 
-  $rbt.REVIEW_STATUS_APPROVED)
+  $rbt_REVIEW_STATUS_APPROVED)
     statusString='Ship It\!'
     ;;
 
-  $rbt.REVIEW_STATUS_PENDING)
+  $rbt_REVIEW_STATUS_PENDING)
     statusString='Pending'
     ;;
 
-  $rbt.REVIEW_STATUS_ANY)
+  $rbt_REVIEW_STATUS_ANY)
     statusString=''
     ;;
 

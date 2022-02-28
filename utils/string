@@ -1,7 +1,7 @@
 # String utils
 
 #include guard
-string.isnotemptyorblank $string_defined && return 0
+[ ! -z "$string_defined" ] && return 0
 export string_defined=1
 
 
