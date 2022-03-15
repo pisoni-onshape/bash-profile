@@ -3,10 +3,11 @@
 
 #unofficial exports:
 #export USER=pisoni #This should already be set
-export CURRENT_RELEASE=rel-1.143
+export CURRENT_RELEASE=rel-1.145
 export LSB_MASTER=lsb/master
 export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
 export GIT_MERGE_AUTOEDIT=no
+export RETRIEVAL_REPORT_WRITE_TO_DISK=1
 
 
 # Import Utility modules
@@ -116,6 +117,10 @@ getnewbranchname() {
   fi
 
   echo $inputbranchname
+}
+
+function rebaselatestmaster() {
+  pullmerge master --rebase
 }
 
 function checkoutfromlatestmaster() {
@@ -317,7 +322,7 @@ buildgradleparallel() {
 # There's no reason to keep merged branches
 # but we can keep for a few days just for reference purposes
 markbranchmerged() {
-  git branch -m $1 $1-merged
+  git.renamebranch $1 $1-merged
 }
 
 createlsbreleasebranchfromlsbmastertopchange() {
@@ -463,6 +468,21 @@ ptortest() {
  ptor $1 --verbose --flags=fastFail --target=http://localhost.dev.onshape.com:8000/
 }
 
+function pushtos3() {
+  # Put a timestamp to the branch name and remove hyphen after bel from branch name
+  # as otherwise kibana logs show the branch name only as "bel" and nothing else
+  local originalbranchname=$(git.getcurrentbranch)
+  local currentdatetime=$(system.getcurrentdate "_")
+  local newbranchname=$(string.simplereplace $originalbranchname "pisoni/bel-" "pisoni/$currentdatetime""_bel")
+
+  git.renamecurrentbranch $newbranchname
+  pushToBuildFarm @promote-to-s3-test
+  # After it's done, change the branch name back to original
+  git.renamecurrentbranch $originalbranchname
+}
+
+alias bfnodestop='bf job rm'
+alias bfjobremove='bfnodestop'
 alias bsserverpath="/Users/$USER/stage/BSServer/bin/BSServer"
 alias buildall='cd $REPO_NEWTON;buildgradleparallel'
 #alias buildjavaonly='grdlu gen java' #defined as a function in .profile
@@ -502,6 +522,7 @@ alias mongorestore='mongoRestore'
 alias backupmongo='mongoDump'
 alias restoremongo='mongoRestore'
 alias newton='cd $REPO_NEWTON'
+alias kibanatools='cd $DEV_TOOLS/kibanaTools'
 alias pofix='fixpo'
 alias prepeclipse='gradle prepEclipse'
 alias prepclion='gradle :cpp:prepCLion --parallel'
@@ -513,9 +534,7 @@ alias pulllatestlsbmaster='pullmerge $LSB_MASTER'
 alias pullmaster='pullmerge master'
 alias pullmergemaster='pullmerge master'
 alias pushtobuild='pushToBuildFarm @precommit @uitest @mocha'
-alias pushtos3='pushToBuildFarm @promote-to-s3-test'
 alias quickserve='grunt quickServe'
-alias rebaselatestmaster='pullmerge master --rebase'
 alias rebasemaster='pullmerge master --rebase'
 alias serial='grunt generateSerializables'
 alias serialize='grunt generateSerializables'

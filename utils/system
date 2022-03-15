@@ -4,7 +4,7 @@
 string.isnotemptyorblank $system_defined && return 0
 export system_defined=1
 
-
+importutility string
 
 function system.findappbundleid() {
 	osascript -e "id of app \"$1\""
@@ -12,10 +12,22 @@ function system.findappbundleid() {
 	#echo "id of app $@"
 }
 
-function system.getcurrentdate() {
+function system.private.getcurrentdatehyphenated() {
   local curdate=$(date +'%Y-%m-%d-%T')
   curdate="${curdate//:/-}"
   echo $curdate
+}
+
+# Pass the character you want as the separator. If not given
+# will use hyphen "-"
+function system.getcurrentdate() {
+	local separator=$1
+	if string.isemptyorblank $separator
+	then
+		echo $(system.private.getcurrentdatehyphenated)
+	else
+		echo $(string.simplereplace $(system.private.getcurrentdatehyphenated) "-" "$separator")
+	fi
 }
 
 function system.findfolder() {

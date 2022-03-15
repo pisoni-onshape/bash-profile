@@ -10,6 +10,14 @@ export git_defined=1
 importutility string
 importutility system
 
+function git.renamebranch() {
+	git branch -m $1 $2
+}
+
+function git.renamecurrentbranch() {
+	git branch -m $1
+}
+
 function git.getcurrentbranch() {
   local currentbranch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
   echo $currentbranch

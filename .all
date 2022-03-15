@@ -44,7 +44,8 @@ alias openworkalias='texteditor $BASH_PROFILE_PATH/.work'
 alias openallaliases='openworkalias; openpersonalalias; openaliasall; openadbalias;'
 
 alias opengitglobalignorefile='texteditor $gitsetglobalignorefile'
-alias opengitignorefile='opengitglobalignorefile'
+alias openglobalgitignorefile='texteditor $gitsetglobalignorefile'
+alias opengitignorefile='texteditor $gitsetglobalignorefile'
 
 alias finddir='findfolder'
 
