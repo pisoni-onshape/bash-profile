@@ -1,7 +1,7 @@
 #git utilities
 
 #include guard
-string.isnotemptyorblank $git_defined && return 0
+[ ! -z "$git_defined" ] && [ -z "$FORCE_IMPORT_UTILITY" ] && return 0
 export git_defined=1
 
 
@@ -74,4 +74,27 @@ function git.backupbranch() {
   git checkout -b $newbranch
   # go back to our branch
   git checkout $currentbranch
+}
+
+function git.getbugnumberfromcurrentbranch() {
+  local currentbranch=$(git.getcurrentbranch)
+  # sed syntax : "s,search_string,replace_string,regex_flags" (most other characters allowed as separator instead of ,)
+  local bugnumber=$(echo $currentbranch | sed -En "s,.*/bel-([[:digit:]]+)/.*,BEL-\1,p")
+  echo $bugnumber
+}
+
+function git.commit() {
+  local bugnumber=$(git.getbugnumberfromcurrentbranch)
+  git status
+  local message=""
+  if string.isnotemptyorblank $1
+  then
+    message="$bugnumber"": $1"
+  else
+    message="$bugnumber"": more changes"
+  fi
+
+  echo $message
+  return
+  #git add -A
 }

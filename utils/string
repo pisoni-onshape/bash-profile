@@ -1,9 +1,8 @@
 # String utils
 
 #include guard
-[ ! -z "$string_defined" ] && return 0
+[ ! -z "$string_defined" ] && [ -z "$FORCE_IMPORT_UTILITY" ] && return 0
 export string_defined=1
-
 
 function string.equals() {
 	[[ "$1" == "$2" ]]

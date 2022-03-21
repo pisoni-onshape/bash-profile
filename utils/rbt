@@ -1,7 +1,7 @@
 #rbt (rbcommons review) utilities
 
 #include guard
-string.isnotemptyorblank $rbt_defined && return 0
+[ ! -z "$rbt_defined" ] && [ -z "$FORCE_IMPORT_UTILITY" ] && return 0
 export rbt_defined=1
 
 importutility string

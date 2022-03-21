@@ -8,6 +8,7 @@ export LSB_MASTER=lsb/master
 export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
 export GIT_MERGE_AUTOEDIT=no
 export RETRIEVAL_REPORT_WRITE_TO_DISK=1
+export PATH="/Users/pisoni/Library/Python/3.8/bin:${PATH}"
 
 
 # Import Utility modules
@@ -25,7 +26,7 @@ export UPGRADE_MAX_MEMORY_GB=8
 function fixDiskImagesJS() {
   diskImageUmountAll
   rm ~/build_tools/diskimage/onshape-javascript_*
-  source buildenv.bash  
+  source buildenv.bash
 }
 
 runupgrade() {
@@ -85,7 +86,7 @@ awsconfigure() {
 }
 
 myprecommit() {
-  # Remove this first line once yarn precommit starts catching 
+  # Remove this first line once yarn precommit starts catching
   # typescript errors again
   #npx tsc --noEmit --project $REPO_NEWTON/project/web/tsconfig.json
   checkTidy
@@ -113,7 +114,7 @@ getnewbranchname() {
   if string.isnotemptyorblank $targetbranch
   then
     targetbranch=$(string.simplereplace $targetbranch "/" "-")
-    inputbranchname=$inputbranchname-$targetbranch  
+    inputbranchname=$inputbranchname-$targetbranch
   fi
 
   echo $inputbranchname
@@ -203,19 +204,19 @@ function testregex() {
   var1='rel-1'
   var2='rel-[0-9]*'
   if [[ 'rel-1' =~ 'rel-[0-9]*' ]]
-  then 
+  then
     echo yes
-  else 
+  else
     echo no
   fi
 
 
   check_dec='^rel-[0-9]\.[0-9]+'
   input=0
-  
+
   echo "Please enter a digit: "
   read input
- 
+
   if [[ $input =~ $check_dec ]]
   then
            echo "The value is a decimal"
@@ -297,7 +298,7 @@ setupjumpboxcertificates() {
   scp $USERNAME@jumpbox-primary.dev.onshape.com:$USER.key /tmp
   scp $USERNAME@jumpbox-primary.dev.onshape.com:$USER.crt /tmp
   scp $USERNAME@jumpbox-primary.dev.onshape.com:ca.crt /tmp
-  scp $USERNAME@jumpbox-primary.dev.onshape.com:tls-auth.key /tmp  
+  scp $USERNAME@jumpbox-primary.dev.onshape.com:tls-auth.key /tmp
 }
 
 restartbelcad() {
@@ -340,7 +341,7 @@ createlsbmasterbranchfromlsbreleasetopchange() {
 }
 
 mergetomaster() {
-  if git.hasUncommittedChanges 
+  if git.hasUncommittedChanges
   then
     echo "There are uncommitted changes. Please fix before merging to master"
     return
@@ -355,7 +356,7 @@ mergetomaster() {
       echo "Didn't find an approved review request for the branch, enter manually."
     else
       echo "Automatically found approved review request id: $reviewrequestid for current branch, merging with the same"
-      mergetomaster $reviewrequestid      
+      mergetomaster $reviewrequestid
     fi
   else
     currentbranch=$(git.getcurrentbranch)
@@ -371,7 +372,7 @@ mergetomaster() {
 }
 
 mergetoreleasethenmaster() {
-  if git.hasUncommittedChanges 
+  if git.hasUncommittedChanges
   then
     echo "There are uncommitted changes. Please fix before merging to release"
     return
@@ -412,7 +413,7 @@ mergetoreleasethenmaster() {
     #Rename the current branch before reassigning
     markbranchmerged $currentbranch
 
-    currentbranch=$(git.getcurrentbranch)    
+    currentbranch=$(git.getcurrentbranch)
     git merge $CURRENT_RELEASE
 
     # Validate that only your commits are included. If you see more than your changes here, wait for other authors to push  theirs, do pullmerge master after that or ask them if it is OK to push the changes to master.
@@ -473,8 +474,11 @@ function pushtos3() {
   # as otherwise kibana logs show the branch name only as "bel" and nothing else
   local originalbranchname=$(git.getcurrentbranch)
   local currentdatetime=$(system.getcurrentdate "_")
-  local newbranchname=$(string.simplereplace $originalbranchname "pisoni/bel-" "pisoni/$currentdatetime""_bel")
 
+  # sed syntax : "s,search_string,replace_string,regex_flags" (most other characters allowed as separator instead of ,)
+  local newbranchname=$(echo $originalbranchname | sed -En "s,bel-([[:digit:]]+),bel_\1_$currentdatetime,p")
+  #echo $originalbranchname
+  #echo $newbranchname
   git.renamecurrentbranch $newbranchname
   pushToBuildFarm @promote-to-s3-test
   # After it's done, change the branch name back to original

@@ -2,6 +2,12 @@
 
 #Common
 function importutility() {
+	if [[ "$2" == "force" ]] || [[ "$2" == "-f" ]] || [[ "$2" == "-force" ]]
+	then
+		export FORCE_IMPORT_UTILITY=1
+	else
+		unset FORCE_IMPORT_UTILITY
+	fi
 	source $BASH_PROFILE_PATH/utils/$1
 }
 
