@@ -20,7 +20,7 @@ function rbt.getcurrentid() {
   local statusString=$1
 
   # convert multiline rbt status output to single line
-  local rbtstatus=$(rbt status | tr '\n' '\r')
+  local rbtstatus="$(rbt status | tr '\n' '\r')"
   currentbranch=$(git.getcurrentbranch)
 
 case $statusString in
@@ -44,7 +44,7 @@ esac
 
 
   # sed syntax : "s,search_string,replace_string,regex_flags" (most other characters allowed as separator instead of ,)
-  local reviewrequestid=$(echo $rbtstatus | sed -En "s,.*$statusString[^|]+\| r\/([[:digit:]]+) [^|]+ \| $currentbranch \|.*,\1,p")
+  local reviewrequestid=$(echo "$rbtstatus" | sed -En "s,.*$statusString[^|]+\| r\/([[:digit:]]+) [^|]+ \| $currentbranch \|.*,\1,p")
 
   # It'll be quite usual that we'd get an lsb/master or master based branch and want to merge in both.
   # Handle the case that we got the lsb/master branch reviewed but are merging in release, or
@@ -53,7 +53,7 @@ esac
   then
     local testbranch=$(getnewbranchname $currentbranch "")
     # Even if the lsb/master based branch is approved for this branch, then also we accept it as approved.
-    reviewrequestid=$(echo $rbtstatus | sed -En "s,.*$statusString[^|]+\| r\/([[:digit:]]+) [^|]+ \| $testbranch.*,\1,p")
+    reviewrequestid=$(echo "$rbtstatus" | sed -En "s,.*$statusString[^|]+\| r\/([[:digit:]]+) [^|]+ \| $testbranch.*,\1,p")
   fi
 
   echo $reviewrequestid

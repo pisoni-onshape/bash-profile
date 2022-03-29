@@ -8,7 +8,7 @@ export LSB_MASTER=lsb/master
 export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
 export GIT_MERGE_AUTOEDIT=no
 export RETRIEVAL_REPORT_WRITE_TO_DISK=1
-export PATH="/Users/pisoni/Library/Python/3.8/bin:${PATH}"
+#export PATH="/Users/pisoni/Library/Python/3.8/bin:${PATH}"
 
 
 # Import Utility modules
@@ -276,22 +276,22 @@ rbtupdatefromlsbmaster() {
 
 rbtpostfromlsbreleasewithrebase() {
   rebaselatestlsbrelease
-  rbtpostfromlsbrelease
+  rbtpostfromlsbrelease "$@"
 }
 
 rbtpostfromlsbmasterwithrebase() {
   rebaselatestlsbmaster
-  rbtpostfromlsbmaster
+  rbtpostfromlsbmaster "$@"
 }
 
 rbtupdatefromlsbreleasewithrebase() {
   rebaselatestlsbrelease
-  rbtupdatefromlsbrelease
+  rbtupdatefromlsbrelease "$@"
 }
 
 rbtupdatefromlsbmasterwithrebase() {
   rebaselatestlsbmaster
-  rbtupdatefromlsbmaster
+  rbtupdatefromlsbmaster "$@"
 }
 
 setupjumpboxcertificates() {
