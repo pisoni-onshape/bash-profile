@@ -39,6 +39,7 @@ alias te='texteditor'
 alias editor='texteditor'
 alias bundleid='findappbundleid'
 alias appbundleid='findappbundleid'
+alias cputemp='sudo powermetrics --samplers smc |grep -i "CPU die temperature"'
 
 
 alias karabinerconfig='texteditor "$karabinerconfigfile"'
@@ -52,6 +53,7 @@ alias openallaliases='openworkalias; openpersonalalias; openaliasall; openadbali
 alias opengitglobalignorefile='texteditor $gitsetglobalignorefile'
 alias openglobalgitignorefile='texteditor $gitsetglobalignorefile'
 alias opengitignorefile='texteditor $gitsetglobalignorefile'
+alias python='/usr/bin/python3'
 
 alias finddir='findfolder'
 
