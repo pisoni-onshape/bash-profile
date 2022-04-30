@@ -62,10 +62,27 @@ function git.unskipworktree() {
   git update-index --no-skip-worktree $1
 }
 
+# ToDo : Refactor the common code out of the below two functions
 function git.backupbranch() {
   currentbranch=$(git.getcurrentbranch)
   searchstring=$USER
   replacestring=backup/$USER
+  separator=/
+  curdate=$(system.getcurrentdate)
+  newbranch="${currentbranch/$searchstring/$replacestring}/$curdate"
+  echo $newbranch
+  # create new backup branch
+  git checkout -b $newbranch
+  # go back to our branch
+  git checkout $currentbranch
+}
+
+# Backup the current branch but mark that as 'starred', more important
+# than the usual backups 
+function git.starbackupbranch() {
+  currentbranch=$(git.getcurrentbranch)
+  searchstring=$USER
+  replacestring=starred/$USER
   separator=/
   curdate=$(system.getcurrentdate)
   newbranch="${currentbranch/$searchstring/$replacestring}/$curdate"

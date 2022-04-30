@@ -20,7 +20,7 @@ function rbt.getcurrentid() {
   local statusString=$1
 
   # convert multiline rbt status output to single line
-  local rbtstatus="$(rbt status | tr '\n' ' ')"
+  local rbtstatus="$(rbt status | tr '\n' ',')"
   currentbranch=$(git.getcurrentbranch)
 
 case $statusString in
