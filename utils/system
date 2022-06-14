@@ -36,4 +36,5 @@ function system.findfolder() {
 
 function system.whoisusingport8080() {
 	lsof -i tcp:8080
+	#netstat -an | grep 8080
 }

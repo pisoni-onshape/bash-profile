@@ -11,6 +11,11 @@ function importutility() {
 	source $BASH_PROFILE_PATH/utils/$1
 }
 
+#Parameters : $1: Root directory to begin search, $2 : Nmae of file
+function findbyname() {
+	find $1 -name $2 2>/dev/null
+}
+
 export karabinerconfigfile=/Users/$USER/.config/karabiner/karabiner.json
 export globalgitignorefile=/Users/$USER/.gitignore
 
@@ -56,6 +61,7 @@ alias opengitignorefile='texteditor $gitsetglobalignorefile'
 alias python='/usr/bin/python3'
 
 alias finddir='findfolder'
+alias findfile='findbyname'
 
 
 #adb aliases
