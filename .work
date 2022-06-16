@@ -35,11 +35,11 @@ function fixDiskImagesJS() {
   source buildenv.bash
 }
 
-runupgrade() {
+function runupgrade() {
   gradle runDocumentUpgrade -Donshape.upgrade.exitwhenfinished=true
 }
 
-runretrieval() {
+function runretrieval() {
   gradle runProductionRetrieval -Donshape.productionretrieval.local=true -Donshape.productionretrieval.exitwhenfinished=true
 }
 
@@ -83,15 +83,15 @@ function waitforenterkey() {
   read -p "$1"
 }
 
-runjunittest() {
+function runjunittest() {
     gradle safelyRunSpecificTests -Dtest=$1
 }
 
-awsconfigure() {
+function awsconfigure() {
   btAws configure --profile codebuild
 }
 
-myprecommit() {
+function myprecommit() {
   # Remove this first line once yarn precommit starts catching
   # typescript errors again
   #npx tsc --noEmit --project $REPO_NEWTON/project/web/tsconfig.json
@@ -101,11 +101,11 @@ myprecommit() {
   grunt checkJsCode
 }
 
-addstaticroutetojumpbox() {
+function addstaticroutetojumpbox() {
   sudo route -n add 54.187.217.158/32 $1
 }
 
-getnewbranchname() {
+function getnewbranchname() {
   inputbranchname=$(string.tolower $1)
   targetbranch=$(string.tolower $2)
   if ! (string.beginswith $inputbranchname "$USER/")
@@ -113,6 +113,7 @@ getnewbranchname() {
     inputbranchname=$USER/$inputbranchname
   fi
 
+  # Remove all lsb-release, lsb-master, -master, rel- etc. suffixes from the branch  name
   inputbranchname=$(string.simplereplace $inputbranchname "-lsb-*" "")
   inputbranchname=$(string.simplereplace $inputbranchname "-master" "")
   inputbranchname=$(string.simplereplace $inputbranchname "-release" "")
@@ -162,23 +163,23 @@ function checkoutfromlsbrelease() {
   checkoutfromlsbbranch "$1" "$CURRENT_RELEASE" #lsb/ is eventually appended by gitBranchLsb
 }
 
-rebaselatestlsbmaster() {
+function rebaselatestlsbmaster() {
   pullmerge $LSB_MASTER --rebase
 }
 
-rebaselatestlsbrelease() {
+function rebaselatestlsbrelease() {
   pullmerge $LSB_CURRENT_RELEASE --rebase
 }
 
-pulllatestlsbrelease() {
+function pulllatestlsbrelease() {
   pullmerge $LSB_CURRENT_RELEASE
 }
 
-rebaselatestrelease() {
+function rebaselatestrelease() {
   pullmerge $CURRENT_RELEASE --rebase
 }
 
-pulllatestrelease() {
+function pulllatestrelease() {
   pullmerge $CURRENT_RELEASE
 }
 
@@ -231,27 +232,27 @@ function testregex() {
   fi
 }
 
-rbtpost() {
+function rbtpost() {
   rbt post -o
 }
 
-rbtpostwithrebase() {
+function rbtpostwithrebase() {
   rebaselatestmaster
   rbtpost
 }
 
-rbtpostfromlsbmaster() {
+function rbtpostfromlsbmaster() {
   echo "Calling rbt post $LSB_MASTER...HEAD"
   rbt post -o $LSB_MASTER...HEAD
 }
 
-rbtpostfromlsbrelease() {
+function rbtpostfromlsbrelease() {
   echo "Calling rbt post $LSB_CURRENT_RELEASE...HEAD"
   rbt post -o $LSB_CURRENT_RELEASE...HEAD
 }
 
 
-rbtupdatefrombranch() {
+function rbtupdatefrombranch() {
   if string.isemptyorblank $1
   then
     echo "Please give the branch name"
@@ -271,82 +272,93 @@ rbtupdatefrombranch() {
   fi
 }
 
-rbtupdatefromlsbrelease() {
+function rbtupdatefromlsbrelease() {
   rbtupdatefrombranch $LSB_CURRENT_RELEASE $1
 }
 
-rbtupdatefromlsbmaster() {
+function rbtupdatefromlsbmaster() {
   rbtupdatefrombranch $LSB_MASTER $1
 }
 
 
-rbtpostfromlsbreleasewithrebase() {
+function rbtpostfromlsbreleasewithrebase() {
   rebaselatestlsbrelease
   rbtpostfromlsbrelease "$@"
 }
 
-rbtpostfromlsbmasterwithrebase() {
+function rbtpostfromlsbmasterwithrebase() {
   rebaselatestlsbmaster
   rbtpostfromlsbmaster "$@"
 }
 
-rbtupdatefromlsbreleasewithrebase() {
+function rbtupdatefromlsbreleasewithrebase() {
   rebaselatestlsbrelease
   rbtupdatefromlsbrelease "$@"
 }
 
-rbtupdatefromlsbmasterwithrebase() {
+function rbtupdatefromlsbmasterwithrebase() {
   rebaselatestlsbmaster
   rbtupdatefromlsbmaster "$@"
 }
 
-setupjumpboxcertificates() {
+function setupjumpboxcertificates() {
   scp $USERNAME@jumpbox-primary.dev.onshape.com:$USER.key /tmp
   scp $USERNAME@jumpbox-primary.dev.onshape.com:$USER.crt /tmp
   scp $USERNAME@jumpbox-primary.dev.onshape.com:ca.crt /tmp
   scp $USERNAME@jumpbox-primary.dev.onshape.com:tls-auth.key /tmp
 }
 
-restartbelcad() {
+function restartbelcad() {
   stopbelcad
   startbelcad
 }
 
-beep() {
+function beep() {
   tput bel
 }
 
-playfinishsound() {
+function playfinishsound() {
   beep;beep;
   say "Build Complete"
 }
 
-buildgradleparallel() {
+function buildgradleparallel() {
   gradle --parallel
   playfinishsound
 }
 
 # There's no reason to keep merged branches
 # but we can keep for a few days just for reference purposes
-markbranchmerged() {
+function markbranchmerged() {
   git.renamebranch $1 $1-merged
 }
 
-createlsbreleasebranchfromlsbmastertopchange() {
+function createlsbreleasebranchfromlsbmastertopchange() {
+  if ! git.branchislsbmasterbased
+  then
+    echo "It's not an lsb/master based branch. Please check the branch name again."
+    return
+  fi
+
   topSHAId=$(git.getlatestcommitid)
   currentbranch=$(git.getcurrentbranch)
   checkoutfromlsbrelease $(getnewbranchname $currentbranch $LSB_CURRENT_RELEASE)
   git cherry-pick $topSHAId
 }
 
-createlsbmasterbranchfromlsbreleasetopchange() {
+function createlsbmasterbranchfromlsbreleasetopchange() {
+  if ! git.branchislsbreleasebased
+  then
+    echo "It's not an lsb/release based branch. Please check the branch name again."
+    return
+  fi
   topSHAId=$(git.getlatestcommitid)
   currentbranch=$(git.getcurrentbranch)
   checkoutfromlsbmaster $(getnewbranchname $currentbranch $LSB_MASTER)
   git cherry-pick $topSHAId
 }
 
-mergetomaster() {
+function mergetomaster() {
   if git.hasUncommittedChanges
   then
     echo "There are uncommitted changes. Please fix before merging to master"
@@ -377,21 +389,31 @@ mergetomaster() {
   fi
 }
 
-mergetoreleasethenmaster() {
+function mergetoreleasethenmaster() {
   if git.hasUncommittedChanges
   then
     echo "There are uncommitted changes. Please fix before merging to release"
     return
   fi
 
-  currentbranch=$(git.getcurrentbranch)
+  local currentbranch=$(git.getcurrentbranch)
 
   if ! (string.endswith $currentbranch "-rel-[0-9].[0-9]*")
   then
-    echo "Branch does not end with a -rel-x.y* pattern. Please check and run manually"
-    return
+    if git.branchislsbmasterbased
+    then
+      # Try automatically creating lsb/release based branch of it with the top commit.
+      git log -n 3
+      waitforenterkey "lsb/master based branch found. Press enter if all of your changes are in one top commit, and ready to create lsb/release branch off it (Otherwise press Ctrl+C and try again later)."
+      createlsbreleasebranchfromlsbmastertopchange
+      waitforenterkey "Press enter if the lsb/release branch creation was successful, otherwise press Ctrl+C and try again later."
+      currentbranch=$(git.getcurrentbranch)
+      echo "Created branch $currentbranch from the lsb/master based branch with the same commit"
+    else
+      echo "Branch does not end with a -rel-x.y* pattern. Please check and run manually"
+      return
+    fi
   fi
-
 
   if string.isemptyorblank $1
   then
@@ -436,12 +458,12 @@ mergetoreleasethenmaster() {
 }
 
 
-startservers() {
+function startservers() {
     startbelcad
     grunt quickServe
 }
 
-buildjavaonly() {
+function buildjavaonly() {
     export SKIP_CPP=1
     export SKIP_JSLIB=1
     buildgradleparallel
@@ -449,7 +471,7 @@ buildjavaonly() {
     unset SKIP_JSLIB
 }
 
-buildjsonly() {
+function buildjsonly() {
     export SKIP_CPP=1
     export SKIP_JAVA=1
     buildgradleparallel
@@ -457,7 +479,7 @@ buildjsonly() {
     unset SKIP_JAVA
 }
 
-buildcpponly() {
+function buildcpponly() {
     export SKIP_JSLIB=1
     export SKIP_JAVA=1
     buildgradleparallel
@@ -465,13 +487,13 @@ buildcpponly() {
     unset SKIP_JAVA
 }
 
-buildjavaandjsonly() {
+function buildjavaandjsonly() {
     export SKIP_CPP=1
     buildgradleparallel
     unset SKIP_CPP
 }
 
-ptortest() {
+function ptortest() {
  ptor $1 --verbose --flags=fastFail --target=http://localhost.dev.onshape.com:8000/
 }
 
