@@ -3,7 +3,7 @@
 
 #unofficial exports:
 #export USER=pisoni #This should already be set
-export CURRENT_RELEASE=rel-1.149
+export CURRENT_RELEASE=rel-1.150
 export LSB_MASTER=lsb/master
 export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
 export GIT_MERGE_AUTOEDIT=no
@@ -44,6 +44,7 @@ function runretrieval() {
 }
 
 function makelikeproduction() {
+  #Make sure Docker is running, and mongo service is running as well
   mongobackup
   stopbelcad
   mongoDropAll
@@ -57,13 +58,15 @@ function makelikeproductionwithbuild() {
 }
 
 function openconfigpropertiesjson() {
-  sublime $REPO_NEWTON/project/web/WEB-INF/config/config-properties.json
+  texteditor $REPO_NEWTON/project/web/WEB-INF/config/config-properties.json
 }
 
 function setupforproductionretrieval() {
+  # First make your environment 'like' production (though that might not be necessary to just 'run' and debug the code)
+  #makelikeproduction
   echo "setting SKIP_INTERNAL_MODULES to 1"
   export SKIP_INTERNAL_MODULES=1
-  sublime $REPO_NEWTON/project/web/WEB-INF/config/config-properties.json
+  openconfigpropertiesjson
   echo "Change the defaultValue of productionretrieval.write-s3 from false to true in the opened config-properties.json"
   waitforenterkey "Press enter when done"
   echo "Build (gradle) manually now using buildgradleparallel"
@@ -365,7 +368,14 @@ function mergetomaster() {
     return
   fi
 
+  if ! git.branchislsbmasterbased && ! git.branchismasterbased
+  then
+    echo "Branch is not lsb/master or master based. Please check and try again"
+    return
+  fi
 
+  # Check if a specific rbcommons review request id is given
+  # Search for an approved request for the current git branch if not.
   if string.isemptyorblank $1
   then
     reviewrequestid=$(rbt.getcurrentid $REVIEW_STATUS_APPROVED)
@@ -517,8 +527,9 @@ alias bfnodestop='bf job rm'
 alias bfjobremove='bfnodestop'
 alias bsserverpath="/Users/$USER/stage/BSServer/bin/BSServer"
 alias buildall='cd $REPO_NEWTON;buildgradleparallel'
-#alias buildjavaonly='grdlu gen java' #defined as a function in .profile
-#alias buildjsonly='grdlu gen js' #defined as a function in .profile
+alias grdlbuildjavaonly='grdlu gen java' #Build java only, download binaries for others
+alias grdlbuildjsonly='grdlu gen js' #Build javascript only, download binaries for others
+alias grdlbuildjavaandjsonly='grdlu gen java js' #Build java and javascript only, download binaries for others
 alias checkJsCode='grunt checkJsCode'
 alias checkjs='grunt eslint:javascript'
 alias checkts='grunt eslint:typescript'

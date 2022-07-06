@@ -33,8 +33,9 @@ function gitsetglobalignorefile() {
 }
 
 alias sublime='open -a "/Applications/Sublime Text.app"'
+alias bbedit='open -a /Applications/BBEdit.app'
 #Preferred text editor of choice : 
-alias texteditor='sublime'
+alias texteditor='bbedit'
 alias refreshadb='source $BASH_PROFILE_PATH/.adb'
 alias refreshpersonal='source $BASH_PROFILE_PATH/.personal'
 alias refreshwork='source $BASH_PROFILE_PATH/.work'
