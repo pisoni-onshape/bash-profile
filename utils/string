@@ -16,6 +16,13 @@ function string.simplereplace() {
 	echo "${input//$searchstring/$replacestring}"
 }
 
+function string.replacefirstoccurrence() {
+	input=$1
+	searchstring=$2
+	replacestring=$3
+	echo "${input/$searchstring/$replacestring}"
+}
+
 function string.beginswith() {
 	input=$1
 	testString=$2

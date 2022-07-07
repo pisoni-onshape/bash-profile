@@ -513,8 +513,11 @@ function pushtos3() {
   local originalbranchname=$(git.getcurrentbranch)
   local currentdatetime=$(system.getcurrentdate "_")
 
+  # Change bel-xxxxxx to bel_xxxxxx
   # sed syntax : "s,search_string,replace_string,regex_flags" (most other characters allowed as separator instead of ,)
   local newbranchname=$(echo $originalbranchname | sed -En "s,bel-([[:digit:]]+),bel_\1_$currentdatetime,p")
+  # Change just one more hyphen to underscore for more info of the branch name to show up in elastic search
+  newbranchname=$(string.replacefirstoccurrence $newbranchname '-' '_')
   #echo $originalbranchname
   #echo $newbranchname
   git.renamecurrentbranch $newbranchname
