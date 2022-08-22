@@ -27,12 +27,36 @@ function debugstaging() {
   export PROXY_TARGET_HOST='https://staging.dev.onshape.com'
   unset HOST_PROPERTIES_PRIVATEIP
   unset HOST_PROPERTIES_HOSTNAME
+  echo "REMEMBER TO CLOSE THE TERMINAL AFTER THIS SESSION, OR CALLING source buildenv.bash AGAIN WHEN YOU'RE DONE"
+  grunt quickServe
+}
+
+function debugdemoc() {
+  #Try to debug staging
+  export PROXY_TARGET_HOST='https://demo-c.dev.onshape.com'
+  unset HOST_PROPERTIES_PRIVATEIP
+  unset HOST_PROPERTIES_HOSTNAME
+  echo "REMEMBER TO CLOSE THE TERMINAL AFTER THIS SESSION, OR CALLING source buildenv.bash AGAIN WHEN YOU'RE DONE"
+  grunt quickServe
+}
+
+function debugproduction() {
+  #Try to debug staging
+  export PROXY_TARGET_HOST='https://cad.onshape.com'
+  unset HOST_PROPERTIES_PRIVATEIP
+  unset HOST_PROPERTIES_HOSTNAME
+  echo "REMEMBER TO CLOSE THE TERMINAL AFTER THIS SESSION, OR CALLING source buildenv.bash AGAIN WHEN YOU'RE DONE"
+  grunt quickServe
 }
 
 function fixDiskImagesJS() {
   diskImageUmountAll
   rm ~/build_tools/diskimage/onshape-javascript_*
   source buildenv.bash
+}
+
+function importextractedfile() {
+  restoreDump $1 --nodrop --remap=pisoni@onshape.com #btadmin@onshape.com
 }
 
 function runupgrade() {
@@ -45,7 +69,16 @@ function runretrieval() {
     echo "A numeric Jenkins build id is required"
     return
   fi
-  gradle runProductionRetrieval -Donshape.productionretrieval.local=true -Donshape.productionretrieval.exitwhenfinished=true -Donshape.productionretrieval.jenkinsbuildid=$1 \""${@:2}"\"
+
+  # If there's a second argument specified, take it as the documentidregex string
+  # input to the retrieval service (which you should ideally pass without spaces,
+  # as I haven't tested what will happen with spaces in these arguments :) )
+  if string.isemptyorblank $2
+  then
+    gradle runProductionRetrieval -Donshape.productionretrieval.local=true -Donshape.productionretrieval.exitwhenfinished=true -Donshape.productionretrieval.jenkinsbuildid=$1
+  else
+    gradle runProductionRetrieval -Donshape.productionretrieval.local=true -Donshape.productionretrieval.exitwhenfinished=true -Donshape.productionretrieval.jenkinsbuildid=$1 -Donshape.productionretrieval.documentidregex=$2
+  fi
 }
 
 function makelikeproduction() {
@@ -81,7 +114,7 @@ function setupforproductionretrieval() {
   #runupgrade
   #waitforenterkey "Press enter when upgrade has been done"
   echo "You can now see upgrade logs in $STAGE/ModelingSvc/logs/btserver.log"
-  echo "Also, the upgrade data should be written to $STAGE/MockS3/onshape-us-east-1/test/operations/myenv/regen-data"
+  echo "Also, the upgrade data should be written to $STAGE/MockS3/onshape-myregion/test/operations/myenv/regen-data"
   #open "$STAGE/MockS3/onshape-us-east-1/test/operations/myenv/regen-data"
   echo "Finally, run the local production retrieval process by calling runretrieval"
   #runretrieval
@@ -193,19 +226,25 @@ function pulllatestrelease() {
 
 # Unless otherwise specified, default branch for rbt is master
 function rbtupdate() {
-  if string.isemptyorblank $1
+  if git.branchislsbmasterbased
   then
-    reviewrequestid=$(rbt.getcurrentid $REVIEW_STATUS_ANY)
-    if string.isemptyorblank $reviewrequestid
-    then
-      echo "Didn't find a matching review request for the branch, enter manually."
-    else
-      echo "Automatically found review request id: $reviewrequestid for current branch"
-      rbtupdate $reviewrequestid
-    fi
+    echo "Detected lsb/master based branch. Creating diff w.r.t. to that"
+    rbtupdatefromlsbmaster
+  elif git.branchislsbreleasebased
+  then
+    echo "Detected lsb/rel-* based branch. Creating diff w.r.t. to that"
+    rbtupdatefromlsbrelease
+  elif git.branchismasterbased
+  then
+    echo "Detected lsb/master based branch. Creating diff w.r.t. to that"
+    rbtupdatefrommaster
+  elif git.branchisreleasebased
+  then
+  echo "Detected rel-* based branch. Creating diff w.r.t. to that"
+    rbtupdatefromrelease
   else
-    echo "calling rbt post -u -r $1"
-    rbt post -o -u -r $1
+    echo "Didn't detect standard (lsb/)master/release based branches, defaulting to master based diff"
+    rbtupdatefrommaster
   fi
 }
 
@@ -250,12 +289,12 @@ function rbtpostwithrebase() {
 }
 
 function rbtpostfromlsbmaster() {
-  echo "Calling rbt post $LSB_MASTER...HEAD"
+  echo "Calling rbt post -o $LSB_MASTER...HEAD"
   rbt post -o $LSB_MASTER...HEAD
 }
 
 function rbtpostfromlsbrelease() {
-  echo "Calling rbt post $LSB_CURRENT_RELEASE...HEAD"
+  echo "Calling rbt post -o $LSB_CURRENT_RELEASE...HEAD"
   rbt post -o $LSB_CURRENT_RELEASE...HEAD
 }
 
@@ -275,7 +314,7 @@ function rbtupdatefrombranch() {
       rbtupdatefrombranch $1 $reviewrequestid
     fi
   else
-    echo "Calling rbt post -u -r $2 $1...HEAD"
+    echo "Calling rbt post -o -u -r $2 $1...HEAD"
     rbt post -o -u -r $2 $1...HEAD
   fi
 }
@@ -286,6 +325,14 @@ function rbtupdatefromlsbrelease() {
 
 function rbtupdatefromlsbmaster() {
   rbtupdatefrombranch $LSB_MASTER $1
+}
+
+function rbtupdatefrommaster() {
+  rbtupdatefrombranch "master" $1
+}
+
+function rbtupdatefromrelease() {
+  rbtupdatefrombranch $CURRENT_RELEASE $1
 }
 
 
@@ -346,7 +393,8 @@ function buildgradleparallel() {
     startDockerApp
   fi
 
-  if system.commandsucceeds $(gradle --parallel)
+  gradle --parallel
+  if [ $? -eq 0 ] # last command was successful
   then
     playfinishsound "Build successful"
   else

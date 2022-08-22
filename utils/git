@@ -115,3 +115,6 @@ function git.commit() {
   return
   #git add -A
 }
+
+alias stoptrackingfile='git.skipworktree'
+alias starttrackingfile='git.unskipworktree'
