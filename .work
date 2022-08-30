@@ -20,7 +20,29 @@ importutility rbt
 # This is only an issue if you usually extract std from stacks and upgrade has to process lot of std versions
 # In that case, there might be out of memory problems while building java
 export UPGRADE_MAX_MEMORY_GB=8
+export JAVA_MAX_MEMORY_MB=8192
 
+function setrelease() {
+  if string.equals $1 "0"
+  then
+    export RELEASE=0
+    echo "Set to build in debug mode"
+  else #empty or any other argument.
+    export RELEASE=1
+    echo "Set to build in release mode"
+  fi
+}
+
+function setdebug() {
+  if string.equals $1 "0"
+  then
+    export RELEASE=1
+    echo "Set to build in release mode"
+  else #empty or any other argument.
+    export RELEASE=0
+    echo "Set to build in debug mode"
+  fi
+}
 
 function debugstaging() {
   #Try to debug staging
@@ -363,13 +385,31 @@ function setupjumpboxcertificates() {
   scp $USERNAME@jumpbox-primary.dev.onshape.com:tls-auth.key /tmp
 }
 
+function fstopbelcad() {
+  # Consider using this instead, which is multi-env aware: checkServices -s websvc
+  local jettypid=$(ps -ef | grep jetty | grep -v grep | awk '{print $2}')
+  if string.isemptyorblank $jettypid
+  then
+    echo "Didn't find jetty process to kill"
+    # echo "Didn't find jetty process, falling back to standard stopbelcad"
+    #stopbelcad
+  else
+    echo "Killing PID $jettypid"
+    kill -9 $jettypid
+  fi
+}
+
 function restartbelcad() {
-  stopbelcad
+  fstopbelcad
   startbelcad
 }
 
 function beep() {
   tput bel
+}
+
+function isDockerRunning() {
+	pgrep -xqi -- "Docker"
 }
 
 function playfinishsound() {
@@ -380,10 +420,6 @@ function playfinishsound() {
   else
     say "$1"
   fi
-}
-
-function isDockerRunning() {
-	pgrep -xqi -- "Docker"
 }
 
 function buildgradleparallel() {
@@ -626,6 +662,15 @@ function pushtos3() {
   git.renamecurrentbranch $originalbranchname
 }
 
+# Function for visualizing timer.log times. Call this followed by opening
+# localhost:8088 page in the browser. Visit https://github.com/onshape/timerdisplay
+# for more details
+function runTimerDisplay() {
+  cd ~/repos/timerdisplay
+  ./server.js -p 8088 ~/stage/WebSvc/logs/timer.log --debug
+  open "http://localhost:8088"
+}
+
 alias bfnodestop='bf job rm'
 alias bfjobremove='bfnodestop'
 alias bsserverpath="/Users/$USER/stage/BSServer/bin/BSServer"
@@ -686,10 +731,12 @@ alias serial='grunt generateSerializables'
 alias serialize='grunt generateSerializables'
 alias sshjumpbox="ssh -X $USER@jumpbox-primary.dev.onshape.com"
 alias startenv='startServices;startservers';
+alias starttimerdisplay='runTimerDisplay'
 alias stopServices='btEnvDown'
 alias startallservers='startservers'
 alias restartServices='stopServices;startServices'
 alias startfrontend='grunt quickServe'
+alias timerdisplay='runTimerDisplay'
 alias updaterbt='rbtupdate'
 alias xcode='open -a Xcode.app $STAGE/build/cppServer/DebugXcodeCCache/BTcppServer.xcodeproj/'
 alias web='webstorm'

@@ -2,18 +2,31 @@
 
 #Common
 function importutility() {
-	if [[ "$2" == "force" ]] || [[ "$2" == "-f" ]] || [[ "$2" == "-force" ]]
+	if [[ "$2" == "force" ]] || [[ "$2" == "-f" ]] || [[ "$2" == "--force" ]]
 	then
 		export FORCE_IMPORT_UTILITY=1
-	else
-		unset FORCE_IMPORT_UTILITY
 	fi
 	source $BASH_PROFILE_PATH/utils/$1
+	unset FORCE_IMPORT_UTILITY
 }
 
-#Parameters : $1: Root directory to begin search, $2 : Nmae of file
+# Usage : 	findbyname <filename to search in current directory>
+# 			Or
+#			findbyname <directory> <filename to search>
 function findbyname() {
-	find $1 -name $2 2>/dev/null
+	if [ -z "$1" ]
+	then
+		echo "Enter root directory to search followed by the filename (or optionally only the filename)"
+		return
+	fi
+
+	if [ -z "$2" ]
+	then
+	 	#Assume only filename specified, search in current directory
+		find . -name $1 2>/dev/null
+	else
+		find $1 -name $2 2>/dev/null
+	fi
 }
 
 export karabinerconfigfile=/Users/$USER/.config/karabiner/karabiner.json
@@ -41,7 +54,12 @@ alias refreshpersonal='source $BASH_PROFILE_PATH/.personal'
 alias refreshwork='source $BASH_PROFILE_PATH/.work'
 alias refreshall='source $BASH_PROFILE_PATH/.all'
 alias refresheverything='refreshall'
+alias refreshgit='importutility git -f'
+alias refreshrbt='importutility rbt -f'
+alias refreshstring='importutility string -f'
+alias refreshsystem='importutility system -f'
 alias te='texteditor'
+alias edit='texteditor'
 alias editor='texteditor'
 alias bundleid='findappbundleid'
 alias appbundleid='findappbundleid'
