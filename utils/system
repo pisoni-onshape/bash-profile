@@ -35,8 +35,10 @@ function system.findfolder() {
 }
 
 function system.whoisusingport8080() {
+	echo "lsof -i tcp:8080:"
 	lsof -i tcp:8080
-	#netstat -an | grep 8080
+	echo "netstat -an | grep 8080:"
+	netstat -an | grep 8080
 }
 
 function system.isprocessrunning() {
@@ -49,13 +51,25 @@ function system.isprocessrunning() {
 	if [[ "$2" == "-partial" ]] || [[ "$2" == "--p" ]] || [[ "$2" == "--partial" ]] || [[ "$2" == "-p" ]] || [[ "$2" == "partial" ]]
 	then
 		# Allow partial match (don't use the -x)
-		(pgrep -qi -- "$1")
+		(pgrep -i -- "$1")
 	else
-		(pgrep -xqi -- "$1")
+		(pgrep -xi -- "$1")
 	fi
 }
 
 # Call with command in paranthesis. For example: system.commandsucceeds $(open -a /Applications/Docker.app)
 function system.commandsucceeds() {
     [ $? -eq 0 ]
+}
+
+function system.islinux() {
+	string.equals "$(uname -s)" "Linux"
+}
+
+function system.ismacos() {
+	string.equals "$(uname -s)" "Darwin"
+}
+
+function system.ip() {
+	hostname -I | awk '{print $1}'
 }

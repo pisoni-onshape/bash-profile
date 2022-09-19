@@ -12,11 +12,11 @@ function importutility() {
 
 # Usage : 	findbyname <filename to search in current directory>
 # 			Or
-#			findbyname <directory> <filename to search>
+#			findbyname <filename to search> <directory>
 function findbyname() {
 	if [ -z "$1" ]
 	then
-		echo "Enter root directory to search followed by the filename (or optionally only the filename)"
+		echo "Usage: \nfindbyname <filename to search in current directory>\n or\nfindbyname <filename to search> <directory>"
 		return
 	fi
 
@@ -25,7 +25,7 @@ function findbyname() {
 	 	#Assume only filename specified, search in current directory
 		find . -name $1 2>/dev/null
 	else
-		find $1 -name $2 2>/dev/null
+		find $2 -name $1 2>/dev/null
 	fi
 }
 
@@ -42,7 +42,12 @@ alias intelli='idea'
 alias intellij='idea'
 
 function gitsetglobalignorefile() {
-	git config --global core.excludesfile $1
+	if [ -z "$1"]
+	then
+		git config --global core.excludesfile $globalgitignorefile
+	else
+		git config --global core.excludesfile $1
+	fi
 }
 
 alias sublime='open -a "/Applications/Sublime Text.app"'
@@ -74,9 +79,9 @@ alias openpersonalalias='texteditor $BASH_PROFILE_PATH/.personal'
 alias openworkalias='texteditor $BASH_PROFILE_PATH/.work'
 alias openallaliases='openworkalias; openpersonalalias; openaliasall; openadbalias;'
 
-alias opengitglobalignorefile='texteditor $gitsetglobalignorefile'
-alias openglobalgitignorefile='texteditor $gitsetglobalignorefile'
-alias opengitignorefile='texteditor $gitsetglobalignorefile'
+alias opengitglobalignorefile='texteditor $globalgitignorefile'
+alias openglobalgitignorefile='texteditor $globalgitignorefile'
+alias opengitignorefile='texteditor $globalgitignorefile'
 alias python='/usr/bin/python3'
 
 alias finddir='findfolder'
