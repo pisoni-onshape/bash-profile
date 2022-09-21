@@ -73,3 +73,23 @@ function system.ismacos() {
 function system.ip() {
 	hostname -I | awk '{print $1}'
 }
+
+function system.fileexists() {
+	[ -f "$1" ]
+}
+
+function system.direxists() {
+	[ -d "$1" ]
+}
+
+# Create a file with any level deep folder structure
+# even if the folders don't already exist
+function system.createfileifdoesnotexist() {
+	if system.fileexists "$1"
+	then
+		return
+	fi
+
+	mkdir -p $(dirname $1)
+	touch "$1"
+}

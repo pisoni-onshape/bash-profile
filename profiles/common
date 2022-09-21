@@ -1,0 +1,85 @@
+#Common
+
+importutility string
+importutility system
+
+# Usage : 	findbyname <filename to search in current directory>
+# 			Or
+#			findbyname <filename to search> <directory>
+function findbyname() {
+	if [ -z "$1" ]
+	then
+		echo "Usage: \nfindbyname <filename to search in current directory>\n or\nfindbyname <filename to search> <directory>"
+		return
+	fi
+
+	if [ -z "$2" ]
+	then
+	 	#Assume only filename specified, search in current directory
+		find . -name $1 2>/dev/null
+	else
+		find $2 -name $1 2>/dev/null
+	fi
+}
+
+function gitsetglobalignorefile() {
+	if [ -z "$1"]
+	then
+		git config --global core.excludesfile $globalgitignorefile
+	else
+		git config --global core.excludesfile $1
+	fi
+}
+
+alias sublime='open -a "/Applications/Sublime Text.app"'
+alias bbedit='open -a /Applications/BBEdit.app'
+
+# Text editors
+## Preferred text editor of choice :
+if system.direxists "/Applications/BBEdit.app"
+then
+    alias texteditor='bbedit'
+elif system.direxists "/Applications/Sublime Text.app"
+then
+    alias texteditor='sublime'
+elif str
+then
+    alias texteditor='nano'
+fi
+
+function edit() {
+    system.createfileifdoesnotexist "$1"
+    texteditor $1
+}
+
+alias te='texteditor'
+alias editor='texteditor'
+alias bundleid='findappbundleid'
+alias appbundleid='findappbundleid'
+alias cputemp='sudo powermetrics --samplers smc |grep -i "CPU die temperature"'
+
+# Karabiner Elements
+export karabinerconfigfile=/Users/$USER/.config/karabiner/karabiner.json
+alias karabinerconfig='texteditor "$karabinerconfigfile"'
+alias openkarabinerconfig='edit "$karabinerconfigfile"'
+
+# Git
+## Auto Completion
+[ -f /usr/local/etc/bash_completion ] && . /usr/local/etc/bash_completion
+
+## Ignore
+export globalgitignorefile=/Users/$USER/.gitignore
+alias opengitglobalignorefile='edit $globalgitignorefile'
+alias openglobalgitignorefile='opengitglobalignorefile'
+alias opengitignorefile='opengitglobalignorefile'
+
+# IDEs
+alias wstorm='webstorm'
+alias inteli='idea' # Yes, wrong spelling.
+alias intelli='idea'
+alias intellij='idea'
+
+# Others
+alias python='/usr/bin/python3'
+alias finddir='findfolder'
+alias findfile='findbyname'
