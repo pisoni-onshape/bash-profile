@@ -9,6 +9,11 @@ export BASH_SILENCE_DEPRECATION_WARNING=1
 #export OBJECT_STORE_REPO_REGION=ap-south-1 #improve artifactory download performance from S3. 
 #export HOST_PROPERTIES_PRIVATEIP="$(dockerCreateLoopbackAlias)"
 
+# This is only an issue if you usually extract std from stacks and upgrade has to process lot of std versions
+# In that case, there might be out of memory problems while building java
+export UPGRADE_MAX_MEMORY_GB=8
+export JAVA_MAX_MEMORY_MB=8192
+
 # Unofficial exports:
 export CURRENT_RELEASE=rel-1.153
 export LSB_MASTER=lsb/master
@@ -28,12 +33,6 @@ importutility string
 importutility system
 importutility git
 importutility rbt
-
-
-# This is only an issue if you usually extract std from stacks and upgrade has to process lot of std versions
-# In that case, there might be out of memory problems while building java
-export UPGRADE_MAX_MEMORY_GB=8
-export JAVA_MAX_MEMORY_MB=8192
 
 
 # Set CPP builder according to the platform
