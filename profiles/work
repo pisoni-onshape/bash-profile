@@ -20,7 +20,7 @@ export LSB_MASTER=lsb/master
 export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
 export GIT_MERGE_AUTOEDIT=no
 export RETRIEVAL_REPORT_WRITE_TO_DISK=1
-export PATH="/Users/pisoni/Library/Python/3.8/bin:${PATH}"
+export PATH="/Users/$USER/Library/Python/3.8/bin:${PATH}"
 
 
 # Newton Startup
@@ -46,24 +46,6 @@ function platformspecificsettings() {
     echo "Using CLIONBUILD for building C++"
     unset XCODEBUILD
     export CLIONBUILD=1
-	
-    # This shouldn't be checked in like this.
-    if string.equals $USER "pisoni"
-    then
-      # Start SSH Server if not already running
-      if [ ! "$(ps -elf | grep -v grep | grep '/usr/sbin/sshd ')" ]
-      then
-        sudo service ssh start
-      fi
-      # Start XRDP Remote Desktop protocol server if not already running
-      if [ ! "$(ps -elf | grep -v grep | grep /usr/sbin/xrdp$)" ]
-      then
-        echo "*******************************************************************\
-                  Closing this tab would close Remote Desktop Session!!\
-              *******************************************************************"
-        sudo /etc/init.d/xrdp start
-      fi
-    fi
   fi
 }
 
@@ -239,10 +221,6 @@ function getnewbranchname() {
   echo $inputbranchname
 }
 
-function rebaselatestmaster() {
-  pullmerge master --rebase
-}
-
 function checkoutfromlatestmaster() {
   git checkout master
   git pull
@@ -275,20 +253,52 @@ function checkoutfromlsbrelease() {
   checkoutfromlsbbranch "$1" "$CURRENT_RELEASE" #lsb/ is eventually appended by gitBranchLsb
 }
 
-function rebaselatestlsbmaster() {
-  pullmerge $LSB_MASTER --rebase
+# Unless otherwise specified, default branch for rbt is master
+function rebaselatest() {
+  if git.branchislsbmasterbased
+  then
+    echo "Detected lsb/master based branch. Rebasing w.r.t. to that"
+    rebaselatestbranch $LSB_MASTER
+  elif git.branchislsbreleasebased
+  then
+    echo "Detected lsb/rel-* based branch. Rebasing w.r.t. to that"
+    rebaselatestbranch $LSB_CURRENT_RELEASE
+  elif git.branchismasterbased
+  then
+    echo "Detected lsb/master based branch. Rebasing w.r.t. to that"
+    rebaselatestbranch master
+  elif git.branchisreleasebased
+  then
+  echo "Detected rel-* based branch. Rebasing w.r.t. to that"
+    rebaselatestbranch $CURRENT_RELEASE
+  else
+    echo "Didn't detect standard (lsb/)master/release based branches, defaulting to master based rebase"
+    rebaselatestbranch master
+  fi
 }
 
-function rebaselatestlsbrelease() {
-  pullmerge $LSB_CURRENT_RELEASE --rebase
+function rebaselatestbranch() {
+  pullmerge $1 --rebase
 }
+
+# function rebaselatestmaster() {
+#   pullmerge master --rebase
+# }
+
+# function rebaselatestlsbmaster() {
+#   pullmerge $LSB_MASTER --rebase
+# }
+
+# function rebaselatestlsbrelease() {
+#   pullmerge $LSB_CURRENT_RELEASE --rebase
+# }
+
+# function rebaselatestrelease() {
+#   pullmerge $CURRENT_RELEASE --rebase
+# }
 
 function pulllatestlsbrelease() {
   pullmerge $LSB_CURRENT_RELEASE
-}
-
-function rebaselatestrelease() {
-  pullmerge $CURRENT_RELEASE --rebase
 }
 
 function pulllatestrelease() {
@@ -712,8 +722,8 @@ function pushtos3() {
 # for more details
 function runTimerDisplay() {
   cd ~/repos/timerdisplay
-  ./server.js -p 8088 ~/stage/WebSvc/logs/timer.log --debug
   open "http://localhost:8088"
+  ./server.js -p 8088 ~/stage/WebSvc/logs/timer.log --debug
 }
 
 alias bfnodestop='bf job rm'
