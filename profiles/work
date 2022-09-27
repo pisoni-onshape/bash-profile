@@ -1,12 +1,14 @@
 # Official exports:
 export USE_CCACHE=1 #cpp compiler cache
 export RELEASE=0 #debug cpp build
-export BTI_ENABLE_TIMERS=1 #measure load times in viewer
+export BTI_ENABLE_TIMERS=1 #measure load times in viewer (can view in timer.log)
 export BTI_DISABLE_HEARTBEATS=1 #So that BSServer doesn't time out so early
 export BTI_BLOCK_THUMBNAIL_CPP_SERVER_POOL=1 #if debugging, cut down on the number of BSServers available to attach to
 export DEV_TOOLS=/Users/$USER/repos/onshape-dev-tools
 export BASH_SILENCE_DEPRECATION_WARNING=1
-#export OBJECT_STORE_REPO_REGION=ap-south-1 #improve artifactory download performance from S3. 
+# Improve artifactory download performance from S3, but sometimes causes other problems. Use only when
+# facing problem with the default region (which is typically us-west-2)
+#export OBJECT_STORE_REPO_REGION=ap-south-1
 #export HOST_PROPERTIES_PRIVATEIP="$(dockerCreateLoopbackAlias)"
 
 # This is only an issue if you usually extract std from stacks and upgrade has to process lot of std versions
@@ -20,13 +22,24 @@ export LSB_MASTER=lsb/master
 export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
 export GIT_MERGE_AUTOEDIT=no
 export RETRIEVAL_REPORT_WRITE_TO_DISK=1
+# Mostly so that 'rbt' works.
 export PATH="/Users/$USER/Library/Python/3.8/bin:${PATH}"
 
+# Ensure we're in the newton
+# or one of its subdirectories.
+function ensurenewtondirectory() {
+  if string.isemptyorblank $REPO_NEWTON
+  then
+    cd ~/repos/newton
+    source buildenv.bash
+  elif ! string.contains $(pwd) $REPO_NEWTON
+  then
+    cd $REPO_NEWTON
+  fi
+}
 
-# Newton Startup
-cd ~/repos/newton
-source buildenv.bash
-
+# This should also source buildenv.bash the first time it's opened
+ensurenewtondirectory
 
 # Import Utility modules
 importutility string
@@ -221,7 +234,7 @@ function getnewbranchname() {
   echo $inputbranchname
 }
 
-function checkoutfromlatestmaster() {
+function checkoutfrommaster() {
   git checkout master
   git pull
   git checkout -b $(getnewbranchname $1 "master")
@@ -258,44 +271,28 @@ function rebaselatest() {
   if git.branchislsbmasterbased
   then
     echo "Detected lsb/master based branch. Rebasing w.r.t. to that"
-    rebaselatestbranch $LSB_MASTER
+    rebaselatestbranch "$LSB_MASTER"
   elif git.branchislsbreleasebased
   then
     echo "Detected lsb/rel-* based branch. Rebasing w.r.t. to that"
-    rebaselatestbranch $LSB_CURRENT_RELEASE
+    rebaselatestbranch "$LSB_CURRENT_RELEASE"
   elif git.branchismasterbased
   then
     echo "Detected lsb/master based branch. Rebasing w.r.t. to that"
-    rebaselatestbranch master
+    rebaselatestbranch "master"
   elif git.branchisreleasebased
   then
   echo "Detected rel-* based branch. Rebasing w.r.t. to that"
-    rebaselatestbranch $CURRENT_RELEASE
+    rebaselatestbranch "$CURRENT_RELEASE"
   else
     echo "Didn't detect standard (lsb/)master/release based branches, defaulting to master based rebase"
-    rebaselatestbranch master
+    rebaselatestbranch "master"
   fi
 }
 
 function rebaselatestbranch() {
   pullmerge $1 --rebase
 }
-
-# function rebaselatestmaster() {
-#   pullmerge master --rebase
-# }
-
-# function rebaselatestlsbmaster() {
-#   pullmerge $LSB_MASTER --rebase
-# }
-
-# function rebaselatestlsbrelease() {
-#   pullmerge $LSB_CURRENT_RELEASE --rebase
-# }
-
-# function rebaselatestrelease() {
-#   pullmerge $CURRENT_RELEASE --rebase
-# }
 
 function pulllatestlsbrelease() {
   pullmerge $LSB_CURRENT_RELEASE
@@ -307,6 +304,8 @@ function pulllatestrelease() {
 
 # Unless otherwise specified, default branch for rbt is master
 function rbtupdate() {
+  ensurenewtondirectory
+
   if git.branchislsbmasterbased
   then
     echo "Detected lsb/master based branch. Creating diff w.r.t. to that"
@@ -330,7 +329,7 @@ function rbtupdate() {
 }
 
 function rbtupdatewithrebase() {
-  rebaselatestmaster
+  rebaselatestbranch "master"
   rbtupdate
 }
 
@@ -365,7 +364,7 @@ function rbtpost() {
 }
 
 function rbtpostwithrebase() {
-  rebaselatestmaster
+  rebaselatestbranch "master"
   rbtpost
 }
 
@@ -478,6 +477,10 @@ function playfinishsound() {
 }
 
 function buildgradleparallel() {
+  # Not being in newton directory has caused problems too many times while building
+  ensurenewtondirectory
+
+  # Same goes with docker not running
   if ! system.isprocessrunning "Docker"
   then
     echo "Docker is not running, please start it and try again."
@@ -488,6 +491,8 @@ function buildgradleparallel() {
   if [ $? -eq 0 ] # last command was successful
   then
     playfinishsound "Build successful"
+    # If the build was successful, start onshape server
+    # restartbelcad
   else
     playfinishsound "Build failed"
   fi
@@ -525,6 +530,8 @@ function createlsbmasterbranchfromlsbreleasetopchange() {
 }
 
 function mergetomaster() {
+  ensurenewtondirectory
+
   if git.hasUncommittedChanges
   then
     echo "There are uncommitted changes. Please fix before merging to master"
@@ -551,7 +558,7 @@ function mergetomaster() {
     fi
   else
     currentbranch=$(git.getcurrentbranch)
-    rebaselatestmaster
+    rebaselatestbranch "master"
     waitforenterkey "Press enter if and when rebase is successful to continue to merge to master"
     git checkout master
     echo "calling mergepush $currentbranch -r $1"
@@ -563,6 +570,8 @@ function mergetomaster() {
 }
 
 function mergetoreleasethenmaster() {
+  ensurenewtondirectory
+
   if git.hasUncommittedChanges
   then
     echo "There are uncommitted changes. Please fix before merging to release"
@@ -609,7 +618,7 @@ function mergetoreleasethenmaster() {
 
     # Merge changes back to master
     waitforenterkey "Merging changes to master now, press enter when ready"
-    checkoutfromlatestmaster $currentbranch
+    checkoutfrommaster $currentbranch
 
     #Rename the current branch before reassigning
     markbranchmerged $currentbranch
