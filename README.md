@@ -16,7 +16,8 @@ There are many utility functions to use in these scripts. e.g.,
     checkoutfromlsbmaster bel-<xxxxxx>[/optionaldescription]
 1. Use functions like buildall, buildjavaonly, buildjsonly or buildcpponly to build. It verbally announces "Build successful" or "Build failed" so that you can switch your attention back to the build if you were doing something else.
 1. It also checks you're in newton directory before building (which sometimes causes confusion as gradle doesn't tell you that), and that docker is running (the official build process can start requried services in docker as needed, but doesn't start docker itself if not already running)
-1. Call rbtpost or rbtupdate to post to RB Commons. While calling rbtupdate you don't have to find the review request, it should find the number automatically.
-1. When ready, just call mergetomaster or mergetoreleasethenmaster depending on what you need. It will create branches if needed, do the checks or ask you to confirm them, pull the approved RBCommons review request numbers automatically and merge to your required branches.
-1. Call git.backupbranch any time to backup your branch locally with a timestamp and switch back to your current branch (it's not required but if you're paranoid before making any messy changes with your branch it comes off handy)
-1. Shortcut functions/aliases for many other small tasks, most of them are self explanatory and one can browse through them.
+1. Call rbtpost or rbtupdate to post to RB Commons. While calling rbtupdate you don't have to find the review request number, it should find that automatically and push to the right one.
+1. When ready, just call mergetomaster or mergetoreleasethenmaster depending on what you need. It will create branches if needed, do the necessary checks as required by our Software Release Process (or ask you to confirm them), pull the **approved** RBCommons review request numbers automatically and merge to your required branches.
+1. Call git.backupbranch any time to backup your branch locally with a timestamp and switch back to your current branch (it's not required but if you're paranoid before making any messy changes with your branch it comes in handy)
+1. It creates a .personal file in the cloned directory's profiles/ directory, where you can put your personal bash aliases and functions.
+1. Shortcut functions/aliases for many other small tasks (including utilities for string/system/git/rbt), most of them are self explanatory and one can browse through them.
