@@ -17,13 +17,17 @@ export UPGRADE_MAX_MEMORY_GB=8
 export JAVA_MAX_MEMORY_MB=8192
 
 # Unofficial exports:
-export CURRENT_RELEASE=rel-1.153
+export CURRENT_RELEASE=rel-1.154
 export LSB_MASTER=lsb/master
 export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
 export GIT_MERGE_AUTOEDIT=no
 export RETRIEVAL_REPORT_WRITE_TO_DISK=1
 # Mostly so that 'rbt' works.
 export PATH="/Users/$USER/Library/Python/3.8/bin:${PATH}"
+export btserverwebpath='/Users/pisoni/stage/WebSvc/logs/btserver.log'
+export btservermodpath='/Users/pisoni/stage/ModelingSvc/logs/btserver.log'
+export timerlogwebpath='/Users/pisoni/stage/WebSvc/logs/timer.log'
+export timerlogmodpath='/Users/pisoni/stage/ModelingSvc/logs/timer.log'
 
 # Ensure we're in the newton
 # or one of its subdirectories.
@@ -121,7 +125,7 @@ function fixDiskImagesJS() {
 }
 
 function importextractedfile() {
-  echo Sending argument: "$1"
+  waitforenterkey "If the file doesn't include std, make sure you've run 'mongoDropToProduction' and 'gradle runBtUpgrade' before this (press enter if yes, and Ctrl+C if you haven't)"
   restoreDump "$1" --nodrop --remap=btadmin@onshape.com
 }
 
@@ -163,6 +167,29 @@ function makelikeproductionwithbuild() {
 
 function openconfigpropertiesjson() {
   texteditor $REPO_NEWTON/project/web/WEB-INF/config/config-properties.json
+}
+
+function openbtserverweblog() {
+  texteditor $btserverwebpath
+}
+
+function openbtservermodlog() {
+  texteditor $btservermodpath
+}
+
+function cleanbtserverweblog() {
+  system.cleanfilecontents "$btserverwebpath"
+}
+
+function cleanbtservermodlog() {
+ system.cleanfilecontents "$btservermodpath"
+}
+
+function cleanlogs() {
+  cleanbtserverweblog
+  cleanbtservermodlog
+  system.cleanfilecontents $timerlogwebpath
+  system.cleanfilecontents $timerlogmodpath
 }
 
 function setupforproductionretrieval() {
@@ -492,7 +519,8 @@ function buildgradleparallel() {
   then
     playfinishsound "Build successful"
     # If the build was successful, start onshape server
-    # restartbelcad
+    restartbelcad
+    quickserve
   else
     playfinishsound "Build failed"
   fi
