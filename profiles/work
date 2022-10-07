@@ -16,6 +16,9 @@ export BASH_SILENCE_DEPRECATION_WARNING=1
 export UPGRADE_MAX_MEMORY_GB=8
 export JAVA_MAX_MEMORY_MB=8192
 
+# Enable SignalFx tracing locally
+export ENABLE_SIGNALFX_TRACING=1
+
 # Unofficial exports:
 export CURRENT_RELEASE=rel-1.154
 export LSB_MASTER=lsb/master
@@ -520,7 +523,7 @@ function buildgradleparallel() {
     playfinishsound "Build successful"
     # If the build was successful, start onshape server
     restartbelcad
-    quickserve
+    grunt quickServe
   else
     playfinishsound "Build failed"
   fi

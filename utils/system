@@ -70,9 +70,16 @@ function system.ismacos() {
 	string.equals "$(uname -s)" "Darwin"
 }
 
+# Show the public IP of the wireless connection
 function system.ip() {
-	hostname -I | awk '{print $1}'
+	if system.islinux
+	then
+		hostname -I | awk '{print $1}'
+	else #assume macos
+		ipconfig getifaddr en0
+	fi
 }
+
 
 function system.fileexists() {
 	[ -f "$1" ]
@@ -96,6 +103,7 @@ function system.createfileifdoesnotexist() {
 		return
 	fi
 
+	# mkdir would have no effect if the directory already exists so safe to call.
 	mkdir -p $(dirname $1)
 	touch "$1"
 }
