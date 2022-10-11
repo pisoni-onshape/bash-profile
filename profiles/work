@@ -27,10 +27,10 @@ export GIT_MERGE_AUTOEDIT=no
 export RETRIEVAL_REPORT_WRITE_TO_DISK=1
 # Mostly so that 'rbt' works.
 export PATH="/Users/$USER/Library/Python/3.8/bin:${PATH}"
-export btserverwebpath='/Users/pisoni/stage/WebSvc/logs/btserver.log'
-export btservermodpath='/Users/pisoni/stage/ModelingSvc/logs/btserver.log'
-export timerlogwebpath='/Users/pisoni/stage/WebSvc/logs/timer.log'
-export timerlogmodpath='/Users/pisoni/stage/ModelingSvc/logs/timer.log'
+export btserverwebpath='/Users/$USER/stage/WebSvc/logs/btserver.log'
+export btservermodpath='/Users/$USER/stage/ModelingSvc/logs/btserver.log'
+export timerlogwebpath='/Users/$USER/stage/WebSvc/logs/timer.log'
+export timerlogmodpath='/Users/$USER/stage/ModelingSvc/logs/timer.log'
 
 # Ensure we're in the newton
 # or one of its subdirectories.
