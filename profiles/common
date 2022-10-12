@@ -42,8 +42,7 @@ then
 elif system.direxists "/Applications/Sublime Text.app"
 then
     alias texteditor='sublime'
-elif str
-then
+else
     alias texteditor='nano'
 fi
 
