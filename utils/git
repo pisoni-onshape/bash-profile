@@ -111,9 +111,9 @@ function git.commit() {
     message="$bugnumber"": more changes"
   fi
 
-  echo $message
-  return
-  #git add -A
+  echo "Adding files in the current directory to staging"
+  git add .
+  git commit -m "$message"
 }
 
 alias stoptrackingfile='git.skipworktree'

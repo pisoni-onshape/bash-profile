@@ -16,8 +16,8 @@ export BASH_SILENCE_DEPRECATION_WARNING=1
 export UPGRADE_MAX_MEMORY_GB=8
 export JAVA_MAX_MEMORY_MB=8192
 
-# Enable SignalFx tracing locally
-export ENABLE_SIGNALFX_TRACING=1
+# Use jaeger for local tracing instead of SignalFx:
+export DEV_SIGNALFX_TRACING=2
 
 # Unofficial exports:
 export CURRENT_RELEASE=rel-1.154
@@ -27,10 +27,10 @@ export GIT_MERGE_AUTOEDIT=no
 export RETRIEVAL_REPORT_WRITE_TO_DISK=1
 # Mostly so that 'rbt' works.
 export PATH="/Users/$USER/Library/Python/3.8/bin:${PATH}"
-export btserverwebpath='/Users/$USER/stage/WebSvc/logs/btserver.log'
-export btservermodpath='/Users/$USER/stage/ModelingSvc/logs/btserver.log'
-export timerlogwebpath='/Users/$USER/stage/WebSvc/logs/timer.log'
-export timerlogmodpath='/Users/$USER/stage/ModelingSvc/logs/timer.log'
+export btserverwebpath="/Users/$USER/stage/WebSvc/logs/btserver.log"
+export btservermodpath="/Users/$USER/stage/ModelingSvc/logs/btserver.log"
+export timerlogwebpath="/Users/$USER/stage/WebSvc/logs/timer.log"
+export timerlogmodpath="/Users/$USER/stage/ModelingSvc/logs/timer.log"
 
 # Ensure we're in the newton
 # or one of its subdirectories.
