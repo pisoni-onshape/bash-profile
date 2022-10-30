@@ -1,4 +1,4 @@
-# Bash Shell only!
+#!/bin/bash
 
 # Function to ensure all profile files are able to
 # include utility modules when required (and is not
@@ -19,6 +19,9 @@ importutility system
 export USER_LOCAL_PROFILE=$BASH_PROFILE_PATH/profiles/.personal
 system.createfileifdoesnotexist $USER_LOCAL_PROFILE
 source $USER_LOCAL_PROFILE
+
+alias refreshpersonal="source $USER_LOCAL_PROFILE"
+alias openpersonal="texteditor $USER_LOCAL_PROFILE"
 
 # Load all the other files in the profiles folder.
 for filepath in $BASH_PROFILE_PATH/profiles/*; do

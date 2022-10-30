@@ -92,6 +92,12 @@ function system.direxists() {
 # Clean all the file contents (make its size zero bytes)
 # without deleting it.
 function system.cleanfilecontents() {
+	if ! system.fileexists "$1"
+	then
+		echo "File doesn't exist"
+		return
+	fi
+
 	cat /dev/null > $1
 }
 

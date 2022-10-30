@@ -2,8 +2,10 @@
 
 #include guard
 [ ! -z "$git_defined" ] && [ -z "$FORCE_IMPORT_UTILITY" ] && return 0
-export git_defined=1
 
+
+export git_defined=1
+export GIT_SKIP_TREE_FILES_LIST=~/.git-skipped-worktree-files
 
 
 # Import utility modules
@@ -54,12 +56,26 @@ function git.branchismasterbased() {
 	! git.branchislsbmasterbased && string.endswith $currentbranch "-master"
 }
 
+# Give the full file path for the _tracked_ file you want to ignore
 function git.skipworktree() {
   git update-index --skip-worktree "$1"
+  system.createfileifdoesnotexist $GIT_SKIP_TREE_FILES_LIST
+  echo "$1">>$GIT_SKIP_TREE_FILES_LIST
 }
 
 function git.unskipworktree() {
   git update-index --no-skip-worktree $1
+  if system.ismacos
+  then
+    # Seems this empty backup is required.
+    sed -i '' "s|$1||g" $GIT_SKIP_TREE_FILES_LIST
+  else
+    sed -i "s|$1||g" $GIT_SKIP_TREE_FILES_LIST
+  fi
+}
+
+function git.openskipworktreefile() {
+  edit $GIT_SKIP_TREE_FILES_LIST
 }
 
 # ToDo : Refactor the common code out of the below two functions
@@ -114,6 +130,10 @@ function git.commit() {
   echo "Adding files in the current directory to staging"
   git add .
   git commit -m "$message"
+}
+
+function git.remotebranchexists() {
+  string.isnotemptyorblank $(git ls-remote --heads origin "$1")
 }
 
 alias stoptrackingfile='git.skipworktree'

@@ -1,8 +1,12 @@
+#!/bin/bash
+
+
 # Official exports:
 export USE_CCACHE=1 #cpp compiler cache
 export RELEASE=0 #debug cpp build
 export BTI_ENABLE_TIMERS=1 #measure load times in viewer (can view in timer.log)
 export BTI_DISABLE_HEARTBEATS=1 #So that BSServer doesn't time out so early
+export ENABLE_THUMBNAIL_SERVICE=1 #So that thumbnails are generated in the dev environment (off by default)
 export BTI_BLOCK_THUMBNAIL_CPP_SERVER_POOL=1 #if debugging, cut down on the number of BSServers available to attach to
 export DEV_TOOLS=/Users/$USER/repos/onshape-dev-tools
 export BASH_SILENCE_DEPRECATION_WARNING=1
@@ -31,6 +35,10 @@ export btserverwebpath="/Users/$USER/stage/WebSvc/logs/btserver.log"
 export btservermodpath="/Users/$USER/stage/ModelingSvc/logs/btserver.log"
 export timerlogwebpath="/Users/$USER/stage/WebSvc/logs/timer.log"
 export timerlogmodpath="/Users/$USER/stage/ModelingSvc/logs/timer.log"
+export upgradelogwebpath="/Users/$USER/stage/WebSvc/logs/upgrade.log"
+
+# Others
+#set -o nounset # Make the script fail if trying to access an unset variable.
 
 # Ensure we're in the newton
 # or one of its subdirectories.
@@ -91,6 +99,20 @@ function setdebug() {
   else #empty or any other argument.
     export RELEASE=0
     echo "Set to build in debug mode"
+  fi
+}
+
+# Find next onshape version given input version
+function nextonshapeversion() {
+  local version=$(string.simplereplace "$1" "rel-" "")
+}
+
+function refreshCurrentReleaseBranch() {
+
+  local currentrelease=$NEWTON_VERSION
+  if system.fileexists "$BASH_PROFILE_PATH/.currentrelease"
+  then
+    currentrelease=$(<$BASH_PROFILE_PATH/.currentrelease)
   fi
 }
 
@@ -172,6 +194,14 @@ function openconfigpropertiesjson() {
   texteditor $REPO_NEWTON/project/web/WEB-INF/config/config-properties.json
 }
 
+function openupgradelogweb() {
+  edit $upgradelogwebpath
+}
+
+function openbttimerlogweb() {
+  edit $timerlogwebpath
+}
+
 function openbtserverweblog() {
   texteditor $btserverwebpath
 }
@@ -193,6 +223,7 @@ function cleanlogs() {
   cleanbtservermodlog
   system.cleanfilecontents $timerlogwebpath
   system.cleanfilecontents $timerlogmodpath
+  system.cleanfilecontents $upgradelogwebpath
 }
 
 function setupforproductionretrieval() {
@@ -243,8 +274,8 @@ function addstaticroutetojumpbox() {
 }
 
 function getnewbranchname() {
-  inputbranchname=$(string.tolower $1)
-  targetbranch=$(string.tolower $2)
+  local inputbranchname=$(string.tolower $1)
+  local targetbranch=$(string.tolower $2)
   if ! (string.beginswith $inputbranchname "$USER/")
   then
     inputbranchname=$USER/$inputbranchname
@@ -484,6 +515,9 @@ function fstopbelcad() {
   else
     echo "Killing PID $jettypid"
     kill -9 $jettypid
+    # Allow the process to be killed (I observed a couple of times that it doesn't immediately get killed
+    # and the next command like system.whoisusingport8080 still shows that PID)
+    sleep 2
   fi
 }
 
@@ -694,8 +728,12 @@ function startServices() {
 }
 
 function startservers() {
-    startbelcad
-    grunt quickServe
+  if ! (system.isprocessrunning "docker")
+  then
+    startServices
+  fi
+  startbelcad
+  grunt quickServe
 }
 
 function buildall() {
@@ -712,6 +750,7 @@ function buildjavaonly() {
 }
 
 function buildjsonly() {
+    export SKIP_DRAWING=1
     export SKIP_CPP=1
     export SKIP_JAVA=1
     buildgradleparallel
