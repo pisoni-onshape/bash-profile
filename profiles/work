@@ -210,6 +210,14 @@ function openbtservermodlog() {
   texteditor $btservermodpath
 }
 
+function opentimerlogweb() {
+  texteditor $timerlogwebpath
+}
+
+function opentimerlogmod() {
+  texteditor $timerlogmodpath
+}
+
 function cleanbtserverweblog() {
   system.cleanfilecontents "$btserverwebpath"
 }
