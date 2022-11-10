@@ -60,7 +60,7 @@ alias appbundleid='findappbundleid'
 alias cputemp='sudo powermetrics --samplers smc |grep -i "CPU die temperature"'
 
 # Karabiner Elements
-export karabinerconfigfile=/Users/$USER/.config/karabiner/karabiner.json
+export karabinerconfigfile=$HOME/.config/karabiner/karabiner.json
 alias karabinerconfig='texteditor "$karabinerconfigfile"'
 alias openkarabinerconfig='edit "$karabinerconfigfile"'
 
@@ -69,7 +69,7 @@ alias openkarabinerconfig='edit "$karabinerconfigfile"'
 [ -f /usr/local/etc/bash_completion ] && . /usr/local/etc/bash_completion
 
 ## Ignore
-export globalgitignorefile=/Users/$USER/.gitignore
+export globalgitignorefile=$HOME/.gitignore
 alias opengitglobalignorefile='edit $globalgitignorefile'
 alias openglobalgitignorefile='opengitglobalignorefile'
 alias opengitignorefile='opengitglobalignorefile'

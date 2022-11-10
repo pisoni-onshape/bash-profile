@@ -85,6 +85,14 @@ function system.fileexists() {
 	[ -f "$1" ]
 }
 
+function system.isfileexecutable() {
+	[[ -x "$1" ]] || [[ -x $(which "$1") ]]
+}
+
+function system.functionexists() {
+	[[ $(type -t $1) == function ]] || [[ $(type -t $1) == builtin ]] || system.isfileexecutable "$1"
+}
+
 function system.direxists() {
 	[ -d "$1" ]
 }
