@@ -1,5 +1,5 @@
 #!/bin/bash
-
+shopt -s expand_aliases
 
 # Official exports:
 # CPP compiler cache
@@ -397,7 +397,8 @@ function pulllatestbranch() {
     fi
 
     echo "Calling pullmerge $1 $argument"
-    if system.commandsucceeds $(pullmerge "$1" "$argument")
+    pullmerge "$1" $argument
+    if system.lastcommandwassuccessful
     then
       echo "pullmerge successful"
     else
@@ -832,6 +833,34 @@ function runTimerDisplay() {
   cd ~/repos/timerdisplay
   sleep 5 && open "http://localhost:8088" & # Delay launch the webpage :).
   ./server.js -p 8088 $STAGE/WebSvc/logs/timer.log --debug
+}
+
+# Remove from work (Better suited for personal profile)?
+# Quickly create or update a dummy branch that's based on latest
+# lsb/master. For those non-ideal times you need lsb/master as a branch
+# and not as a tag.
+function updatedummylsbmaster() {
+  # Store current branch
+  local currentbranch=$(git.getcurrentbranch)
+  local dummybranchname=$(getnewbranchname "dummy" "lsb/master")
+  local alreadyindummybranch="false"
+  if git.localbranchexists $dummybranchname
+  then
+      if ! string.equals $currentbranch $dummybranchname
+      then
+        git checkout "$dummybranchname"
+      fi
+      pulllatest
+  else
+    echo "Updating $dummybranchname with latest lsb/master"
+    checkoutfromlsbmaster "dummy"
+  fi
+
+  if ! string.equals $currentbranch $dummybranchname
+  then
+    echo "Checking out previous branch again"
+    git checkout $currentbranch
+  fi
 }
 
 alias bfnodestop='bf job rm'

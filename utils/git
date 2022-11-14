@@ -26,7 +26,7 @@ function git.getcurrentbranch() {
 }
 
 function git.hasUncommittedChanges() {
-	[ -n "$(git status --porcelain)" ]	
+	[ -n "$(git status --porcelain)" ]
 }
 
 function git.getlatestcommitid() {
@@ -80,12 +80,18 @@ function git.openskipworktreefile() {
 
 # ToDo : Refactor the common code out of the below two functions
 function git.backupbranch() {
-  currentbranch=$(git.getcurrentbranch)
-  searchstring=$USER
-  replacestring=backup/$USER
-  separator=/
-  curdate=$(system.getcurrentdate)
-  newbranch="${currentbranch/$searchstring/$replacestring}/$curdate"
+  local currentbranch=$(git.getcurrentbranch)
+  local searchstring=$USER
+  local replacestring=backup/$USER
+  local separator=/
+  local curdate=$(system.getcurrentdate)
+  local additionalNotes=""
+  if string.isnotemptyorblank $1
+  then
+    additionalNotes=$(string.simplereplace "/$1" " " "-")
+  fi
+
+  newbranch="${currentbranch/$searchstring/$replacestring}/$curdate$additionalNotes"
   echo $newbranch
   # create new backup branch
   git checkout -b $newbranch
@@ -94,7 +100,7 @@ function git.backupbranch() {
 }
 
 # Backup the current branch but mark that as 'starred', more important
-# than the usual backups 
+# than the usual backups
 function git.starbackupbranch() {
   currentbranch=$(git.getcurrentbranch)
   searchstring=$USER
@@ -132,8 +138,23 @@ function git.commit() {
   git commit -m "$message"
 }
 
+# Return true if a remote branch with a given substring of the branchname exists
 function git.remotebranchexists() {
   string.isnotemptyorblank $(git ls-remote --heads origin "$1")
+}
+
+function git.localbranchexists() {
+  system.commandsucceeds $(git show-ref --quiet refs/heads/$1)
+}
+
+# Creates a patch for the latest commit in your branch
+function git.patchlatestcommit() {
+  git.patchcommit "HEAD"
+}
+
+# Creates a patch for the specified commit in your branch
+function git.patchcommit() {
+  git format-patch -1 $1 # Commit SHA1 id
 }
 
 alias stoptrackingfile='git.skipworktree'

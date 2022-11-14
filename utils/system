@@ -62,6 +62,11 @@ function system.commandsucceeds() {
     [ $? -eq 0 ]
 }
 
+# Essentially the same as above.
+function system.lastcommandwassuccessful() {
+    [ $? -eq 0 ]
+}
+
 function system.islinux() {
 	string.equals "$(uname -s)" "Linux"
 }
