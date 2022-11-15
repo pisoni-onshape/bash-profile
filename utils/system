@@ -41,6 +41,15 @@ function system.whoisusingport8080() {
 	netstat -an | grep 8080
 }
 
+function system.isNodeRunningOnPort() {
+  if lsof -iTCP -n -P | grep -q node.*127\.0\.0\.1:$1
+  then
+      echo "Node is running at 8000"
+  else
+      echo "Node is not running at 8000"
+  fi
+}
+
 function system.isprocessrunning() {
 	if string.isemptyorblank $1
 	then

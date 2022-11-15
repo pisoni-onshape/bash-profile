@@ -242,8 +242,15 @@ function cleanlogs() {
   # These should not be needed and aren't even used in normal cases,
   # but sometimes our logs go into the logsDir_IS_UNDEFINED directory
   # for some reasons.
-  system.cleanfilecontents "$undefinedtimerlogwebpath"
-  system.cleanfilecontents "$undefinedbtserverwebpath"
+  if system.fileexists "$undefinedtimerlogwebpath"
+  then
+    system.cleanfilecontents "$undefinedtimerlogwebpath"
+  fi
+
+  if system.fileexists "$undefinedbtserverwebpath"
+  then
+    system.cleanfilecontents "$undefinedbtserverwebpath"
+  fi
 
   cleanbtserverweblog
   cleanbtservermodlog

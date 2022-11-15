@@ -83,15 +83,15 @@ function git.backupbranch() {
   local currentbranch=$(git.getcurrentbranch)
   local searchstring=$USER
   local replacestring=backup/$USER
-  local separator=/
   local curdate=$(system.getcurrentdate)
   local additionalNotes=""
   if string.isnotemptyorblank $1
   then
+    # Replace spaces with hyphens
     additionalNotes=$(string.simplereplace "/$1" " " "-")
   fi
 
-  newbranch="${currentbranch/$searchstring/$replacestring}/$curdate$additionalNotes"
+  local newbranch="${currentbranch/$searchstring/$replacestring}$additionalNotes/$curdate"
   echo $newbranch
   # create new backup branch
   git checkout -b $newbranch
