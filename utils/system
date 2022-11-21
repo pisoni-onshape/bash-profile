@@ -42,12 +42,7 @@ function system.whoisusingport8080() {
 }
 
 function system.isNodeRunningOnPort() {
-  if lsof -iTCP -n -P | grep -q node.*127\.0\.0\.1:$1
-  then
-      echo "Node is running at 8000"
-  else
-      echo "Node is not running at 8000"
-  fi
+  system.commandsucceeds $(lsof -iTCP -n -P | grep -q node.*127\.0\.0\.1:$1)
 }
 
 function system.isprocessrunning() {

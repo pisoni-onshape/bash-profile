@@ -147,6 +147,11 @@ function git.localbranchexists() {
   system.commandsucceeds $(git show-ref --quiet refs/heads/$1)
 }
 
+# List all branches that are not "backup", "merged" or "archived"
+function git.listbranches() {
+  git branch | grep -v -e "backup/" -e "merged/" -e "archived/"
+}
+
 # Creates a patch for the latest commit in your branch
 function git.patchlatestcommit() {
   git.patchcommit "HEAD"

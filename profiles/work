@@ -54,7 +54,7 @@ function ensurenewtondirectory() {
 ensurenewtondirectory
 
 # Now when the environment should be set, some unofficial exports (used by this script):
-export CURRENT_RELEASE=rel-1.155
+export CURRENT_RELEASE=rel-1.156
 export LSB_MASTER=lsb/master
 export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
 export GIT_MERGE_AUTOEDIT=no
@@ -292,13 +292,16 @@ function awsconfigure() {
   btAws configure --profile codebuild
 }
 
+function checkpmd() {
+  gradle :java:pmd
+}
+
 function myprecommit() {
   # Remove this first line once yarn precommit starts catching
   # typescript errors again
   #npx tsc --noEmit --project $REPO_NEWTON/project/web/tsconfig.json
   checkTidy
-  gradle :java:pmd
-  #gradle :java:codeChecker
+  checkpmd
   grunt checkJsCode
 }
 
@@ -329,15 +332,19 @@ function getnewbranchname() {
 }
 
 function checkoutfrommaster() {
+  ensurenewtondirectory
   git checkout master
   git pull
   git checkout -b $(getnewbranchname $1 "master")
+  latestcreatedbranch=$(git.getcurrentbranch)
 }
 
 function checkoutfromrelease() {
+  ensurenewtondirectory
   git checkout $CURRENT_RELEASE
   git pull
   git checkout -b $(getnewbranchname $1 $CURRENT_RELEASE)
+  latestcreatedbranch=$(git.getcurrentbranch)
 }
 
 function checkoutfromlsbbranch() {
@@ -350,13 +357,17 @@ function checkoutfromlsbbranch() {
   else
     gitBranchLsb $(getnewbranchname $1 "lsb/$2") $2
   fi
+
+  latestcreatedbranch=$(git.getcurrentbranch)
 }
 
 function checkoutfromlsbmaster() {
+  ensurenewtondirectory
   checkoutfromlsbbranch "$1" "master" #lsb/ is eventually appended by gitBranchLsb
 }
 
 function checkoutfromlsbrelease() {
+  ensurenewtondirectory
   checkoutfromlsbbranch "$1" "$CURRENT_RELEASE" #lsb/ is eventually appended by gitBranchLsb
 }
 
@@ -407,9 +418,9 @@ function pulllatestbranch() {
     pullmerge "$1" $argument
     if system.lastcommandwassuccessful
     then
-      echo "pullmerge successful"
+      echo "$USER: pullmerge successful"
     else
-      echo "pullmerge failed"
+      echo "$USER: pullmerge failed"
     fi
   fi
 }
@@ -538,6 +549,10 @@ function setupjumpboxcertificates() {
   scp $USERNAME@jumpbox-primary.dev.onshape.com:tls-auth.key /tmp
 }
 
+function isonshapeserverrunning() {
+  string.isemptyorblank $(jettypid=$(ps -ef | grep jetty | grep -v grep | awk '{print $2}'))
+}
+
 function fstopbelcad() {
   # Consider using this instead, which is multi-env aware: checkServices -s websvc
   local jettypid=$(ps -ef | grep jetty | grep -v grep | awk '{print $2}')
@@ -587,13 +602,13 @@ function buildgradleparallel() {
   fi
 
   gradle --parallel
-  if [ $? -eq 0 ] # last command was successful
+  if system.lastcommandwassuccessful
   then
     playfinishsound "Build successful"
     # If the build was successful, and a handler is defined, call it now.
     if system.functionexists onsuccessfulbuild
     then
-      onsuccessfulbuild
+      onsuccessfulbuild & # Fire the onsuccessfulbuild function async.
     fi
   else
     playfinishsound "Build failed"
@@ -603,7 +618,21 @@ function buildgradleparallel() {
 # There's no reason to keep merged branches
 # but we can keep for a few days just for reference purposes
 function markbranchmerged() {
-  git.renamebranch $1 $1-merged
+  local branchname=$1
+  if string.isemptyorblank $branchname
+  then
+    branchname=$(git.getcurrentbranch)
+  fi
+  git.renamebranch $branchname merged/$branchname
+}
+
+function markbrancharchived() {
+  local branchname=$1
+  if string.isemptyorblank $branchname
+  then
+    branchname=$(git.getcurrentbranch)
+  fi
+  git.renamebranch $branchname archived/$branchname
 }
 
 function createlsbreleasebranchfromlsbmastertopchange() {
@@ -663,12 +692,26 @@ function mergetomaster() {
     rebaselatestbranch "master"
     waitforenterkey "Press enter if and when rebase is successful to continue to merge to master"
     git checkout master
+    if ! system.lastcommandwassuccessful
+    then
+      echo "git checkout failed, did not merge to master"
+      return
+    fi
+
     echo "calling mergepush $currentbranch -r $1"
     mergepush $currentbranch -r $1
     git checkout $currentbranch
     # rename the current branch as 'merged' to keep for a few days
     markbranchmerged $currentbranch
   fi
+}
+
+# Not used right now. The idea is
+# that it should pick this variable and
+# call --no-review --no-resolve to mergepush
+# automatically
+function setreverting() {
+  export REVERTING_CHANGES=1
 }
 
 function mergetoreleasethenmaster() {
@@ -679,6 +722,8 @@ function mergetoreleasethenmaster() {
     echo "There are uncommitted changes. Please fix before merging to release"
     return
   fi
+
+  waitforenterkey "Will merge to release branch : $CURRENT_RELEASE. Press enter if that's correct, else press Ctrl+C to terminate this function, call 'export CURRENT_RELEASE=rel-<correct-version>' without single quotes and call this function again."
 
   local currentbranch=$(git.getcurrentbranch)
 
@@ -713,7 +758,7 @@ function mergetoreleasethenmaster() {
     reviewrequestid=$1
     # Merge to release first
 
-    rebaselatestrelease
+    rebaselatestbranch $CURRENT_RELEASE
     waitforenterkey "Press enter if and when rebase is successful to continue to merge to release, otherwise press Ctrl+C and do it manually"
     git checkout $CURRENT_RELEASE
     mergepush $currentbranch -r $reviewrequestid
@@ -937,3 +982,4 @@ alias webs='webstorm'
 alias storm='webstorm'
 alias productionretrievalconfigfile='$STAGE/ModelingSvc/webapps/root/WEB-INF/config/applicationContext.xml'
 alias openbtserver='openbtserverweblog'
+alias isbelcadrunning='isonshapeserverrunning'
