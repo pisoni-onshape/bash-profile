@@ -1,0 +1,15 @@
+#include guard
+[ ! -z "$general_defined" ] && [ -z "$FORCE_IMPORT_UTILITY" ] && return 0
+export general_defined=1
+
+importutility string
+
+# Always call with $(), like general.showtrueorfalse $(<true/false values>)
+function general.showtrueorfalse() {
+  if [ $? -eq 0 ]
+  then
+      echo "True"
+  else
+      echo "False"
+  fi
+}

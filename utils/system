@@ -46,6 +46,12 @@ function system.isNodeRunningOnPort() {
 }
 
 function system.isprocessrunning() {
+  if calledfromterminal
+  then
+    general.showtrueorfalse $(system.isprocessrunning "$@")
+    return
+  fi
+
 	if string.isemptyorblank $1
 	then
 		echo "Please enter the process name"
@@ -55,9 +61,9 @@ function system.isprocessrunning() {
 	if [[ "$2" == "-partial" ]] || [[ "$2" == "--p" ]] || [[ "$2" == "--partial" ]] || [[ "$2" == "-p" ]] || [[ "$2" == "partial" ]]
 	then
 		# Allow partial match (don't use the -x)
-		(pgrep -i -- "$1")
+		pgrep -i -- "$1" > /dev/null
 	else
-		(pgrep -xi -- "$1")
+		pgrep -xi -- "$1" > /dev/null
 	fi
 }
 

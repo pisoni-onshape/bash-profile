@@ -74,6 +74,7 @@ importutility string
 importutility system
 importutility git
 importutility rbt
+importutility general
 
 
 # Set CPP builder according to the platform
@@ -553,21 +554,54 @@ function isonshapeserverrunning() {
   string.isemptyorblank $(jettypid=$(ps -ef | grep jetty | grep -v grep | awk '{print $2}'))
 }
 
-function fstopbelcad() {
-  # Consider using this instead, which is multi-env aware: checkServices -s websvc
-  local jettypid=$(ps -ef | grep jetty | grep -v grep | awk '{print $2}')
-  if string.isemptyorblank $jettypid
+function killprocessidifnotempty() {
+  if string.isemptyorblank $1 || string.isemptyorblank $2
   then
-    echo "Didn't find jetty process to kill"
+    echo "Didn't find $2 process to kill"
     # echo "Didn't find jetty process, falling back to standard stopbelcad"
     #stopbelcad
   else
-    echo "Killing PID $jettypid"
-    kill -9 $jettypid
+    echo "Killing PID $1"
+    kill -9 $1
     # Allow the process to be killed (I observed a couple of times that it doesn't immediately get killed
     # and the next command like system.whoisusingport8080 still shows that PID)
     sleep 2
   fi
+}
+
+# Test if a function is called directly
+# from terminal or from another function.
+function calledfromterminal() {
+  #caller | awk '{print $2}'
+  # ${FUNCNAME[2]} represents the caller name of *this* function.
+  # Empty if caller was called directly from terminal.
+  (string.isemptyorblank "${FUNCNAME[2]}")
+}
+
+function getquickservepid() {
+  local pid=$(lsof -iTCP -n -P | grep node.*127\.0\.0\.1:8000.*LISTEN | awk '{print $2}')
+  echo $pid
+}
+
+function isquickserverunning() {
+  local pid=$(getquickservepid)
+  if calledfromterminal
+  then
+    general.showtrueorfalse $(string.isnotemptyorblank $pid)
+  fi
+
+  string.isnotemptyorblank $pid
+}
+
+function fstopquickserve() {
+  local pid=$(getquickservepid)
+  killprocessidifnotempty $pid "quickserve"
+}
+
+function fstopbelcad() {
+  # Consider using this instead, which is multi-env aware: checkServices -s websvc
+  local jettypid=$(ps -ef | grep jetty | grep -v grep | awk '{print $2}')
+  killprocessidifnotempty $jettypid "jetty"
 }
 
 function restartbelcad() {
@@ -712,6 +746,10 @@ function mergetomaster() {
 # automatically
 function setreverting() {
   export REVERTING_CHANGES=1
+}
+
+function setnoresolve() {
+  export RBCOMMONS_NO_RESOLVE=1
 }
 
 function mergetoreleasethenmaster() {
