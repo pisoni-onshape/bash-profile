@@ -41,7 +41,7 @@ function ensurenewtondirectory() {
   if string.isemptyorblank $REPO_NEWTON
   then
     # Should be the case when we've just started the Terminal.
-    cd ~/repos/newton
+    cd $HOME/repos/newton
     source buildenv.bash
   elif ! string.contains $(pwd) $REPO_NEWTON
   then
@@ -158,7 +158,7 @@ function debugproduction() {
 
 function fixDiskImagesJS() {
   diskImageUmountAll
-  rm ~/build_tools/diskimage/onshape-javascript_*
+  rm $BUILD_TOOLS/diskimage/onshape-javascript_*
   source buildenv.bash
 }
 
@@ -920,7 +920,7 @@ function pushtos3() {
 # localhost:8088 page in the browser. Visit https://github.com/onshape/timerdisplay
 # for more details
 function runTimerDisplay() {
-  cd ~/repos/timerdisplay
+  cd $HOME/repos/timerdisplay
   sleep 5 && open "http://localhost:8088" & # Delay launch the webpage :).
   ./server.js -p 8088 $STAGE/WebSvc/logs/timer.log --debug
 }
