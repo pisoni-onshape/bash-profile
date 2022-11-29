@@ -551,7 +551,7 @@ function setupjumpboxcertificates() {
 }
 
 function isonshapeserverrunning() {
-  string.isemptyorblank $(jettypid=$(ps -ef | grep jetty | grep -v grep | awk '{print $2}'))
+  string.isnotemptyorblank $(ps -ef | grep jetty | grep -v grep | awk '{print $2}')
 }
 
 function killprocessidifnotempty() {
