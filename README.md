@@ -1,7 +1,8 @@
 # bash-profile
 Personal repository for bash profile and aliases
 
-On any new machine, clone this repository to your home directory (such that the **bash-profile** folder is created in the home directory). Something like:
+On any new machine, clone this repository to your home directory (such that the **bash-profile** folder is created in the home directory). Something like this on the Terminal should do the job:
+
     cd ~
     git clone git@github.com:pisoni-onshape/bash-profile.git
 
