@@ -54,7 +54,7 @@ function ensurenewtondirectory() {
 ensurenewtondirectory
 
 # Now when the environment should be set, some unofficial exports (used by this script):
-export CURRENT_RELEASE=rel-1.156
+export CURRENT_RELEASE=rel-1.157
 export LSB_MASTER=lsb/master
 export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
 export GIT_MERGE_AUTOEDIT=no
@@ -676,8 +676,8 @@ function createlsbreleasebranchfromlsbmastertopchange() {
     return
   fi
 
-  topSHAId=$(git.getlatestcommitid)
-  currentbranch=$(git.getcurrentbranch)
+  local topSHAId=$(git.getlatestcommitid)
+  local currentbranch=$(git.getcurrentbranch)
   checkoutfromlsbrelease $(getnewbranchname $currentbranch $LSB_CURRENT_RELEASE)
   git cherry-pick $topSHAId
 }
@@ -688,8 +688,8 @@ function createlsbmasterbranchfromlsbreleasetopchange() {
     echo "It's not an lsb/release based branch. Please check the branch name again."
     return
   fi
-  topSHAId=$(git.getlatestcommitid)
-  currentbranch=$(git.getcurrentbranch)
+  local topSHAId=$(git.getlatestcommitid)
+  local currentbranch=$(git.getcurrentbranch)
   checkoutfromlsbmaster $(getnewbranchname $currentbranch $LSB_MASTER)
   git cherry-pick $topSHAId
 }
@@ -700,6 +700,12 @@ function mergetomaster() {
   if git.hasUncommittedChanges
   then
     echo "There are uncommitted changes. Please fix before merging to master"
+    return
+  fi
+
+  if git.isoneoftheofficialbranches
+  then
+    echo "Wrong branch. You should call it on your feature branch and not on one of the official branches"
     return
   fi
 
@@ -758,6 +764,12 @@ function mergetoreleasethenmaster() {
   if git.hasUncommittedChanges
   then
     echo "There are uncommitted changes. Please fix before merging to release"
+    return
+  fi
+
+  if git.isoneoftheofficialbranches
+  then
+    echo "Wrong branch. You should call it on your feature branch and not on one of the official branches"
     return
   fi
 
@@ -854,6 +866,11 @@ function startservers() {
   fi
   startbelcad
   grunt quickServe
+}
+
+function stopservers() {
+  fstopbelcad
+  fstopquickserve
 }
 
 function buildall() {

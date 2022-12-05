@@ -34,6 +34,11 @@ function git.getlatestcommitid() {
 	echo $latestSHAId
 }
 
+function git.isoneoftheofficialbranches() {
+  local currentbranch=$(git.getcurrentbranch)
+  string.equals $currentbranch "master" || string.equals $currentbranch $CURRENT_RELEASE || string.equals $currentbranch $LSB_MASTER || string.equals $currentbranch $LSB_CURRENT_RELEASE
+}
+
 function git.branchislsbreleasebased() {
 	local currentbranch=$(git.getcurrentbranch)
 	string.endswith $currentbranch "-lsb-rel-[0-9].[0-9]*"
