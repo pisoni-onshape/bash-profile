@@ -2,26 +2,35 @@
 shopt -s expand_aliases
 
 # Official exports:
+# -----------------
 # CPP compiler cache
 export USE_CCACHE=1
+
 # Debug cpp build
 export RELEASE=0
+
 # Measure load times in viewer (can view in timer.log)
 export BTI_ENABLE_TIMERS=1
+
 # So that BSServer doesn't time out so early
 export BTI_DISABLE_HEARTBEATS=1
+
 # So that thumbnails are generated in the dev environment (off by default)
 # Remove if not needed.
 export ENABLE_THUMBNAIL_SERVICE=1
+
 # If debugging BSServer, cut down on the number of BSServers available to attach to
 # ****** CAUTION: REMOVE WHEN WORKING WITH THUMBNAILS, otherwise it won't create Thumbnail
 # cpp server pool ******
 #export BTI_BLOCK_THUMBNAIL_CPP_SERVER_POOL=1
+
 # Remove unnecessary deprecation warning
 export BASH_SILENCE_DEPRECATION_WARNING=1
+
 # Improve artifactory download performance from S3, but sometimes causes other problems. Use only when
 # facing problem with the default region (which is typically us-west-2)
 #export OBJECT_STORE_REPO_REGION=ap-south-1
+
 #export HOST_PROPERTIES_PRIVATEIP="$(dockerCreateLoopbackAlias)"
 # This is only an issue if you usually extract std from stacks and upgrade has to process lot of std versions
 # In that case, there might be out of memory problems while building java
@@ -34,6 +43,7 @@ export DEV_TOOLS=$HOME/repos/onshape-dev-tools
 
 # Others
 #set -o nounset # Make the script fail if trying to access an unset variable.
+
 
 # Ensure we're in the newton
 # or one of its subdirectories.
@@ -53,7 +63,9 @@ function ensurenewtondirectory() {
 # This should also source buildenv.bash the first time it's opened
 ensurenewtondirectory
 
-# Now when the environment should be set, some unofficial exports (used by this script):
+# Unofficial exports
+# ------------------
+# Now when the environment should be set, some exports used by this script:
 export CURRENT_RELEASE=rel-1.157
 export LSB_MASTER=lsb/master
 export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
@@ -65,6 +77,8 @@ export btservermodpath="$STAGE/ModelingSvc/logs/btserver.log"
 export timerlogwebpath="$STAGE/WebSvc/logs/timer.log"
 export timerlogmodpath="$STAGE/ModelingSvc/logs/timer.log"
 export upgradelogwebpath="$STAGE/WebSvc/logs/upgrade.log"
+# Sometimes, for some reason the logs go in the logsDir_IS_UNDEFINED directory
+# No one seems to know the exact reason at the time of writing this.
 export undefinedbtserverwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/btserver.log"
 export undefinedtimerlogwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/timer.log"
 
@@ -116,17 +130,46 @@ function setdebug() {
   fi
 }
 
-# INCOMPLETE function. Find next onshape version given input version
-# function nextonshapeversion() {
-#   local version=$(string.simplereplace "$1" "rel-" "")
-# }
-
-function refreshCurrentReleaseBranch() {
-  local currentrelease=$NEWTON_VERSION
-  if system.fileexists "$BASH_PROFILE_PATH/.currentrelease"
+# INCOMPLETE function. Find next onshape version given the input version
+# Or a few versions forward or backward if a second +/- integer is sent
+# to add to it
+function newonshapeversion() {
+  local original=$1
+  local addition=1
+  if ! string.isemptyorblank $2
   then
-    currentrelease=$(<$BASH_PROFILE_PATH/.currentrelease)
+    addition=$2
   fi
+
+  # Trim everything before "."
+  local prefix=$(string.simplereplace "$original" ".*" "")
+  # Trim everything before "."
+  local version=$(string.simplereplace "$original" "*." "")
+  local newsuffix=$(general.add $version $addition)
+  echo "$prefix.$newsuffix"
+}
+
+function refreshcurrentreleasebranch() {
+  local currentrelease="rel-$NEWTON_VERSION"
+  echo "Refreshing CURRENT_RELEASE (pulling from the server) ..."
+  # The current release can only either be the current
+  # newton version, or one before it.
+  if git.remotebranchexists $currentrelease
+  then
+    CURRENT_RELEASE=$currentrelease
+  else
+    CURRENT_RELEASE=$(newonshapeversion $currentrelease -1)
+  fi
+
+  # Refresh the current lsb release branch as well.
+  LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
+
+  echo "CURRENT_RELEASE set to $CURRENT_RELEASE"
+
+  # if system.fileexists "$BASH_PROFILE_PATH/.currentrelease"
+  # then
+  #   currentrelease=$(<$BASH_PROFILE_PATH/.currentrelease)
+  # fi
 }
 
 function debugstaging() {
@@ -550,19 +593,25 @@ function setupjumpboxcertificates() {
   scp $USERNAME@jumpbox-primary.dev.onshape.com:tls-auth.key /tmp
 }
 
+# Prints an output (True/False) only when called
+# directly from the Terminal (else returns true/false)
 function isonshapeserverrunning() {
-  string.isnotemptyorblank $(ps -ef | grep jetty | grep -v grep | awk '{print $2}')
+  local jettypid=$(ps -ef | grep jetty | grep -v grep | awk '{print $2}')
+  if calledfromterminal
+  then
+    general.showtrueorfalse $(string.isnotemptyorblank $jettypid)
+  fi
+
+  string.isnotemptyorblank $jettypid
 }
 
-function killprocessidifnotempty() {
-  if string.isemptyorblank $1 || string.isemptyorblank $2
+# Assumes pid to kill is a valid one
+function killprocessid() {
+  echo "Killing $2 PID $1"
+  kill -9 $1
+
+  if ! string.equals $3 "nosleep"
   then
-    echo "Didn't find $2 process to kill"
-    # echo "Didn't find jetty process, falling back to standard stopbelcad"
-    #stopbelcad
-  else
-    echo "Killing PID $1"
-    kill -9 $1
     # Allow the process to be killed (I observed a couple of times that it doesn't immediately get killed
     # and the next command like system.whoisusingport8080 still shows that PID)
     sleep 2
@@ -595,13 +644,23 @@ function isquickserverunning() {
 
 function fstopquickserve() {
   local pid=$(getquickservepid)
-  killprocessidifnotempty $pid "quickserve"
+  if ! string.isemptyorblank $pid
+  then
+    killprocessid $pid "quickserve" $1 # this optional argument can be "nosleep"
+  else
+    echo "Didn't find quickserve process to kill"
+  fi
 }
 
 function fstopbelcad() {
   # Consider using this instead, which is multi-env aware: checkServices -s websvc
   local jettypid=$(ps -ef | grep jetty | grep -v grep | awk '{print $2}')
-  killprocessidifnotempty $jettypid "jetty"
+  if ! string.isemptyorblank $jettypid
+  then
+    killprocessid $jettypid "jetty" $1 # this optional argument can be "nosleep"
+  else
+    echo "Didn't find jetty process to kill"
+  fi
 }
 
 function restartbelcad() {
@@ -773,6 +832,9 @@ function mergetoreleasethenmaster() {
     return
   fi
 
+  # Fetch the latest release branch from the server
+  refreshcurrentreleasebranch
+
   waitforenterkey "Will merge to release branch : $CURRENT_RELEASE. Press enter if that's correct, else press Ctrl+C to terminate this function, call 'export CURRENT_RELEASE=rel-<correct-version>' without single quotes and call this function again."
 
   local currentbranch=$(git.getcurrentbranch)
@@ -847,6 +909,10 @@ function startDockerApp() {
   fi
 }
 
+# Start required services for the Onshape server
+# and newton to run (not the server itself, use
+# startservers for that). Also starts Docker
+# is not already running.
 function startServices() {
   if ! (system.isprocessrunning "docker")
   then
@@ -859,9 +925,13 @@ function startServices() {
   btEnvUp
 }
 
+# Starts both the Onshape (belcad) server
+# and calls grunt quickServe to
 function startservers() {
   if ! (system.isprocessrunning "docker")
   then
+    # startServices is supposed to start
+    # Docker as well if not running
     startServices
   fi
   startbelcad
@@ -869,8 +939,13 @@ function startservers() {
 }
 
 function stopservers() {
-  fstopbelcad
+  fstopbelcad "nosleep"
   fstopquickserve
+}
+
+function restartservers() {
+  stopservers
+  startservers
 }
 
 function buildall() {

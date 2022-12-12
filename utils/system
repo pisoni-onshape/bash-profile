@@ -124,6 +124,14 @@ function system.cleanfilecontents() {
 	cat /dev/null > $1
 }
 
+function system.filenamefrompath() {
+	echo $(basename $1)
+}
+
+function system.dirfrompath() {
+	echo $(dirname $1)
+}
+
 # Create a file with any level deep folder structure
 # even if the folders don't already exist
 function system.createfileifdoesnotexist() {

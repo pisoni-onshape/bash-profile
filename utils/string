@@ -26,24 +26,24 @@ function string.replacefirstoccurrence() {
 function string.beginswith() {
 	local input=$1
 	local testString=$2
-	# Directly return true or false so that 
-	# it can be used with if 
+	# Directly return true or false so that
+	# it can be used with if
  	[[ $input == $testString* ]]
 }
 
 function string.endswith() {
 	local input=$1
 	local testString=$2
-	# Directly return true or false so that 
-	# it can be used with if 
+	# Directly return true or false so that
+	# it can be used with if
  	[[ $input == *$testString ]]
 }
 
 function string.contains() {
 	local input=$1
 	local testString=$2
-	# Directly return true or false so that 
-	# it can be used with if 
+	# Directly return true or false so that
+	# it can be used with if
  	[[ $input == *$testString* ]]
 }
 
@@ -68,5 +68,5 @@ function string.toupper() {
 }
 
 function string.concatenate() {
-	echo $1$2
+	echo $(string.simplereplace "$*" " " "")
 }

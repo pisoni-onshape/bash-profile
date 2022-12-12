@@ -13,3 +13,13 @@ function general.showtrueorfalse() {
       echo "False"
   fi
 }
+
+# Add two integers
+function general.add() {
+  echo $(($1+$2))
+}
+
+# Subtract two integers
+function general.subtract() {
+  echo $(($1-$2))
+}
