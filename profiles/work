@@ -150,15 +150,27 @@ function newonshapeversion() {
 }
 
 function refreshcurrentreleasebranch() {
-  local currentrelease="rel-$NEWTON_VERSION"
-  echo "Refreshing CURRENT_RELEASE (pulling from the server) ..."
+  local currentrelease=""
+
   # The current release can only either be the current
   # newton version, or one before it.
-  if git.remotebranchexists $currentrelease
+  if system.fileexists "$BASH_PROFILE_PATH/.currentrelease"
   then
-    CURRENT_RELEASE=$currentrelease
-  else
-    CURRENT_RELEASE=$(newonshapeversion $currentrelease -1)
+    currentrelease=$(<$BASH_PROFILE_PATH/.currentrelease)
+    # So if it's already equivalent to NEWTON_VERSION,
+    # there's no point pulling latest branch from github
+    # (as we wrote in the file in the first place)
+    if ! string.equals "$currentrelease" "rel-$NEWTON_VERSION"
+    then
+      echo "Refreshing CURRENT_RELEASE (pulling from remote) ..."
+      currentrelease="rel-$NEWTON_VERSION"
+      if git.remotebranchexists $currentrelease
+      then
+        CURRENT_RELEASE=$currentrelease
+      else
+        CURRENT_RELEASE=$(newonshapeversion $currentrelease -1)
+      fi
+    fi
   fi
 
   # Refresh the current lsb release branch as well.
@@ -166,10 +178,8 @@ function refreshcurrentreleasebranch() {
 
   echo "CURRENT_RELEASE set to $CURRENT_RELEASE"
 
-  # if system.fileexists "$BASH_PROFILE_PATH/.currentrelease"
-  # then
-  #   currentrelease=$(<$BASH_PROFILE_PATH/.currentrelease)
-  # fi
+  # Write current release to a file
+  echo $CURRENT_RELEASE > "$BASH_PROFILE_PATH/.currentrelease"
 }
 
 function debugstaging() {
@@ -463,8 +473,10 @@ function pulllatestbranch() {
     if system.lastcommandwassuccessful
     then
       echo "$USER: pullmerge successful"
+      return 0
     else
       echo "$USER: pullmerge failed"
+      return 1 # failure
     fi
   fi
 }
@@ -668,6 +680,11 @@ function restartbelcad() {
   startbelcad
 }
 
+function restartquickserve() {
+  fstopquickserve
+  grunt quickServe
+}
+
 function beep() {
   tput bel
 }
@@ -789,6 +806,12 @@ function mergetomaster() {
   else
     currentbranch=$(git.getcurrentbranch)
     rebaselatestbranch "master"
+    if ! system.lastcommandwassuccessful
+    then
+      echo "Rebase didn't succeed. Please manually rebase/pull latest master branch and try again."
+      return
+    fi
+
     waitforenterkey "Press enter if and when rebase is successful to continue to merge to master"
     git checkout master
     if ! system.lastcommandwassuccessful
@@ -871,6 +894,13 @@ function mergetoreleasethenmaster() {
     # Merge to release first
 
     rebaselatestbranch $CURRENT_RELEASE
+
+    if ! system.lastcommandwassuccessful
+    then
+      echo "Rebase didn't succeed. Please manually rebase/pull latest master branch and try again."
+      return
+    fi
+
     waitforenterkey "Press enter if and when rebase is successful to continue to merge to release, otherwise press Ctrl+C and do it manually"
     git checkout $CURRENT_RELEASE
     mergepush $currentbranch -r $reviewrequestid
