@@ -492,6 +492,35 @@ function rbtpostfrombranch() {
   fi
 }
 
+# Return the branch name/tag this branch is based off
+# e.g. master, lsb/master etc. For this, the branch must have
+# been created using checkoutfrommaster / checkoutfromlsbmaster etc. commands
+function getbasebranchname() {
+  # Check if there was a remote prefix
+  # passed. Only use for branch names, not tag names.
+  local remoteprefix=""
+  if string.isnotemptyorblank $1
+  then
+    remoteprefix="$1/"
+  fi
+
+  if git.branchislsbmasterbased
+  then
+    echo $LSB_MASTER
+  elif git.branchislsbreleasebased
+  then
+    echo $LSB_CURRENT_RELEASE
+  elif git.branchismasterbased
+  then
+    echo "$remoteprefix""master"
+  elif git.branchisreleasebased
+  then
+    echo "$remoteprefix""$CURRENT_RELEASE"
+  else
+    echo "" # Can't find out.
+  fi
+}
+
 # Unless otherwise specified, default branch for rbt is master
 function rbtpost() {
   ensurenewtondirectory
@@ -1012,6 +1041,21 @@ function buildjavaandjsonly() {
     export SKIP_CPP=1
     buildgradleparallel
     unset SKIP_CPP
+}
+
+# Create a patch of all the committed/uncommitted changes
+# and compare with the remote origin master / lsb/master
+function patchallchanges() {
+  echo "Refreshing tags..."
+  git fetch origin --tags --force --prune
+  local path="$(git.getpatchfilepath)"
+  git diff "$(getbasebranchname origin)" > "$path"
+  echo "Patch file created at $path"
+}
+
+# Pass jira number
+function openbug() {
+  open "https://belmonttechinc.atlassian.net/browse/BEL-$1"
 }
 
 function ptortest() {

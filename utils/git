@@ -6,7 +6,7 @@
 
 export git_defined=1
 export GIT_SKIP_TREE_FILES_LIST=~/.git-skipped-worktree-files
-
+export GIT_PATCH_DIR=~/patches
 
 # Import utility modules
 importutility string
@@ -171,8 +171,42 @@ function git.patchlatestcommit() {
 
 # Creates a patch for the specified commit in your branch
 function git.patchcommit() {
-  git format-patch -1 $1 # Commit SHA1 id
+   # Commit SHA1 id. -1 tells git to patch only the last 1 commit.
+   # If full file path is needed instead, use --stdout instead and redirect the output to a file.
+  if string.isnotemptyorblank $GIT_PATCH_DIR
+  then
+    git format-patch --filename-max-length 256 -o $GIT_PATCH_DIR -1 $1
+  else
+    git format-patch --filename-max-length 256 -1 $1
+  fi
+}
+
+function git.getbranchnamehyphened() {
+  local currentbranch=$(git.getcurrentbranch)
+  # remove the username for brevity
+  currentbranch=$(string.simplereplace $currentbranch "$USER/" "")
+  # replace slashes with hyphens
+  echo $(string.simplereplace $currentbranch "/" "-")
+}
+
+function git.getpatchfilepath() {
+  local path="."
+  if string.isnotemptyorblank $GIT_PATCH_DIR
+  then
+    path="$GIT_PATCH_DIR"
+  fi
+
+  local curdate=$(system.getcurrentdate)
+  echo "$path/$(git.getbranchnamehyphened)-$curdate.patch"
+}
+
+# Create a patch of uncommitted changes with *LOCAL* HEAD
+function git.patchuncommittedchanges() {
+  local path="$(git.getpatchfilepath)"
+  git diff HEAD > "$path"
+  echo "Patch file created at $path"
 }
 
 alias stoptrackingfile='git.skipworktree'
 alias starttrackingfile='git.unskipworktree'
+alias git.currentbranch='git.getcurrentbranch'
