@@ -23,3 +23,14 @@ function general.add() {
 function general.subtract() {
   echo $(($1-$2))
 }
+
+# Just pass a function name to it, should
+# work for _most_ of them
+function general.duration() {
+  local time1=$SECONDS
+  "$@" # Make the function call with its arguments. Smart.
+  local time2=$SECONDS
+  local duration=$(($time2-$time1))
+  # However, if we call it with `echo`, it doesn't call the function.
+  echo "Time taken to call $1 is $duration seconds"
+}

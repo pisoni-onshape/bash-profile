@@ -153,8 +153,15 @@ function git.localbranchexists() {
 }
 
 # List all branches that are not "backup", "merged" or "archived"
+# by default, but lists those ones (backup/merged/archived if you
+# pass as argument)
 function git.listbranches() {
-  git branch | grep -v -e "backup/" -e "merged/" -e "archived/"
+  if string.isnotemptyorblank $1
+  then
+    git branch | grep $1
+  else
+    git branch | grep -v -e "backup/" -e "merged/" -e "archived/"
+  fi
 }
 
 # Creates a patch for the latest commit in your branch
