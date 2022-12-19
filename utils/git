@@ -164,6 +164,14 @@ function git.listbranches() {
   fi
 }
 
+# Delete all merged branches
+function git.deletemerged() {
+  # We could have just used git branch --merged
+  # that would actually list all branches that are merged
+  # even without our naming convention
+  git branch | grep 'merged/' | xargs git branch -D
+}
+
 # Creates a patch for the latest commit in your branch
 function git.patchlatestcommit() {
   git.patchcommit "HEAD"
