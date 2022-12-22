@@ -166,6 +166,7 @@ function git.listbranches() {
 
 # Delete all merged branches
 function git.deletemerged() {
+  read -p "Are you sure you want to delete all merged branches? Press any key to continue. Press Ctrl+C to cancel."
   # We could have just used git branch --merged
   # that would actually list all branches that are merged
   # even without our naming convention

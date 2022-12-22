@@ -209,6 +209,10 @@ function debugproduction() {
   grunt quickServe
 }
 
+function removeDiskImages() {
+  rm -rf ~/build_tools/diskimage
+}
+
 function fixDiskImagesJS() {
   diskImageUmountAll
   rm $BUILD_TOOLS/diskimage/onshape-javascript_*
