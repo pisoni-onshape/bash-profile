@@ -216,6 +216,12 @@ function git.patchuncommittedchanges() {
   echo "Patch file created at $path"
 }
 
+# Applies a patch and creates .rej files for the changes
+# that it could not apply.
+function git.applypatch() {
+  git apply --reject --whitespace=fix $1 # patch file path
+}
+
 alias stoptrackingfile='git.skipworktree'
 alias starttrackingfile='git.unskipworktree'
 alias git.currentbranch='git.getcurrentbranch'

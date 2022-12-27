@@ -1017,11 +1017,13 @@ function buildall() {
 }
 
 function buildjavaonly() {
+    export SKIP_DRAWING=1
     export SKIP_CPP=1
     export SKIP_JSLIB=1
     buildgradleparallel
     unset SKIP_CPP
     unset SKIP_JSLIB
+    unset SKIP_DRAWING
 }
 
 function buildjsonly() {
@@ -1031,20 +1033,25 @@ function buildjsonly() {
     buildgradleparallel
     unset SKIP_CPP
     unset SKIP_JAVA
+    unset SKIP_DRAWING
 }
 
 function buildcpponly() {
+    export SKIP_DRAWING=1
     export SKIP_JSLIB=1
     export SKIP_JAVA=1
     buildgradleparallel
     unset SKIP_JSLIB
     unset SKIP_JAVA
+    unset SKIP_DRAWING
 }
 
 function buildjavaandjsonly() {
+    export SKIP_DRAWING=1
     export SKIP_CPP=1
     buildgradleparallel
     unset SKIP_CPP
+    unset SKIP_DRAWING
 }
 
 # Create a patch of all the committed/uncommitted changes
