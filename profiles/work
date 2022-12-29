@@ -1184,6 +1184,7 @@ alias serial='grunt generateSerializables'
 alias serialize='grunt generateSerializables'
 alias sshjumpbox="ssh -X $USER@jumpbox-primary.dev.onshape.com"
 alias startenv='startServices;startservers';
+alias stage='cd $STAGE'
 alias starttimerdisplay='runTimerDisplay'
 alias stopServices='btEnvDown'
 alias startallservers='startservers'
