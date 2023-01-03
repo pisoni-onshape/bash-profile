@@ -1,6 +1,7 @@
 # bash-profile
-Personal repository for bash profile and aliases
+A non-official support repository to assist in Onshape development with various bash functions and aliases.
 
+## Setup
 On any new machine, clone this repository to your home directory (such that the **bash-profile** folder is created in the home directory). Something like this on the Terminal should do the job:
 
     cd ~
