@@ -80,6 +80,7 @@ export upgradelogwebpath="$STAGE/WebSvc/logs/upgrade.log"
 # Sometimes, for some reason the logs go in the logsDir_IS_UNDEFINED directory
 # No one seems to know the exact reason at the time of writing this.
 export undefinedbtserverwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/btserver.log"
+export undefinedbtservermodpath="$STAGE/ModelingSvc/logsDir_IS_UNDEFINED/btserver.log"
 export undefinedtimerlogwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/timer.log"
 
 
@@ -229,6 +230,8 @@ function runupgrade() {
 }
 
 function runretrieval() {
+  waitforenterkey "Have you run setupforproductionretrieval before this? If yes, press Enter, else press Ctrl+C and do that first."
+
   if string.isemptyorblank $1
   then
     echo "A numeric Jenkins build id is required"
@@ -248,7 +251,7 @@ function runretrieval() {
 
 function makelikeproduction() {
   #Make sure Docker is running, and mongo service is running as well
-  mongobackup
+  mongoDumpDb #Note where it's created
   stopbelcad
   mongoDropAll
   mongoDropToProduction
@@ -257,7 +260,7 @@ function makelikeproduction() {
 
 function makelikeproductionwithbuild() {
   makelikeproduction
-  buildgradleparallel
+  buildgradleparallel # Then restore dump, and then it might need gradle runBtUpgrade again before running runupgrade
 }
 
 function openconfigpropertiesjson() {
@@ -310,6 +313,11 @@ function cleanlogs() {
     system.cleanfilecontents "$undefinedbtserverwebpath"
   fi
 
+  if system.fileexists "$undefinedbtservermodpath"
+  then
+    system.cleanfilecontents "$undefinedbtservermodpath"
+  fi
+
   cleanbtserverweblog
   cleanbtservermodlog
   system.cleanfilecontents "$timerlogwebpath"
@@ -328,6 +336,7 @@ function setupforproductionretrieval() {
   echo "Build (gradle) manually now using buildgradleparallel"
   #buildgradleparallel
   #waitforenterkey "Press enter when done"
+  echo "Import documents to upgrade."
   echo "call runupgrade to run document upgrade"
   #runupgrade
   #waitforenterkey "Press enter when upgrade has been done"
@@ -599,12 +608,22 @@ function rbtupdate() {
 
 function rbtpostwithrebase() {
   rebaselatest
-  rbtpost
+  if system.lastcommandwassuccessful
+  then
+    rbtpost
+  else
+    echo "Not calling rbtpost as rebase was not successful."
+  fi
 }
 
 function rbtupdatewithrebase() {
   rebaselatest
-  rbtupdate
+  if system.lastcommandwassuccessful
+  then
+    rbtupdate
+  else
+    echo "Not calling rbtupdate as rebase was not successful."
+  fi
 }
 
 function testregex() {
@@ -962,13 +981,25 @@ function mergetoreleasethenmaster() {
 }
 
 function startDockerApp() {
-  if ! system.commandsucceeds $(open -a /Applications/Docker.app)
+  if (system.isprocessrunning "docker")
   then
+    echo "Docker is already running"
+    return
+  fi
+
+  if system.commandsucceeds $(open -a /Applications/Docker.app)
+  then
+    # Give Docker some time to get initialized, otherwise
+    # starting services fails.
+    echo -n "Docker started, waiting for it to be ready"
+    while (! docker stats --no-stream > /dev/null 2>&1 ); do
+      echo -n "."
+      sleep 1
+    done
+    echo "" # print a newline character
+  else
     echo "Can't open Docker app"
     return
-  else
-    # Give Docker some time to get ready
-    sleep 5
   fi
 }
 
@@ -999,6 +1030,33 @@ function startservers() {
   fi
   startbelcad
   grunt quickServe
+}
+
+# Start onshape server and grunt quickServe only if they
+# are not already running.
+function startserversifnotalready() {
+  if ! (system.isprocessrunning "docker")
+  then
+    # startServices is supposed to start
+    # Docker as well if not running
+    startServices
+  fi
+
+  if isonshapeserverrunning
+  then
+    echo "Onshape server is already running"
+  else
+    echo "Onshape server not already running, starting it now"
+    startbelcad
+  fi
+
+  if isquickserverunning
+  then
+    echo "quickServe is already running"
+  else
+    echo "quickServe is not already running, starting it now"
+    grunt quickServe
+  fi
 }
 
 function stopservers() {
@@ -1060,6 +1118,7 @@ function patchallchanges() {
   echo "Refreshing tags..."
   git fetch origin --tags --force --prune
   local path="$(git.getpatchfilepath)"
+  system.createfileifdoesnotexist $path
   git diff "$(getbasebranchname origin)" > "$path"
   echo "Patch file created at $path"
 }

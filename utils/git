@@ -12,6 +12,13 @@ export GIT_PATCH_DIR=~/patches
 importutility string
 importutility system
 
+function __ensurepatchdirexists() {
+  if ! system.direxists $GIT_PATCH_DIR
+  then
+    mkdir $GIT_PATCH_DIR
+  fi
+}
+
 function git.renamebranch() {
 	git branch -m $1 $2
 }
@@ -180,6 +187,7 @@ function git.patchlatestcommit() {
 
 # Creates a patch for the specified commit in your branch
 function git.patchcommit() {
+  __ensurepatchdirexists
    # Commit SHA1 id. -1 tells git to patch only the last 1 commit.
    # If full file path is needed instead, use --stdout instead and redirect the output to a file.
   if string.isnotemptyorblank $GIT_PATCH_DIR
@@ -212,6 +220,7 @@ function git.getpatchfilepath() {
 # Create a patch of uncommitted changes with *LOCAL* HEAD
 function git.patchuncommittedchanges() {
   local path="$(git.getpatchfilepath)"
+  system.createfileifdoesnotexist $path
   git diff HEAD > "$path"
   echo "Patch file created at $path"
 }
