@@ -69,3 +69,11 @@ function rbt.openreviewrequest() {
     echo "Can't find a valid review request id matching the current branch"
   fi
 }
+
+function rbt.applypatchfromreviewrequest() {
+  local reviewrequestid=$1
+  if string.isnotemptyorblank $reviewrequestid
+  then
+    rbt patch $reviewrequestid
+  fi
+}

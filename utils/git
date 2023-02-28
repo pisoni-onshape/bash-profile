@@ -8,6 +8,9 @@ export git_defined=1
 export GIT_SKIP_TREE_FILES_LIST=~/.git-skipped-worktree-files
 export GIT_PATCH_DIR=~/patches
 
+# Credit to this alias goes to this Slack conversation : https://onshape.slack.com/archives/C18HMGX32/p1495031914762665
+alias gb='cur=$(git rev-parse --abbrev-ref HEAD); prev=$(git rev-parse --abbrev-ref @{-1}); git for-each-ref --sort=committerdate refs/heads/ --format="%(color:reset)  %(refname:short)|%(color:black bold)%(committerdate:relative)%(color:reset)" | column -ts"|" | sed -e "s,  ${cur} ,$(tput setaf 2)$(tput bold)* ${cur} ," | sed -e "s,  ${prev} ,$(tput setaf 3)$(tput bold)  ${prev} ,";'
+
 # Import utility modules
 importutility string
 importutility system
@@ -127,15 +130,22 @@ function git.starbackupbranch() {
   git checkout $currentbranch
 }
 
-function git.getbugnumberfromcurrentbranch() {
-  local currentbranch=$(git.getcurrentbranch)
+function git.getbugnumberfrombranch() {
+  local branchname=$1
+  if string.isemptyorblank $branchname
+  then
+    branchname=$(git.getcurrentbranch)
+  fi
+
+  # Just in case the branch name contains an uppercase BEL
+  branchname=$(string.simplereplace $branchname "BEL" "bel")
   # sed syntax : "s,search_string,replace_string,regex_flags" (most other characters allowed as separator instead of ,)
-  local bugnumber=$(echo $currentbranch | sed -En "s,.*/bel-([[:digit:]]+)/.*,BEL-\1,p")
+  local bugnumber=$(echo $branchname | sed -En "s,.*/bel-([[:digit:]]+)/.*,BEL-\1,p")
   echo $bugnumber
 }
 
 function git.commit() {
-  local bugnumber=$(git.getbugnumberfromcurrentbranch)
+  local bugnumber=$(git.getbugnumberfrombranch)
   git status
   local message=""
   if string.isnotemptyorblank $1
@@ -182,20 +192,20 @@ function git.deletemerged() {
 
 # Creates a patch for the latest commit in your branch
 function git.patchlatestcommit() {
-  git.patchcommit "HEAD"
+  local message="$1"
+  git.patchcommit "HEAD" "$message"
 }
 
 # Creates a patch for the specified commit in your branch
 function git.patchcommit() {
-  __ensurepatchdirexists
-   # Commit SHA1 id. -1 tells git to patch only the last 1 commit.
-   # If full file path is needed instead, use --stdout instead and redirect the output to a file.
-  if string.isnotemptyorblank $GIT_PATCH_DIR
-  then
-    git format-patch --filename-max-length 256 -o $GIT_PATCH_DIR -1 $1
-  else
-    git format-patch --filename-max-length 256 -1 $1
-  fi
+  # Commit SHA1 id sent as argument. -1 tells git to patch only the last 1 commit.
+  local commitId=$1
+  local message="$2"
+  local path=$(git.getpatchfilepath "$message")
+  system.createfileifdoesnotexist $path
+
+  git format-patch --filename-max-length 256 -1 $commitId --stdout > "$path"
+  echo "Patch file created at $path"
 }
 
 function git.getbranchnamehyphened() {
@@ -207,19 +217,50 @@ function git.getbranchnamehyphened() {
 }
 
 function git.getpatchfilepath() {
-  local path="."
+  local dir="."
+  local message="$1"
   if string.isnotemptyorblank $GIT_PATCH_DIR
   then
-    path="$GIT_PATCH_DIR"
+    dir="$GIT_PATCH_DIR"
+  fi
+
+  if string.isnotemptyorblank "$message"
+  then
+    message=$(string.simplereplace "$message" " " "-")
   fi
 
   local curdate=$(system.getcurrentdate)
-  echo "$path/$(git.getbranchnamehyphened)-$curdate.patch"
+  local bugNumber=$(git.getbugnumberfrombranch)
+  local branchnamehyphenated=$(git.getbranchnamehyphened)
+  local partialPath="$dir"
+  if string.isnotemptyorblank $bugNumber
+  then
+    partialPath="$partialPath/$bugNumber"
+
+    # Since we're creating this file in a directory
+    # containing the bug number folder, we don't need
+    # that again in this path. Remove bug number from
+    local bugNumberStr=$bugNumber
+    if ! string.isemptyorblank $bugNumberStr
+    then
+      bugNumberStr=$(string.tolower $bugNumberStr)
+      bugNumberStr="$bugNumberStr-"
+      branchnamehyphenated=$(string.simplereplace "$branchnamehyphenated" "$bugNumberStr" "")
+    fi
+  fi
+
+  if string.isnotemptyorblank $message
+  then
+    branchnamehyphenated=$branchnamehyphenated-$message
+  fi
+
+  echo "$partialPath/$branchnamehyphenated-$curdate.patch"
 }
 
 # Create a patch of uncommitted changes with *LOCAL* HEAD
 function git.patchuncommittedchanges() {
-  local path="$(git.getpatchfilepath)"
+  local message="$1"
+  local path=$(git.getpatchfilepath "$1")
   system.createfileifdoesnotexist $path
   git diff HEAD > "$path"
   echo "Patch file created at $path"

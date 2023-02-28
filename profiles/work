@@ -17,12 +17,12 @@ export BTI_DISABLE_HEARTBEATS=1
 
 # So that thumbnails are generated in the dev environment (off by default)
 # Remove if not needed.
-export ENABLE_THUMBNAIL_SERVICE=1
+#export ENABLE_THUMBNAIL_SERVICE=1
 
 # If debugging BSServer, cut down on the number of BSServers available to attach to
 # ****** CAUTION: REMOVE WHEN WORKING WITH THUMBNAILS, otherwise it won't create Thumbnail
 # cpp server pool ******
-#export BTI_BLOCK_THUMBNAIL_CPP_SERVER_POOL=1
+export BTI_BLOCK_THUMBNAIL_CPP_SERVER_POOL=1
 
 # Remove unnecessary deprecation warning
 export BASH_SILENCE_DEPRECATION_WARNING=1
@@ -66,7 +66,7 @@ ensurenewtondirectory
 # Unofficial exports
 # ------------------
 # Now when the environment should be set, some exports used by this script:
-export CURRENT_RELEASE=rel-1.157
+export CURRENT_RELEASE=$(system.readvarfromdisk CURRENT_RELEASE)
 export LSB_MASTER=lsb/master
 export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
 export GIT_MERGE_AUTOEDIT=no
@@ -151,36 +151,30 @@ function newonshapeversion() {
 }
 
 function refreshcurrentreleasebranch() {
-  local currentrelease=""
+  CURRENT_RELEASE=""
 
   # The current release can only either be the current
   # newton version, or one before it.
-  if system.fileexists "$BASH_PROFILE_PATH/.currentrelease"
+  CURRENT_RELEASE=$(system.readvarfromdisk CURRENT_RELEASE)
+  # So if it's already equivalent to NEWTON_VERSION,
+  # there's no point pulling latest branch from github
+  # (as we wrote in the file in the first place)
+  if ! string.equals "$CURRENT_RELEASE" "rel-$NEWTON_VERSION"
   then
-    currentrelease=$(<$BASH_PROFILE_PATH/.currentrelease)
-    # So if it's already equivalent to NEWTON_VERSION,
-    # there's no point pulling latest branch from github
-    # (as we wrote in the file in the first place)
-    if ! string.equals "$currentrelease" "rel-$NEWTON_VERSION"
+    echo "Refreshing CURRENT_RELEASE (pulling from remote) ..."
+    CURRENT_RELEASE="rel-$NEWTON_VERSION"
+    if ! git.remotebranchexists $CURRENT_RELEASE
     then
-      echo "Refreshing CURRENT_RELEASE (pulling from remote) ..."
-      currentrelease="rel-$NEWTON_VERSION"
-      if git.remotebranchexists $currentrelease
-      then
-        CURRENT_RELEASE=$currentrelease
-      else
-        CURRENT_RELEASE=$(newonshapeversion $currentrelease -1)
-      fi
+      CURRENT_RELEASE=$(newonshapeversion $CURRENT_RELEASE -1)
     fi
   fi
 
   # Refresh the current lsb release branch as well.
   LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
-
   echo "CURRENT_RELEASE set to $CURRENT_RELEASE"
 
   # Write current release to a file
-  echo $CURRENT_RELEASE > "$BASH_PROFILE_PATH/.currentrelease"
+  system.writevartodisk CURRENT_RELEASE
 }
 
 function debugstaging() {
@@ -223,6 +217,7 @@ function fixDiskImagesJS() {
 function importextractedfile() {
   waitforenterkey "If the file doesn't include std, make sure you've run 'mongoDropToProduction' and 'gradle runBtUpgrade' before this (press enter if yes, and Ctrl+C if you haven't)"
   restoreDump "$1" --nodrop --remap=btadmin@onshape.com
+  # restoreDump "$1" --nodrop --remap=pisoni@onshape.com
 }
 
 function runupgrade() {
@@ -256,6 +251,14 @@ function makelikeproduction() {
   mongoDropAll
   mongoDropToProduction
   export SKIP_INTERNAL_MODULES=1
+}
+
+function cleandocker() {
+  dockerKillAll
+  #docker rmi $(docker images -qf "dangling=true"    #Cleans dangligng images
+  #docker-compose rm -f   #Clean old images
+  docker system prune -f
+  docker volume prune -f
 }
 
 function makelikeproductionwithbuild() {
@@ -292,37 +295,26 @@ function opentimerlogmod() {
 }
 
 function cleanbtserverweblog() {
-  system.cleanfilecontents "$btserverwebpath"
+  system.cleanfilecontents "$btserverwebpath" "--silent"
 }
 
 function cleanbtservermodlog() {
- system.cleanfilecontents "$btservermodpath"
+ system.cleanfilecontents "$btservermodpath" "--silent"
 }
 
 function cleanlogs() {
   # These should not be needed and aren't even used in normal cases,
   # but sometimes our logs go into the logsDir_IS_UNDEFINED directory
   # for some reasons.
-  if system.fileexists "$undefinedtimerlogwebpath"
-  then
-    system.cleanfilecontents "$undefinedtimerlogwebpath"
-  fi
-
-  if system.fileexists "$undefinedbtserverwebpath"
-  then
-    system.cleanfilecontents "$undefinedbtserverwebpath"
-  fi
-
-  if system.fileexists "$undefinedbtservermodpath"
-  then
-    system.cleanfilecontents "$undefinedbtservermodpath"
-  fi
+  system.cleanfilecontents "$undefinedtimerlogwebpath" "--silent"
+  system.cleanfilecontents "$undefinedbtserverwebpath"
+  system.cleanfilecontents "$undefinedbtservermodpath"
 
   cleanbtserverweblog
   cleanbtservermodlog
-  system.cleanfilecontents "$timerlogwebpath"
-  system.cleanfilecontents "$timerlogmodpath"
-  system.cleanfilecontents "$upgradelogwebpath"
+  system.cleanfilecontents "$timerlogwebpath" "--silent"
+  system.cleanfilecontents "$timerlogmodpath" "--silent"
+  system.cleanfilecontents "$upgradelogwebpath" "--silent"
 }
 
 function setupforproductionretrieval() {
@@ -367,9 +359,7 @@ function myprecommit() {
   # Remove this first line once yarn precommit starts catching
   # typescript errors again
   #npx tsc --noEmit --project $REPO_NEWTON/project/web/tsconfig.json
-  checkTidy
-  checkpmd
-  grunt checkJsCode
+  checkTidy && checkpmd && (grunt checkJsCode)
 }
 
 function addstaticroutetojumpbox() {
@@ -379,16 +369,21 @@ function addstaticroutetojumpbox() {
 function getnewbranchname() {
   local inputbranchname=$(string.tolower $1)
   local targetbranch=$(string.tolower $2)
-  if ! (string.beginswith $inputbranchname "$USER/")
-  then
-    inputbranchname=$USER/$inputbranchname
-  fi
 
   # Remove all lsb-release, lsb-master, -master, rel- etc. suffixes from the branch  name
   inputbranchname=$(string.simplereplace $inputbranchname "-lsb-*" "")
   inputbranchname=$(string.simplereplace $inputbranchname "-master" "")
   inputbranchname=$(string.simplereplace $inputbranchname "-release" "")
   inputbranchname=$(string.simplereplace $inputbranchname "-rel-[1-9]*" "")
+  # Since we're creating a new branch, remove the 'merged'/'archived' words if there
+  inputbranchname=$(string.simplereplace $inputbranchname "merged/" "")
+  inputbranchname=$(string.simplereplace $inputbranchname "archived/" "")
+
+  if ! (string.beginswith $inputbranchname "$USER/")
+  then
+    inputbranchname=$USER/$inputbranchname
+  fi
+
   if string.isnotemptyorblank $targetbranch
   then
     targetbranch=$(string.simplereplace $targetbranch "/" "-")
@@ -444,6 +439,7 @@ function rebaselatest() {
 
 # Unless otherwise specified, default branch for rbt is master
 function pulllatest() {
+  local branchname=$(git.getcurrentbranch)
   if git.branchislsbmasterbased
   then
     echo "Detected lsb/master based branch. Rebasing w.r.t. to that"
@@ -452,11 +448,11 @@ function pulllatest() {
   then
     echo "Detected lsb/rel-* based branch. Rebasing w.r.t. to that"
     pulllatestbranch "$LSB_CURRENT_RELEASE" $1
-  elif git.branchismasterbased
+  elif git.branchismasterbased || string.equals "$branchname" "master"
   then
-    echo "Detected lsb/master based branch. Rebasing w.r.t. to that"
+    echo "Detected master based branch. Rebasing w.r.t. to that"
     pulllatestbranch "master" $1
-  elif git.branchisreleasebased
+  elif git.branchisreleasebased || string.equals "$branchname" "$CURRENT_RELEASE"
   then
   echo "Detected rel-* based branch. Rebasing w.r.t. to that"
     pulllatestbranch "$CURRENT_RELEASE" $1
@@ -496,13 +492,32 @@ function pulllatestbranch() {
 
 # rbt post and updates
 function rbtpostfrombranch() {
-  if string.isemptyorblank $1
+  local sourcebranch="$1"
+  if string.isemptyorblank $sourcebranch
   then
-    echo "Please give the branch name"
-  else
-    echo "Calling rbt post -o $1...HEAD"
-    rbt post -o $1...HEAD
+    echo "Please give the branch name w.r.t. which you want to create diff"
+    return 1
   fi
+
+  # Populate information for the 'Bugs' field on rbcommons page
+  local bugNumberStr=""
+  local bugNumber=$(git.getbugnumberfrombranch)
+  if ! string.isemptyorblank $bugNumber
+  then
+    bugNumberStr="--bugs-closed $bugNumber"
+  fi
+
+  # Populate information for the 'Branch' field on rbcommons
+  local branchStr="--branch master"
+  if string.contains $sourcebranch "rel-"
+  then
+    branchStr="--branch $CURRENT_RELEASE"
+  fi
+
+  # To-Do : Handle --target-people <username,...> (reveiwers)
+
+  echo "Calling rbt post -o $branchStr $bugNumberStr $sourcebranch...HEAD"
+  rbt post -o $branchStr $bugNumberStr $sourcebranch...HEAD
 }
 
 # Return the branch name/tag this branch is based off
@@ -657,13 +672,23 @@ function setupjumpboxcertificates() {
   scp $USERNAME@jumpbox-primary.dev.onshape.com:tls-auth.key /tmp
 }
 
+function getbelcadpid() {
+  local jettypid=$(ps -ef | grep jetty | grep -v grep | grep $STAGE | awk '{print $2}')
+  echo $jettypid
+}
+
 # Prints an output (True/False) only when called
 # directly from the Terminal (else returns true/false)
 function isonshapeserverrunning() {
-  local jettypid=$(ps -ef | grep jetty | grep -v grep | awk '{print $2}')
+  local jettypid=$(getbelcadpid)
   if calledfromterminal
   then
-    general.showtrueorfalse $(string.isnotemptyorblank $jettypid)
+    if string.isemptyorblank $jettypid
+    then
+      echo "No."
+    else
+      echo "Yes, PID : $jettypid"
+    fi
   fi
 
   string.isnotemptyorblank $jettypid
@@ -698,12 +723,23 @@ function getquickservepid() {
 
 function isquickserverunning() {
   local pid=$(getquickservepid)
+
   if calledfromterminal
   then
-    general.showtrueorfalse $(string.isnotemptyorblank $pid)
+    if string.isemptyorblank $pid
+    then
+      echo "No."
+    else
+      echo "Yes, PID : $pid"
+    fi
   fi
 
   string.isnotemptyorblank $pid
+}
+
+function areserversrunning() {
+  general.showtrueorfalse $(isonshapeserverrunning)
+  general.showtrueorfalse $(isquickserverunning)
 }
 
 function fstopquickserve() {
@@ -718,12 +754,12 @@ function fstopquickserve() {
 
 function fstopbelcad() {
   # Consider using this instead, which is multi-env aware: checkServices -s websvc
-  local jettypid=$(ps -ef | grep jetty | grep -v grep | awk '{print $2}')
+  local jettypid=$(getbelcadpid)
   if ! string.isemptyorblank $jettypid
   then
     killprocessid $jettypid "jetty" $1 # this optional argument can be "nosleep"
   else
-    echo "Didn't find jetty process to kill"
+    echo "Didn't find onshape process to kill"
   fi
 }
 
@@ -770,7 +806,7 @@ function buildgradleparallel() {
     # If the build was successful, and a handler is defined, call it now.
     if system.functionexists onsuccessfulbuild
     then
-      onsuccessfulbuild & # Fire the onsuccessfulbuild function async.
+      onsuccessfulbuild & >/dev/null # Fire the onsuccessfulbuild function async.
     fi
   else
     playfinishsound "Build failed"
@@ -785,7 +821,22 @@ function markbranchmerged() {
   then
     branchname=$(git.getcurrentbranch)
   fi
-  git.renamebranch $branchname merged/$branchname
+  local curdatetime=$(system.getcurrentdate)
+  git.renamebranch $branchname merged/$branchname/$curdatetime
+}
+
+function markbranchreopened() {
+  local oldbranchname=$1
+  if string.isemptyorblank $branchname
+  then
+    oldbranchname=$(git.getcurrentbranch)
+  fi
+
+  local newbranchname=$(string.simplereplace $oldbranchname "merged/" "")
+  local bugNumber=$(git.getbugnumberfrombranch $oldbranchname)
+  bugNumber=$(string.tolower "$bugNumber")
+  newbranchname=$(string.simplereplace $newbranchname "$bugNumber/" "$bugNumber/reopened/")
+  git.renamebranch $oldbranchname $newbranchname
 }
 
 function markbrancharchived() {
@@ -808,6 +859,13 @@ function createlsbreleasebranchfromlsbmastertopchange() {
   local currentbranch=$(git.getcurrentbranch)
   checkoutfromlsbrelease $(getnewbranchname $currentbranch $LSB_CURRENT_RELEASE)
   git cherry-pick $topSHAId
+}
+
+function createrevertmasterbranchfrombranchtopchange() {
+  local topSHAId=$(git.getlatestcommitid)
+  local currentbranch=$(git.getcurrentbranch)
+  checkoutfrommaster "$currentbranch-revert"
+  git revert -m 1 $topSHAId
 }
 
 function createlsbmasterbranchfromlsbreleasetopchange() {
@@ -845,7 +903,7 @@ function mergetomaster() {
 
   # Check if a specific rbcommons review request id is given
   # Search for an approved request for the current git branch if not.
-  if string.isemptyorblank $1
+  if string.isemptyorblank "$1" && ! isreverting # If reverting we don't need to pull review request id
   then
     reviewrequestid=$(rbt.getcurrentid $REVIEW_STATUS_APPROVED)
     if string.isemptyorblank $reviewrequestid
@@ -872,20 +930,90 @@ function mergetomaster() {
       return
     fi
 
-    echo "calling mergepush $currentbranch -r $1"
-    mergepush $currentbranch -r $1
-    git checkout $currentbranch
-    # rename the current branch as 'merged' to keep for a few days
-    markbranchmerged $currentbranch
+    if isreverting
+    then
+      echo "Calling  mergepush $currentbranch --no-review -m \"$1\""
+      mergepush "$currentbranch" --no-review -m "$1" # In this case the first argument is the revert comment.
+      if system.lastcommandwassuccessful
+      then
+        setnotreverting
+      fi
+    else
+      local cmd="mergepush $currentbranch -r $1"
+      echo "Calling $cmd"
+      mergepush $currentbranch -r $1
+      if system.lastcommandwassuccessful
+      then
+        # Not really required, but mark the branch as merged.
+        git checkout $currentbranch
+        # rename the current branch as 'merged' to keep for a few days
+        markbranchmerged $currentbranch
+      else
+        echo "mergepush was not succecsful, please call it again on the master."
+      fi
+    fi
   fi
 }
 
-# Not used right now. The idea is
-# that it should pick this variable and
-# call --no-review --no-resolve to mergepush
-# automatically
+# Revert a branch you merged to master. You should be on the branch
+# to revert for calling this.
+# Please make sure all the changes you did are in a single top
+# commit in this branch (Squash changes first if that's not the case)
+function revertbranchfrommaster() {
+  local revertcomment="$1"
+  if string.isemptyorblank "$revertcomment"
+  then
+    echo "Please enter a revert comment in quotes as input to this command (try again)."
+    return
+  fi
+
+  ensurenewtondirectory
+
+  if git.hasUncommittedChanges
+  then
+    echo "There are uncommitted changes. Please fix before merging to master"
+    return
+  fi
+
+  if git.isoneoftheofficialbranches
+  then
+    echo "Wrong branch. You should call it on your feature branch and not on one of the official branches"
+    return
+  fi
+
+  if ! git.branchislsbmasterbased && ! git.branchismasterbased
+  then
+    echo "Branch is not lsb/master or master based. Please check and try again"
+    return
+  fi
+
+  waitforenterkey "Press enter to proceed only if there are no FeatureScript changes. If there are, press Ctrl+C and do it manually."
+
+  git log -n 3
+  waitforenterkey "Press enter if all of your changes are in one top commit, and ready to create the revert branch from it (Otherwise press Ctrl+C and try again after squashing them to one change, or do manually)."
+  createrevertmasterbranchfrombranchtopchange
+
+  if ! system.lastcommandwassuccessful
+  then
+    echo "Revert has merge problems. Resolve those, and then merge the branch to master using mergetomaster"
+    return
+  fi
+
+  waitforenterkey "Press enter if the revert commit was successful, else press Ctrl+C and mergetomaster later."
+  setreverting
+  mergetomaster "$revertcomment"
+}
+
 function setreverting() {
   export REVERTING_CHANGES=1
+}
+
+function isreverting() {
+  string.isnotemptyorblank $REVERTING_CHANGES
+}
+
+function setnotreverting() {
+  unset REVERTING_CHANGES
 }
 
 function setnoresolve() {
@@ -922,7 +1050,7 @@ function mergetoreleasethenmaster() {
       git log -n 3
       waitforenterkey "lsb/master based branch found. Press enter if all of your changes are in one top commit, and ready to create lsb/release branch off it (Otherwise press Ctrl+C and try again later)."
       createlsbreleasebranchfromlsbmastertopchange
-      waitforenterkey "Press enter if the lsb/release branch creation was successful, otherwise press Ctrl+C and try again later."
+      waitforenterkey "Press enter if the lsb/release branch creation and cherry picking from source branch commit was successful, otherwise either resolve merge issues in another tab before pressing enter here, or press Ctrl+C to terminate operation and do it all manually."
       currentbranch=$(git.getcurrentbranch)
       echo "Created branch $currentbranch from the lsb/master based branch with the same commit"
     else
@@ -950,7 +1078,7 @@ function mergetoreleasethenmaster() {
     if ! system.lastcommandwassuccessful
     then
       echo "Rebase didn't succeed. Please manually rebase/pull latest master branch and try again."
-      return
+      return 1
     fi
 
     waitforenterkey "Press enter if and when rebase is successful to continue to merge to release, otherwise press Ctrl+C and do it manually"
@@ -959,13 +1087,20 @@ function mergetoreleasethenmaster() {
 
     # Merge changes back to master
     waitforenterkey "Merging changes to master now, press enter when ready"
-    checkoutfrommaster $currentbranch
+    checkoutfrommaster $currentbranch # Will create new branch from master taking name from $currentbranch
 
-    #Rename the current branch before reassigning
+    #Rename the last branch before reassigning the variable to the current one.
     markbranchmerged $currentbranch
 
     currentbranch=$(git.getcurrentbranch)
     git merge $CURRENT_RELEASE
+
+    if ! system.lastcommandwassuccessful
+    then
+      waitforenterkey "Merging release into master was NOT successful. Please resolve merge issues in another tab and then press enter here to continue, or press Ctrl+C and carry remaining steps manually."
+      waitforenterkey "Just double checking. You are sure the merge issues are resolved in another tab? Press enter if yes, or Ctrl+C to quit from here and do rest of the steps manually."
+      return 1
+    fi
 
     # Validate that only your commits are included. If you see more than your changes here, wait for other authors to push  theirs, do pullmerge master after that or ask them if it is OK to push the changes to master.
     git log --format="%an: %s" master..$currentbranch
@@ -1088,20 +1223,29 @@ function buildjsonly() {
     export SKIP_DRAWING=1
     export SKIP_CPP=1
     export SKIP_JAVA=1
+    # In some cases you might have made a change to the serializable
+    # classes and would need to generate new serializable code that's
+    # applicable to JS code, but that's still Java code and it's understood
+    #  that for that you'd either buildjava, OR generate serializables separately
+    # using the `genser` command
+    export SKIP_SERIALIZABLES=1
     buildgradleparallel
     unset SKIP_CPP
     unset SKIP_JAVA
     unset SKIP_DRAWING
+    unset SKIP_SERIALIZABLES
 }
 
 function buildcpponly() {
     export SKIP_DRAWING=1
     export SKIP_JSLIB=1
     export SKIP_JAVA=1
+    export SKIP_SERIALIZABLES=1
     buildgradleparallel
     unset SKIP_JSLIB
     unset SKIP_JAVA
     unset SKIP_DRAWING
+    unset SKIP_SERIALIZABLES
 }
 
 function buildjavaandjsonly() {
@@ -1114,10 +1258,11 @@ function buildjavaandjsonly() {
 
 # Create a patch of all the committed/uncommitted changes
 # and compare with the remote origin master / lsb/master
+# CAUTION : Doesn't handle new files as of now. ToDo.
 function patchallchanges() {
   echo "Refreshing tags..."
   git fetch origin --tags --force --prune
-  local path="$(git.getpatchfilepath)"
+  local path=$(git.getpatchfilepath "$1")
   system.createfileifdoesnotexist $path
   git diff "$(getbasebranchname origin)" > "$path"
   echo "Patch file created at $path"
@@ -1200,6 +1345,7 @@ alias checkjs='grunt eslint:javascript'
 alias checkts='grunt eslint:typescript'
 # alias clion="open -a $HOME/Applications/JetBrains\ Toolbox/CLion.app"
 alias cppbuild='buildcpponly'
+alias dockerclean='cleandocker'
 alias droptoproduction='mongoDropToProduction'
 alias eclipse='open -a /Applications/Eclipse.app'
 alias eslintfix='grunt eslint:fix'
@@ -1241,6 +1387,7 @@ alias quickserve='grunt quickServe'
 # alias rebasemaster='pullmerge master --rebase'
 alias serial='grunt generateSerializables'
 alias serialize='grunt generateSerializables'
+alias setisreverting='setreverting'
 alias sshjumpbox="ssh -X $USER@jumpbox-primary.dev.onshape.com"
 alias startenv='startServices;startservers';
 alias stage='cd $STAGE'

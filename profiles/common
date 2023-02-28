@@ -15,13 +15,16 @@ function findbyname() {
 		return
 	fi
 
-	if [ -z "$2" ]
+	local filename="$1"
+	local directory="$2"
+
+	if [ -z "$directory" ]
 	then
-	 	#Assume only filename specified, search in current directory
-		find . -name $1 2>/dev/null
-	else
-		find $2 -name $1 2>/dev/null
+	 	# Assume only filename specified, search in current directory
+		directory="."
 	fi
+
+	find "$directory" -name "$filename" 2>/dev/null
 }
 
 function gitsetglobalignorefile() {

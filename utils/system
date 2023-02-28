@@ -6,7 +6,9 @@ export system_defined=1
 
 importutility string
 
-function system.findappbundleid() {
+export DISK_VARIABLES_PATH="$BASH_PROFILE_PATH/variables"
+
+function system.appbundleid() {
 	osascript -e "id of app \"$1\""
 	#echo 'id of app' "$1" 'is something'
 	#echo "id of app $@"
@@ -113,12 +115,20 @@ function system.direxists() {
 }
 
 # Clean all the file contents (make its size zero bytes)
-# without deleting it.
+# without deleting it. Pass a second argument "--silent" or "-s"
+# if it should be silent (no error if the file doesn't exist).
 function system.cleanfilecontents() {
+	local filepath=$1
+	local silent=$2
 	if ! system.fileexists "$1"
 	then
-		echo "File doesn't exist"
-		return
+		if string.contains $silent "silent" || string.equals $silent "-s"
+		then
+			return 0
+		else
+			echo "File doesn't exist"
+			return 1
+		fi
 	fi
 
 	cat /dev/null > $1
@@ -143,4 +153,66 @@ function system.createfileifdoesnotexist() {
 	# mkdir would have no effect if the directory already exists so safe to call.
 	mkdir -p $(dirname $1)
 	touch "$1"
+}
+
+# send a variable name to write its value to a file
+# on disk so that it can be retrieved later. Pass the *name* of
+# the variable only, not its value with "$".
+# e.g.
+# myvar="Piyush Soni"
+# system.writevartodisk myvar
+function system.writevartodisk() {
+	local varname=$1
+	if string.isemptyorblank $varname
+	then
+		return 1 #Error
+	fi
+
+	local value="${!varname}"
+	local filepath="$DISK_VARIABLES_PATH/$varname"
+	system.createfileifdoesnotexist "$filepath"
+	echo "$value" > "$filepath"
+}
+
+# send a variable name to read its value from the file
+# it was stored on disk. Pass the *name* of
+# the variable only, not its value with "$".
+# e.g.:
+# myvar=$(system.readvarfromdisk myvar)
+# The value will be read into the variable directly
+function system.readvarfromdisk() {
+	local varname=$1
+	if string.isemptyorblank $varname
+	then
+		return 1 #Error
+	fi
+
+	local filepath="$DISK_VARIABLES_PATH/$varname"
+	if system.fileexists $filepath
+	then
+		local value="$(<"$filepath")"
+		echo "$value"
+	else
+		echo ""
+		return 1
+	fi
+}
+
+# Syntax:
+# system.alert "title" "message"
+function system.alert() {
+	osascript -e "display alert \"$1\" message \"$2\""
+}
+
+# Incomplete.
+function system.replacefilenames() {
+	local searchRegex="$1"
+	local replaceRegex="$2"
+	local directory="$3"
+
+	if [ -z "$directory" ]
+	then
+	 	# Assume only filename specified, search in current directory
+		directory="."
+	fi
 }

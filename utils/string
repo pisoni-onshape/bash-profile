@@ -67,6 +67,18 @@ function string.toupper() {
 	echo $1 | tr '[:lower:]' '[:upper:]'
 }
 
+# ToDo: Implement for multiple strings.
 function string.concatenate() {
-	echo $(string.simplereplace "$*" " " "")
+	echo "$1$2"
+}
+
+# Prepend a string if it's not already prepended
+function string.prependifnotalready() {
+	local sourcestring=$1
+	local stringtoprepend=$2
+	if ! string.beginswith $sourcestring $stringtoprepend
+	then
+		sourcestring="$stringtoprepend""$sourcestring"
+	fi
+	echo $sourcestring
 }
