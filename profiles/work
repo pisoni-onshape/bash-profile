@@ -514,10 +514,23 @@ function rbtpostfrombranch() {
     branchStr="--branch $CURRENT_RELEASE"
   fi
 
-  # To-Do : Handle --target-people <username,...> (reveiwers)
+  # To-Do : Handle --target-people <username,...> (reviewers)
 
-  echo "Calling rbt post -o $branchStr $bugNumberStr $sourcebranch...HEAD"
-  rbt post -o $branchStr $bugNumberStr $sourcebranch...HEAD
+  local reviewers=$(system.readvarfromdisk RBT_REVIEWERS)
+  if ! string.isemptyorblank $reviewers
+  then
+    reviewers="--target-people ""$reviewers"
+  fi
+
+  echo "Calling rbt post -o $branchStr $bugNumberStr $reviewers $sourcebranch...HEAD"
+  rbt post -o $branchStr $bugNumberStr $reviewers $sourcebranch...HEAD
+}
+
+# If a single or comma separated reviewer id is set (what you put in rbcommons reviewers list)
+# it will be auto populated in the created review requests.
+function setrbtreviewer() {
+  local RBT_REVIEWERS="$1"
+  system.writevartodisk RBT_REVIEWERS
 }
 
 # Return the branch name/tag this branch is based off
