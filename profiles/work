@@ -45,7 +45,7 @@ export DEV_TOOLS=$HOME/repos/onshape-dev-tools
 #set -o nounset # Make the script fail if trying to access an unset variable.
 
 
-# Ensure we're in the newton
+# Ensure we're in the newton directory
 # or one of its subdirectories.
 function ensurenewtondirectory() {
   if string.isemptyorblank $REPO_NEWTON
@@ -808,8 +808,7 @@ function buildgradleparallel() {
   # Same goes with docker not running
   if ! system.isprocessrunning "Docker"
   then
-    echo "Docker is not running, please start it and try again."
-    return
+    startServices
   fi
 
   gradle --parallel
@@ -1287,7 +1286,7 @@ function openbug() {
 }
 
 function ptortest() {
- ptor $1 --verbose --flags=fastFail --target=http://localhost.onshape.io:8000/
+ ptor $1 --verbose --flags=fastFail --target=https://localhost.onshape.io:8000/
 }
 
 function pushtos3() {
