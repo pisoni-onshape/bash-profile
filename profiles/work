@@ -820,8 +820,10 @@ function buildgradleparallel() {
     then
       onsuccessfulbuild & >/dev/null # Fire the onsuccessfulbuild function async.
     fi
+    return 0
   else
     playfinishsound "Build failed"
+    return 1
   fi
 }
 
@@ -1111,7 +1113,6 @@ function mergetoreleasethenmaster() {
     then
       waitforenterkey "Merging release into master was NOT successful. Please resolve merge issues in another tab and then press enter here to continue, or press Ctrl+C and carry remaining steps manually."
       waitforenterkey "Just double checking. You are sure the merge issues are resolved in another tab? Press enter if yes, or Ctrl+C to quit from here and do rest of the steps manually."
-      return 1
     fi
 
     # Validate that only your commits are included. If you see more than your changes here, wait for other authors to push  theirs, do pullmerge master after that or ask them if it is OK to push the changes to master.
@@ -1226,9 +1227,12 @@ function buildjavaonly() {
     export SKIP_CPP=1
     export SKIP_JSLIB=1
     buildgradleparallel
+    local returnvalue=$?
     unset SKIP_CPP
     unset SKIP_JSLIB
     unset SKIP_DRAWING
+
+    return returnvalue
 }
 
 function buildjsonly() {
@@ -1242,10 +1246,12 @@ function buildjsonly() {
     # using the `genser` command
     export SKIP_SERIALIZABLES=1
     buildgradleparallel
+    local returnvalue=$?
     unset SKIP_CPP
     unset SKIP_JAVA
     unset SKIP_DRAWING
     unset SKIP_SERIALIZABLES
+    return returnvalue
 }
 
 function buildcpponly() {
@@ -1254,18 +1260,22 @@ function buildcpponly() {
     export SKIP_JAVA=1
     export SKIP_SERIALIZABLES=1
     buildgradleparallel
+    local returnvalue=$?
     unset SKIP_JSLIB
     unset SKIP_JAVA
     unset SKIP_DRAWING
     unset SKIP_SERIALIZABLES
+    return returnvalue
 }
 
 function buildjavaandjsonly() {
     export SKIP_DRAWING=1
     export SKIP_CPP=1
     buildgradleparallel
+    local returnvalue=$?
     unset SKIP_CPP
     unset SKIP_DRAWING
+    return returnvalue
 }
 
 # Create a patch of all the committed/uncommitted changes
