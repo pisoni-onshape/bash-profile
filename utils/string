@@ -67,6 +67,11 @@ function string.toupper() {
 	echo $1 | tr '[:lower:]' '[:upper:]'
 }
 
+function string.isnumber() {
+	local regexNumber='^[0-9]+$'
+	[[ $1 =~ $regexNumber ]]
+}
+
 # ToDo: Implement for multiple strings.
 function string.concatenate() {
 	echo "$1$2"

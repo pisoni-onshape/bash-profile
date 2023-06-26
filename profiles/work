@@ -44,6 +44,12 @@ export DEV_TOOLS=$HOME/repos/onshape-dev-tools
 # Others
 #set -o nounset # Make the script fail if trying to access an unset variable.
 
+# Check if the current directory is either
+# 'newton' or newton<n> where n is a number
+function dirismultienvnewton() {
+	local regexNewtonLike='^newton$|^newton[1-9][0-9]*$'
+	[[ $1 =~ $regexNewtonLike ]]
+}
 
 # Ensure we're in the newton directory
 # or one of its subdirectories.
@@ -51,7 +57,17 @@ function ensurenewtondirectory() {
   if string.isemptyorblank $REPO_NEWTON
   then
     # Should be the case when we've just started the Terminal.
-    cd $HOME/repos/newton
+    local currentdirname=$(system.dirnamefrompath $(pwd))
+    if ! dirismultienvnewton $currentdirname
+    then
+      # $REPO_NEWTON is not set, and we are
+      # also not in a newton/newton<n> like directory
+      # assume newton '1'.
+      cd $HOME/repos/newton
+    fi
+
+    # now when a newton like directory is ensured,
+    # call the buildenv.bash script
     source buildenv.bash
   elif ! string.contains $(pwd) $REPO_NEWTON
   then
@@ -205,7 +221,7 @@ function debugproduction() {
 }
 
 function removeDiskImages() {
-  rm -rf ~/build_tools/diskimage
+  rm -rf $HOME/build_tools/diskimage
 }
 
 function fixDiskImagesJS() {
@@ -259,6 +275,10 @@ function cleandocker() {
   #docker-compose rm -f   #Clean old images
   docker system prune -f
   docker volume prune -f
+}
+
+function cleanjars() {
+  find "$HOME/stage/build/" -name *.jar -delete
 }
 
 function makelikeproductionwithbuild() {
@@ -1232,7 +1252,7 @@ function buildjavaonly() {
     unset SKIP_JSLIB
     unset SKIP_DRAWING
 
-    return returnvalue
+    return $returnvalue
 }
 
 function buildjsonly() {
@@ -1251,7 +1271,7 @@ function buildjsonly() {
     unset SKIP_JAVA
     unset SKIP_DRAWING
     unset SKIP_SERIALIZABLES
-    return returnvalue
+    return $returnvalue
 }
 
 function buildcpponly() {
@@ -1265,7 +1285,7 @@ function buildcpponly() {
     unset SKIP_JAVA
     unset SKIP_DRAWING
     unset SKIP_SERIALIZABLES
-    return returnvalue
+    return $returnvalue
 }
 
 function buildjavaandjsonly() {
@@ -1275,7 +1295,7 @@ function buildjavaandjsonly() {
     local returnvalue=$?
     unset SKIP_CPP
     unset SKIP_DRAWING
-    return returnvalue
+    return $returnvalue
 }
 
 # Create a patch of all the committed/uncommitted changes

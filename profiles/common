@@ -89,7 +89,6 @@ alias intellij='idea'
 
 # Others
 alias python='/usr/bin/python3'
-alias finddir='findfolder'
 alias findfile='findbyname'
 alias cd..='cd ..'
 alias cd...='cd ../..'

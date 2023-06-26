@@ -134,12 +134,42 @@ function system.cleanfilecontents() {
 	cat /dev/null > $1
 }
 
+# Returns only the filename (with extension) contained
+# in the current path if it's a valid file path.
 function system.filenamefrompath() {
-	echo $(basename $1)
+	if system.fileexists "$1"
+	then
+		echo "$(basename $1)"
+	else
+		echo ""
+	fi
 }
 
+# Returns the full directory path
+# if it's a path of the file, or
+# itself if it's already a directory
 function system.dirfrompath() {
-	echo $(dirname $1)
+	if system.direxists "$1"
+	then
+		echo "$1"
+	elif system.fileexists "$1"
+	then
+		echo "$(dirname $1)"
+	else
+		echo ""
+	fi
+}
+
+# Returns only the name of the leaf directory
+# in the given path
+function system.dirnamefrompath() {
+	local dirpath=$(system.dirfrompath "$1")
+	if ! string.isemptyorblank "$dirpath"
+	then
+		echo "$(basename $dirpath)"
+	else
+		echo ""
+	fi
 }
 
 # Create a file with any level deep folder structure
