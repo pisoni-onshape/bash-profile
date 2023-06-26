@@ -69,6 +69,8 @@ function ensurenewtondirectory() {
     # now when a newton like directory is ensured,
     # call the buildenv.bash script
     source buildenv.bash
+    exportAfterInitVariables
+    platformspecificsettings
   elif ! string.contains $(pwd) $REPO_NEWTON
   then
     # $REPO_NEWTON is initialized but we're not in it or one of its subdirectories
@@ -77,28 +79,29 @@ function ensurenewtondirectory() {
 }
 
 # This should also source buildenv.bash the first time it's opened
-ensurenewtondirectory
+#ensurenewtondirectory
 
 # Unofficial exports
 # ------------------
 # Now when the environment should be set, some exports used by this script:
-export CURRENT_RELEASE=$(system.readvarfromdisk CURRENT_RELEASE)
-export LSB_MASTER=lsb/master
-export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
-export GIT_MERGE_AUTOEDIT=no
-export RETRIEVAL_REPORT_WRITE_TO_DISK=1
-export PATH="$HOME/Library/Python/3.8/bin:${PATH}" # Mostly so that 'rbt' works.
-export btserverwebpath="$STAGE/WebSvc/logs/btserver.log"
-export btservermodpath="$STAGE/ModelingSvc/logs/btserver.log"
-export timerlogwebpath="$STAGE/WebSvc/logs/timer.log"
-export timerlogmodpath="$STAGE/ModelingSvc/logs/timer.log"
-export upgradelogwebpath="$STAGE/WebSvc/logs/upgrade.log"
-# Sometimes, for some reason the logs go in the logsDir_IS_UNDEFINED directory
-# No one seems to know the exact reason at the time of writing this.
-export undefinedbtserverwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/btserver.log"
-export undefinedbtservermodpath="$STAGE/ModelingSvc/logsDir_IS_UNDEFINED/btserver.log"
-export undefinedtimerlogwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/timer.log"
-
+function exportAfterInitVariables() {
+  export CURRENT_RELEASE=$(system.readvarfromdisk CURRENT_RELEASE)
+  export LSB_MASTER=lsb/master
+  export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
+  export GIT_MERGE_AUTOEDIT=no
+  export RETRIEVAL_REPORT_WRITE_TO_DISK=1
+  export PATH="$HOME/Library/Python/3.8/bin:${PATH}" # Mostly so that 'rbt' works.
+  export btserverwebpath="$STAGE/WebSvc/logs/btserver.log"
+  export btservermodpath="$STAGE/ModelingSvc/logs/btserver.log"
+  export timerlogwebpath="$STAGE/WebSvc/logs/timer.log"
+  export timerlogmodpath="$STAGE/ModelingSvc/logs/timer.log"
+  export upgradelogwebpath="$STAGE/WebSvc/logs/upgrade.log"
+  # Sometimes, for some reason the logs go in the logsDir_IS_UNDEFINED directory
+  # No one seems to know the exact reason at the time of writing this.
+  export undefinedbtserverwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/btserver.log"
+  export undefinedbtservermodpath="$STAGE/ModelingSvc/logsDir_IS_UNDEFINED/btserver.log"
+  export undefinedtimerlogwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/timer.log"
+}
 
 # Import Utility modules
 importutility string
@@ -121,9 +124,6 @@ function platformspecificsettings() {
     export CLIONBUILD=1
   fi
 }
-
-# Make a call to it here itself
-platformspecificsettings
 
 function setrelease() {
   if string.equals $1 "0"
@@ -705,11 +705,13 @@ function setupjumpboxcertificates() {
   scp $USERNAME@jumpbox-primary.dev.onshape.com:tls-auth.key /tmp
 }
 
+# Multi-env aware
 function getbelcadpid() {
-  local jettypid=$(ps -ef | grep jetty | grep -v grep | grep $STAGE | awk '{print $2}')
+  local jettypid=$(ps -ef | grep jetty | grep -v grep | grep "$STAGE/" | awk '{print $2}')
   echo $jettypid
 }
 
+# Multi-env aware
 # Prints an output (True/False) only when called
 # directly from the Terminal (else returns true/false)
 function isonshapeserverrunning() {
@@ -749,6 +751,7 @@ function calledfromterminal() {
   (string.isemptyorblank "${FUNCNAME[2]}")
 }
 
+# NOT Multi-env aware
 function getquickservepid() {
   local pid=$(lsof -iTCP -n -P | grep node.*127\.0\.0\.1:8000.*LISTEN | awk '{print $2}')
   echo $pid
