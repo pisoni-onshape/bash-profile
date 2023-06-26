@@ -78,9 +78,6 @@ function ensurenewtondirectory() {
   fi
 }
 
-# This should also source buildenv.bash the first time it's opened
-#ensurenewtondirectory
-
 # Unofficial exports
 # ------------------
 # Now when the environment should be set, some exports used by this script:
