@@ -140,8 +140,8 @@ function git.getbugnumberfrombranch() {
   # Just in case the branch name contains an uppercase BEL
   branchname=$(string.simplereplace $branchname "BEL" "bel")
   # sed syntax : "s,search_string,replace_string,regex_flags" (most other characters allowed as separator instead of ,)
-  local bugnumber=$(echo $branchname | sed -En "s,.*/bel-([[:digit:]]+)/.*,BEL-\1,p")
-  echo $bugnumber
+  local bugnumber=$(echo $branchname | sed -En "s,.*/(and|bel|ios)-([[:digit:]]+)/.*,\1-\2,p")
+  echo $(string.toupper $bugnumber)
 }
 
 function git.commit() {

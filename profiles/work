@@ -264,6 +264,8 @@ function makelikeproduction() {
   mongoDropAll
   mongoDropToProduction
   export SKIP_INTERNAL_MODULES=1
+  waitforenterkey "Press enter if gradle runBtUpgrade is needed, else press Ctrl.+C to end"
+  gradle runBtUpgrade
 }
 
 function cleandocker() {
@@ -771,7 +773,9 @@ function isquickserverunning() {
 }
 
 function areserversrunning() {
+  echo -n "Belcad: "
   general.showtrueorfalse $(isonshapeserverrunning)
+  echo -n "Quick serve: "
   general.showtrueorfalse $(isquickserverunning)
 }
 
@@ -1117,7 +1121,14 @@ function mergetoreleasethenmaster() {
 
     waitforenterkey "Press enter if and when rebase is successful to continue to merge to release, otherwise press Ctrl+C and do it manually"
     git checkout $CURRENT_RELEASE
+    echo "Calling mergepush $currentbranch -r $reviewrequestid"
     mergepush $currentbranch -r $reviewrequestid
+
+    if ! system.lastcommandwassuccessful
+    then
+      echo "mergepush didn't succeed. Please manually resolve the problem and try again."
+      return 1
+    fi
 
     # Merge changes back to master
     waitforenterkey "Merging changes to master now, press enter when ready"
