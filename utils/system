@@ -36,11 +36,12 @@ function system.findfolder() {
 	mdfind kind:folder "$1"
 }
 
-function system.whoisusingport8080() {
-	echo "lsof -i tcp:8080:"
-	lsof -i tcp:8080
-	echo "netstat -an | grep 8080:"
-	netstat -an | grep 8080
+# Pass the port number as an argument
+function system.whoisusingport() {
+	echo "lsof -i tcp:$1:"
+	lsof -i tcp:$1
+	echo "netstat -an | grep $1:"
+	netstat -an | grep $1
 }
 
 function system.isNodeRunningOnPort() {

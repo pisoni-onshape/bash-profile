@@ -736,7 +736,7 @@ function killprocessid() {
   if ! string.equals $3 "nosleep"
   then
     # Allow the process to be killed (I observed a couple of times that it doesn't immediately get killed
-    # and the next command like system.whoisusingport8080 still shows that PID)
+    # and the next command like system.whoisusingport 8080 still shows that PID)
     sleep 2
   fi
 }
@@ -756,6 +756,7 @@ function getquickservepid() {
   echo $pid
 }
 
+# NOT Multi-env aware
 function isquickserverunning() {
   local pid=$(getquickservepid)
 
