@@ -298,7 +298,7 @@ function git.makecopy() {
   newbranch=${newbranch/$searchstring/$replacestring}
 
   echo "Calling git checkout -b $newbranch"
-  #git checkout -b "$newbranch"
+  git checkout -b "$newbranch"
 }
 
 # Create a patch of uncommitted changes with *LOCAL* HEAD
