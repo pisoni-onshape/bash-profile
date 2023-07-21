@@ -257,6 +257,50 @@ function git.getpatchfilepath() {
   echo "$partialPath/$branchnamehyphenated-$curdate.patch"
 }
 
+# Make copy of the current branch to work on
+# (which is a little different from taking a backup that
+# you don't intend to use for actual work)
+# Wouldn't make "copy" of a "copy" correctly according to
+# our current nomenclature.
+function git.makecopy() {
+  local currentbranch=$(git.getcurrentbranch)
+  local bugNumber=$(string.tolower $(git.getbugnumberfrombranch))
+  local searchstring=$bugNumber
+  local replacestring=$bugNumber/copy
+  local additionalNotes=""
+  local newbranch=$currentbranch
+  if ! string.contains $currentbranch "$bugNumber/copy" # already contains the word copy
+  then
+    newbranch=${currentbranch/$searchstring/$replacestring}
+  fi
+
+  searchstring="copy"
+  local foldername=""
+  if string.isnotemptyorblank $1
+  then
+    # Replace spaces with hyphens
+    additionalNotes=$(string.simplereplace "$1" " " "-")
+    foldername=$additionalNotes
+  else
+    declare -i loopvar=1
+    replacestring="copy/$loopvar"
+    local tempbranchname=${newbranch/$searchstring/$replacestring}
+    while git.localbranchexists $tempbranchname
+    do
+      loopvar=$((loopvar+1))
+      replacestring="copy/$loopvar"
+      tempbranchname=${newbranch/$searchstring/$replacestring}
+    done
+    foldername=$loopvar
+  fi
+
+  replacestring="copy/$foldername"
+  newbranch=${newbranch/$searchstring/$replacestring}
+
+  echo "Calling git checkout -b $newbranch"
+  #git checkout -b "$newbranch"
+}
+
 # Create a patch of uncommitted changes with *LOCAL* HEAD
 function git.patchuncommittedchanges() {
   local message="$1"
@@ -270,6 +314,10 @@ function git.patchuncommittedchanges() {
 # that it could not apply.
 function git.applypatch() {
   git apply --reject --whitespace=fix $1 # patch file path
+}
+
+function git.setupstream() {
+  git branch --set-upstream-to "$1"/$(git.getcurrentbranch)
 }
 
 alias stoptrackingfile='git.skipworktree'
