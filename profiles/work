@@ -98,6 +98,13 @@ function exportAfterInitVariables() {
   export undefinedbtserverwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/btserver.log"
   export undefinedbtservermodpath="$STAGE/ModelingSvc/logsDir_IS_UNDEFINED/btserver.log"
   export undefinedtimerlogwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/timer.log"
+
+  # Set GRUNT_SERVE_PORT to env number
+  export GRUNT_SERVE_PORT=8000
+  if string.isnotemptyorblank $HOST_PROPERTIES_ENVNUM
+  then
+    export GRUNT_SERVE_PORT=$((GRUNT_SERVE_PORT+HOST_PROPERTIES_ENVNUM))
+  fi
 }
 
 # Import Utility modules
@@ -750,13 +757,20 @@ function calledfromterminal() {
   (string.isemptyorblank "${FUNCNAME[2]}")
 }
 
-# NOT Multi-env aware
+# Multi-env aware as long as GRUNT_SERVE_PORT is defined
 function getquickservepid() {
-  local pid=$(lsof -iTCP -n -P | grep node.*127\.0\.0\.1:8000.*LISTEN | awk '{print $2}')
+  local port=$GRUNT_SERVE_PORT
+  if string.isemptyorblank $port
+  then
+    port=8000
+  fi
+  local searchString="node.*127\.0\.0\.1:$port.*LISTEN"
+
+  local pid=$(lsof -iTCP -n -P | grep "$searchString" | awk '{print $2}')
   echo $pid
 }
 
-# NOT Multi-env aware
+# Multi-env aware as long as GRUNT_SERVE_PORT is defined
 function isquickserverunning() {
   local pid=$(getquickservepid)
 
