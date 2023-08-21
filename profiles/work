@@ -592,6 +592,12 @@ function getbasebranchname() {
 function rbtpost() {
   ensurenewtondirectory
 
+  if git.hasUncommittedChanges
+  then
+    echo "There are uncommitted changes. Please fix before proceeding."
+    return
+  fi
+
   if git.branchislsbmasterbased
   then
     echo "Detected lsb/master based branch. Creating diff w.r.t. to that"
@@ -637,6 +643,12 @@ function rbtupdatefrombranch() {
 # Unless otherwise specified, default branch for rbt is master
 function rbtupdate() {
   ensurenewtondirectory
+
+  if git.hasUncommittedChanges
+  then
+    echo "There are uncommitted changes. Please fix before proceeding."
+    return
+  fi
 
   if git.branchislsbmasterbased
   then
@@ -817,6 +829,12 @@ function fstopbelcad() {
 
 function restartbelcad() {
   fstopbelcad
+
+  if ! system.isprocessrunning "Docker"
+  then
+    startServices
+  fi
+
   startbelcad
 }
 
