@@ -194,6 +194,7 @@ function system.createfileifdoesnotexist() {
 # system.writevartodisk myvar
 function system.writevartodisk() {
 	local varname=$1
+	local extension=$2
 	if string.isemptyorblank $varname
 	then
 		return 1 #Error
@@ -201,6 +202,12 @@ function system.writevartodisk() {
 
 	local value="${!varname}"
 	local filepath="$DISK_VARIABLES_PATH/$varname"
+
+	if ! string.isemptyorblank $extension
+	then
+		filepath="$filepath.$extension"
+	fi
+
 	system.createfileifdoesnotexist "$filepath"
 	echo "$value" > "$filepath"
 }
@@ -213,12 +220,18 @@ function system.writevartodisk() {
 # The value will be read into the variable directly
 function system.readvarfromdisk() {
 	local varname=$1
+	local extension=$2
 	if string.isemptyorblank $varname
 	then
 		return 1 #Error
 	fi
 
 	local filepath="$DISK_VARIABLES_PATH/$varname"
+	if ! string.isemptyorblank $extension
+	then
+		filepath="$filepath.$extension"
+	fi
+
 	if system.fileexists $filepath
 	then
 		local value="$(<"$filepath")"

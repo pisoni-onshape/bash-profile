@@ -82,7 +82,12 @@ function ensurenewtondirectory() {
 # ------------------
 # Now when the environment should be set, some exports used by this script:
 function exportAfterInitVariables() {
-  export CURRENT_RELEASE=$(system.readvarfromdisk CURRENT_RELEASE)
+  local extension=0
+  if string.isnotemptyorblank $HOST_PROPERTIES_ENVNUM
+  then
+      extension=$HOST_PROPERTIES_ENVNUM
+  fi
+  export CURRENT_RELEASE=$(system.readvarfromdisk CURRENT_RELEASE $extension)
   export LSB_MASTER=lsb/master
   export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
   export GIT_MERGE_AUTOEDIT=no
@@ -175,7 +180,12 @@ function refreshcurrentreleasebranch() {
 
   # The current release can only either be the current
   # newton version, or one before it.
-  CURRENT_RELEASE=$(system.readvarfromdisk CURRENT_RELEASE)
+  local extension=0
+  if string.isnotemptyorblank $HOST_PROPERTIES_ENVNUM
+  then
+      extension=$HOST_PROPERTIES_ENVNUM
+  fi
+  CURRENT_RELEASE=$(system.readvarfromdisk CURRENT_RELEASE $extension)
   # So if it's already equivalent to NEWTON_VERSION,
   # there's no point pulling latest branch from github
   # (as we wrote in the file in the first place)
@@ -194,7 +204,12 @@ function refreshcurrentreleasebranch() {
   echo "CURRENT_RELEASE set to $CURRENT_RELEASE"
 
   # Write current release to a file
-  system.writevartodisk CURRENT_RELEASE
+  local extension=0
+  if string.isnotemptyorblank $HOST_PROPERTIES_ENVNUM
+  then
+      extension=$HOST_PROPERTIES_ENVNUM
+  fi
+  system.writevartodisk CURRENT_RELEASE $extension
 }
 
 function debugstaging() {
@@ -541,8 +556,12 @@ function rbtpostfrombranch() {
   fi
 
   # To-Do : Handle --target-people <username,...> (reviewers)
-
-  local reviewers=$(system.readvarfromdisk RBT_REVIEWERS)
+  local extension=0
+  if string.isnotemptyorblank $HOST_PROPERTIES_ENVNUM
+  then
+      extension=$HOST_PROPERTIES_ENVNUM
+  fi
+  local reviewers=$(system.readvarfromdisk RBT_REVIEWERS $extension)
   if ! string.isemptyorblank $reviewers
   then
     reviewers="--target-people ""$reviewers"
@@ -556,7 +575,13 @@ function rbtpostfrombranch() {
 # it will be auto populated in the created review requests.
 function setrbtreviewer() {
   local RBT_REVIEWERS="$1"
-  system.writevartodisk RBT_REVIEWERS
+
+  local extension=0
+  if string.isnotemptyorblank $HOST_PROPERTIES_ENVNUM
+  then
+      extension=$HOST_PROPERTIES_ENVNUM
+  fi
+  system.writevartodisk RBT_REVIEWERS $extension
 }
 
 # Return the branch name/tag this branch is based off
@@ -1356,7 +1381,21 @@ function patchallchanges() {
 
 # Pass jira number
 function openbug() {
-  open "https://belmonttechinc.atlassian.net/browse/BEL-$1"
+  if string.isemptyorblank $1
+  then
+    echo "Bug number not provided"
+    return
+  fi
+
+  local bugNumber=$1
+  bugNumber=$(string.toupper $bugNumber)
+  if string.isnumber $bugNumber
+  then
+    # Take BEL by default.
+    bugNumber="BEL-$bugNumber"
+  fi
+
+  open "https://belmonttechinc.atlassian.net/browse/$bugNumber"
 }
 
 function ptortest() {
@@ -1445,6 +1484,8 @@ alias gitlistskipignoredfiles='git ls-files -v . | grep ^S'
 alias gruntQuickServe='grunt quickServe'
 alias inteli='intellij'
 alias intellij='idea' #Jetbrains Toolbox generates the script 'idea' for version dependent IntelliJ IDEA
+alias jira='openbug'
+alias openjira='jira'
 alias javabuild='buildjavaonly'
 alias jsbuild='buildjsonly'
 alias jumpboxaddstaticroute='addstaticroutetojumpbox'
@@ -1476,6 +1517,7 @@ alias serialize='grunt generateSerializables'
 alias setisreverting='setreverting'
 alias sshjumpbox="ssh -X $USER@jumpbox-primary.dev.onshape.com"
 alias startenv='startServices;startservers';
+alias startquickserve='quickserve'
 alias staging='cd $STAGE'
 alias starttimerdisplay='runTimerDisplay'
 alias stopServices='btEnvDown'

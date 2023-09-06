@@ -95,19 +95,27 @@ function git.openskipworktreefile() {
 
 # ToDo : Refactor the common code out of the below two functions
 function git.backupbranch() {
-  local currentbranch=$(git.getcurrentbranch)
-  local searchstring=$USER
-  local replacestring=backup/$USER
-  local curdate=$(system.getcurrentdate)
   local additionalNotes=""
   if string.isnotemptyorblank $1
   then
-    # Replace spaces with hyphens
+    # Replace spaces with hyphens if there's a comment to
+    # add with the backup branch name and prepend a slash.
     additionalNotes=$(string.simplereplace "/$1" " " "-")
   fi
 
-  local newbranch="${currentbranch/$searchstring/$replacestring}$additionalNotes/$curdate"
-  echo $newbranch
+  local currentbranch=$(git.getcurrentbranch)
+  local newbranch=""
+  local searchstring=$USER
+  local curdate=$(system.getcurrentdate)
+
+  if string.contains $currentbranch $searchstring
+  then
+    local replacestring=backup/$USER
+    newbranch="${currentbranch/$searchstring/$replacestring}$additionalNotes/$curdate"
+  else
+    newbranch="backup/$currentbranch$additionalNotes/$curdate"
+  fi
+
   # create new backup branch
   git checkout -b $newbranch
   # go back to our branch
@@ -318,6 +326,13 @@ function git.applypatch() {
 
 function git.setupstream() {
   git branch --set-upstream-to "$1"/$(git.getcurrentbranch)
+}
+
+# Checkout the branch that was checked out just before
+# the current one. As expected, calling it twice should
+# bring you back to the same branch.
+function git.checkoutpreviousbranch() {
+  git checkout -
 }
 
 alias stoptrackingfile='git.skipworktree'
