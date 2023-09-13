@@ -335,6 +335,13 @@ function git.checkoutpreviousbranch() {
   git checkout -
 }
 
+function git.deletecurrentbranch() {
+	read -p "Are you sure you want to delete the current branch? Press any key to continue. Press Ctrl+C to cancel."
+	local currentbranch=$(git.getcurrentbranch)
+	git.checkoutpreviousbranch
+	git branch -D $currentbranch
+}
+
 alias stoptrackingfile='git.skipworktree'
 alias starttrackingfile='git.unskipworktree'
 alias git.currentbranch='git.getcurrentbranch'
