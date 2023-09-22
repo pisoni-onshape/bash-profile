@@ -250,9 +250,13 @@ function fixDiskImagesJS() {
 }
 
 function importextractedfile() {
+  local time1=$SECONDS
   waitforenterkey "If the file doesn't include std, make sure you've run 'mongoDropToProduction' and 'gradle runBtUpgrade' before this (press enter if yes, and Ctrl+C if you haven't)"
   restoreDump "$1" --nodrop --remap=btadmin@onshape.com
   # restoreDump "$1" --nodrop --remap=pisoni@onshape.com
+  local time2=$SECONDS
+  local duration=$(($time2-$time1))
+  echo "Time taken in restore: $duration seconds"
 }
 
 function runupgrade() {
