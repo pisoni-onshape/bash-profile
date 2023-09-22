@@ -18,20 +18,23 @@ Next, in the macOS Terminal, go to Settings -> Profiles tab, and create a new pr
 1. Write the following in the textbox for the command to run at startup:
 
     cd ~/repos/newton && ensurenewtondirectory
+
 1. Check 'Run inside shell' if it's not
 1. That's all. If you want to use multi-environment (newton2, newton3 etc.), just create more Terminal Profiles like above, name them accordingly and put the correct directory at startup. For example, for newton2:
 
     cd ~/repos/newton2 && ensurenewtondirectory
-    (ensurenewtondirectory remains the same, it figures out which environment it is and initializes that)
+
+(The command `ensurenewtondirectory` remains the same, it figures out which environment it is and initializes that)
 
 ## How to use
 There are many utility functions to use in these scripts. e.g.,
-1. Create new branches using checkoutfromlsbmaster, checkoutfromlsbrelease, checkoutfrommaster etc. to automatically create branches from the latest versions of these branches and prepend your username to them
+1. Create new branches using `checkoutfromlsbmaster`, `checkoutfromlsbrelease`, `checkoutfrommaster` etc. to automatically create branches from the latest versions of these branches and prepend your username to them
     checkoutfromlsbmaster bel-<xxxxxx>[/optionaldescription]
-1. Use functions like buildall, buildjavaonly, buildjsonly or buildcpponly to build. It verbally announces "Build successful" or "Build failed" so that you can switch your attention back to the build if you were doing something else.
-1. It also checks you're in newton directory before building (which sometimes causes confusion as gradle doesn't tell you that), and that docker is running (the official build process can start requried services in docker as needed, but doesn't start docker itself if not already running)
-1. Call rbtpost or rbtupdate to post to RB Commons. While calling rbtupdate you don't have to find the review request number, it should find that automatically and push to the right one.
-1. When ready, just call mergetomaster or mergetoreleasethenmaster depending on what you need. It will create branches if needed, do the necessary checks as required by our Software Release Process (or ask you to confirm them), pull the **approved** RBCommons review request numbers automatically and merge to your required branches.
-1. Call git.backupbranch any time to backup your branch locally with a timestamp and switch back to your current branch (it's not required but if you're paranoid before making any messy changes with your branch it comes in handy)
-1. It creates a .personal file in the cloned directory's profiles/ directory, where you can put your personal bash aliases and functions.
+1. Use functions like `buildall`, `buildjavaonly`, `buildjsonly` or `buildcpponly` to build. It verbally announces "Build successful" or "Build failed" and makes the Terminal bounce so that you can switch your attention back to the build if you were doing something else.
+1. It also checks you're in the newton directory before building (which sometimes causes confusion as gradle doesn't tell you that), and that docker is running (the official build process can start required services in docker as needed, but doesn't start docker itself if not already running)
+1. Call `rbtpost` or `rbtupdate` to post to RB Commons. While calling rbtupdate you don't have to find the review request number, it should find that automatically and push to the right one. It also automatically fills the target branch field (master or rel-*) and the Bug field of the RBCommons request if you had created the branch name correctly as instructed in the first step. If you call `setrbtreviewer` with your manager's RBCommons username, it will remember that and add them automatically to every review request as well.
+1. When ready to merge after approvals, just call `mergetomaster` or `mergetoreleasethenmaster` depending on what you need. It will create branches if needed, do the necessary checks as required by our Software Release Process (or ask you to confirm them), pull the **approved** RBCommons review request numbers automatically and merge to your required branches. On accidents, you can also call `revertbranchfrommaster` for the same branch that you had merged (follow the instructions and comments) to revert it following the safety rules.
+1. Call `git.backupbranch` any time to backup your branch locally with a timestamp and automatically switch back to your current branch (it's not required but if you're paranoid before making any messy changes with your branch it comes in handy). There are similarly many other git related helpful functions like `git.listbranches` or functions to quickly create patch files from your committed/uncommitted or all changes.
+1. At any time, you can type functions like `startservers` or `startserversifnotalready` for starting both belcad and `grunt quickServe`. Also, `isbelcadrunning` or `isquickserverunning` are multi-env compatible ways to quickly tell you whether your Onshape server and quickServe are running respectively. There's a shortcut for checking both too : `areserversrunning`.
+1. It creates a .personal file in the cloned directory's profiles/ directory, where you can put your personal bash aliases and functions. For example, only when the build is successful, the scripts call onsuccessfulbuild function (but don't define it by default). You can define that function in your .personal file what should happen on  a successful build (e.g. in my .personal file I call `startserversifnotalready`, open the browser with the doc that I'm currently working on automatically)
 1. Shortcut functions/aliases for many other small tasks (including utilities for string/system/git/rbt), most of them are self explanatory and one can browse through them.
