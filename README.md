@@ -4,25 +4,25 @@ A non-official support repository to assist in Onshape development with various 
 ## Setup
 On any new machine, clone this repository to your home directory (such that the **bash-profile** folder is created in the home directory). Something like this on the Terminal should do the job:
 ```
-    cd ~
-    git clone git@github.com:pisoni-onshape/bash-profile.git
+cd ~
+git clone git@github.com:pisoni-onshape/bash-profile.git
 ```
 Then copy these lines in one of your ~/.profile, or ~/.bash_profile files if already there (or create one if not):
 ```
-    export BASH_PROFILE_PATH=~/bash-profile
-    source $BASH_PROFILE_PATH/.profile
+export BASH_PROFILE_PATH=~/bash-profile
+source $BASH_PROFILE_PATH/.profile
 ```
 Next, in the macOS Terminal, go to Settings -> Profiles tab, and create a new profile called 'Newton'. You can choose the text, background colors etc. for this profile if you want, but for our purpose:
 1. Go to the 'Window' tab of this profile and write 'Newton' as the Window Title.
 1. Go to the 'Shell' tab and check 'Run command' under **Startup**
 1. Write the following in the textbox for the command to run at startup:
 ```
-    cd ~/repos/newton && ensurenewtondirectory
+cd ~/repos/newton && ensurenewtondirectory
 ```
 1. Check 'Run inside shell' if it's not
 1. That's all. If you want to use multi-environment (newton2, newton3 etc.), just create more Terminal Profiles like above, name them accordingly and put the correct directory at startup. For example, for newton2:
 ```
-    cd ~/repos/newton2 && ensurenewtondirectory
+cd ~/repos/newton2 && ensurenewtondirectory
 ```
 (The command `ensurenewtondirectory` remains the same, it figures out which environment it is and initializes that)
 
@@ -30,7 +30,7 @@ Next, in the macOS Terminal, go to Settings -> Profiles tab, and create a new pr
 There are many utility functions to use in these scripts. e.g.,
 1. Create new branches using `checkoutfromlsbmaster`, `checkoutfromlsbrelease`, `checkoutfrommaster` etc. to automatically create branches from the latest versions of these branches and prepend your username to them
 ```
-    checkoutfromlsbmaster bel-<xxxxxx>[/optional-description] # Prepends your username if you don't do it
+checkoutfromlsbmaster bel-<xxxxxx>[/optional-description] # Prepends your username if you don't do it
 ```
 1. Use functions like `buildall`, `buildjavaonly`, `buildjsonly` or `buildcpponly` to build. It verbally announces "Build successful" or "Build failed" and makes the Terminal bounce so that you can switch your attention back to the build if you were doing something else.
 1. It also checks you're in the newton directory before building (which sometimes causes confusion as gradle doesn't tell you that), and that docker is running (the official build process can start required services in docker as needed, but doesn't start docker itself if not already running)
