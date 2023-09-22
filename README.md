@@ -12,6 +12,18 @@ Then copy these lines in one of your ~/.profile, or ~/.bash_profile files if alr
     export BASH_PROFILE_PATH=~/bash-profile
     source $BASH_PROFILE_PATH/.profile
 
+Next, in the macOS Terminal, go to Settings -> Profiles tab, and create a new profile called 'Newton'. You can choose the text, background colors etc. for this profile if you want, but for our purpose:
+1. Go to the 'Window' tab of this profile and write 'Newton' as the Window Title.
+1. Go to the 'Shell' tab and check 'Run command' under **Startup**
+1. Write the following in the textbox for the command to run at startup:
+
+    cd ~/repos/newton && ensurenewtondirectory
+1. Check 'Run inside shell' if it's not
+1. That's all. If you want to use multi-environment (newton2, newton3 etc.), just create more Terminal Profiles like above, name them accordingly and put the correct directory at startup. For example, for newton2:
+
+    cd ~/repos/newton2 && ensurenewtondirectory
+    (ensurenewtondirectory remains the same, it figures out which environment it is and initializes that)
+
 ## How to use
 There are many utility functions to use in these scripts. e.g.,
 1. Create new branches using checkoutfromlsbmaster, checkoutfromlsbrelease, checkoutfrommaster etc. to automatically create branches from the latest versions of these branches and prepend your username to them

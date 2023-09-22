@@ -36,24 +36,48 @@ function gitsetglobalignorefile() {
 	fi
 }
 
-alias sublime='open -a "/Applications/Sublime Text.app"'
-alias bbedit='open -a /Applications/BBEdit.app'
-alias z='open -a /Applications/Zed.app/'
+# alias sublime='open -a "/Applications/Sublime Text.app"'
+# alias bbedit='open -a /Applications/BBEdit.app'
+# alias z='open -a /Applications/Zed.app/'
 
 # Text editors
-## Preferred text editor of choice : Zed, BBEdit, Sublime Text, nano - in that order
-if system.direxists "/Applications/Zed.app"
-then
-    alias texteditor='zed'
-elif system.direxists "/Applications/BBEdit.app"
-then
-    alias texteditor='bbedit'
-elif system.direxists "/Applications/Sublime Text.app"
-then
-    alias texteditor='sublime'
-else
-    alias texteditor='nano'
-fi
+# Write your preferred text editor of choice, in the order of preference
+# List of their intended aliases and their app path to search
+PREFERRED_EDITORS_ARR=(
+    "sublime: /Applications/Sublime Text.app"
+    "bbedit: /Applications/BBEdit.app"
+    "z: /Applications/Zed.app"
+)
+
+for editor in "${PREFERRED_EDITORS_ARR[@]}" ; do
+    aliasName=${editor%%:*}
+    path=${editor#*: }
+    if system.direxists "$path"
+    then
+        echo "alias is $aliasName and path is $path"
+        alias $aliasName="open -a \"$path\""
+        # If the texteditor alias is still not assigned, do it now.
+        if string.isemptyorblank "$(command -v texteditor)"
+        then
+            alias texteditor="$aliasName"
+        fi
+    fi
+done
+
+# if system.direxists "/Applications/Zed.app"
+# then
+#     alias texteditor='zed'
+# elif system.direxists "/Applications/BBEdit.app"
+# then
+#     alias texteditor='bbedit'
+# elif system.direxists "/Applications/Sublime Text.app"
+# then
+#     alias texteditor='sublime'
+# else
+#     alias texteditor='nano'
+# fi
+
+alias texteditor='sublime'
 
 function edit() {
     system.createfileifdoesnotexist "$1"
@@ -73,6 +97,8 @@ alias openkarabinerconfig='edit "$karabinerconfigfile"'
 
 # Git
 ## Auto Completion
+## Please ensure bash-completion is installed by calling
+## brew install bash-completion
 [ -f /usr/local/etc/bash_completion ] && . /usr/local/etc/bash_completion
 
 ## Ignore
