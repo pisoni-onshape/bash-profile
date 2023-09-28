@@ -7,7 +7,7 @@ On any new machine, clone this repository to your home directory (such that the 
 cd ~
 git clone git@github.com:pisoni-onshape/bash-profile.git
 ```
-Then copy these lines in one of your ~/.profile, or ~/.bash_profile files if already there (or create one if not):
+Then copy these lines in your ~/.profile (or ~/.bash_profile) file if already there (or create one if it doesn't exist). The commands in this file should automatically be executed on Terminal launch.
 ```
 export BASH_PROFILE_PATH=~/bash-profile
 source $BASH_PROFILE_PATH/.profile
