@@ -14,21 +14,21 @@ source $BASH_PROFILE_PATH/.profile
 ```
 Next, in the macOS Terminal, go to Settings -> Profiles tab, and create a new profile called 'Newton'. You can choose the text, background colors etc. for this profile if you want, but for our purpose:
 1. Go to the 'Window' tab of this profile and write 'Newton' as the Window Title.
-1. Go to the 'Shell' tab and check 'Run command' under **Startup**
-1. Write the following in the textbox for the command to run at startup:
+2. Go to the 'Shell' tab and check 'Run command' under **Startup**
+3. Write the following in the textbox for the command to run at startup:
 ```
 cd ~/repos/newton && ensurenewtondirectory
 ```
-1. Check 'Run inside shell' if it's not
-1. That's all. If you want to use multi-environment (newton2, newton3 etc.), just create more Terminal Profiles like above, name them accordingly and put the correct directory at startup. For example, for newton2:
-```
-cd ~/repos/newton2 && ensurenewtondirectory
-```
-(The command `ensurenewtondirectory` remains the same, it figures out which environment it is and initializes that)
 This is what it might look like:
 
  <img width="500" alt="newton-terminal-setup" src="https://github.com/pisoni-onshape/bash-profile/assets/87058498/3aa0d8cb-1ef3-4459-9245-ba7d1786b45b">
 
+4. Check 'Run inside shell' if it's not
+5. That's all. If you want to use multi-environment (newton2, newton3 etc.), just create more Terminal Profiles like above, name them accordingly and put the correct directory at startup. For example, for newton2:
+```
+cd ~/repos/newton2 && ensurenewtondirectory
+```
+(The command `ensurenewtondirectory` remains the same, it figures out which environment it is and initializes that)
 
 ## How to use
 When you do the setup as given above, as soon as you open your 'Newton' Terminal it automatically sets the current directory to your newton directory and does `source buildenv.bash` for you, and you should be ready to go. There are many utility functions to use in these scripts. e.g.,
