@@ -31,7 +31,7 @@ This is what it might look like:
 
 
 ## How to use
-There are many utility functions to use in these scripts. e.g.,
+When you do the setup as given above, as soon as you open your 'Newton' Terminal it automatically sets the current directory to your newton directory and does `source buildenv.bash` for you, and you should be ready to go. There are many utility functions to use in these scripts. e.g.,
 1. Create new branches using `checkoutfromlsbmaster`, `checkoutfromlsbrelease`, `checkoutfrommaster` etc. to automatically create branches from the latest versions of these branches and prepend your username to them
 ```
 checkoutfromlsbmaster bel-<xxxxxx>[/optional-description] # Prepends your username if you don't do it
