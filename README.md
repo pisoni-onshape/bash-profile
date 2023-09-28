@@ -26,8 +26,8 @@ cd ~/repos/newton2 && ensurenewtondirectory
 ```
 (The command `ensurenewtondirectory` remains the same, it figures out which environment it is and initializes that)
 This is what it might look like:
+ <img width="668" alt="newton-terminal-setup" src="https://github.com/pisoni-onshape/bash-profile/assets/87058498/3aa0d8cb-1ef3-4459-9245-ba7d1786b45b">
 
- 
 
 ## How to use
 There are many utility functions to use in these scripts. e.g.,
@@ -37,7 +37,7 @@ checkoutfromlsbmaster bel-<xxxxxx>[/optional-description] # Prepends your userna
 ```
 1. Use functions like `buildall`, `buildjavaonly`, `buildjsonly` or `buildcpponly` to build. It verbally announces "Build successful" or "Build failed" and makes the Terminal bounce so that you can switch your attention back to the build if you were doing something else.
 1. It also checks you're in the newton directory before building (which sometimes causes confusion as gradle doesn't tell you that), and that docker is running (the official build process can start required services in docker as needed, but doesn't start docker itself if not already running)
-1. At any time you can call `mergelatest` or `rebaselatest` to rebase the latest release, master, or lsb/release or lsb/master automatically based on off what you had created your branch of (as long as you used the above `checkoutfrom*` functions)
+1. At any time you can call `mergelatest` or `rebaselatest` to pull or rebase respectively the latest release, master, or lsb/release or lsb/master automatically based on off what you had created your branch of (as long as you used the above `checkoutfrom*` functions)
 1. Call `rbtpost` or `rbtupdate` to post to RB Commons. While calling rbtupdate you don't have to find the review request number, it should find that automatically and push to the right one. You also don't have to remember to call `lsb/master...HEAD` or `lsb/rel-*...HEAD` etc. for creating these as it figures it out automatically as well. It also automatically fills the target branch field (master or rel-*) and the Bug field of the RBCommons request if you had created the branch name correctly as instructed in the first step. If you call `setrbtreviewer` with your manager's RBCommons username, it will remember that and add them automatically to every review request as well.
 1. When ready to merge after approvals, just call `mergetomaster` or `mergetoreleasethenmaster` depending on what you need. It will create branches if needed, do the necessary checks as required by our Software Release Process (or ask you to confirm them), pull the **approved** RBCommons review request numbers automatically and merge to your required branches. On accidents, you can also call `revertbranchfrommaster` for the same branch that you had merged (follow the instructions and comments) to revert it following the safety rules.
 1. Call `git.backupbranch` any time to backup your branch locally with a timestamp and automatically switch back to your current branch (it's not required but if you're paranoid before making any messy changes with your branch it comes in handy). There are similarly many other git related helpful functions like `git.listbranches` or functions to quickly create patch files from your committed/uncommitted or all changes.
