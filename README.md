@@ -26,7 +26,8 @@ cd ~/repos/newton2 && ensurenewtondirectory
 ```
 (The command `ensurenewtondirectory` remains the same, it figures out which environment it is and initializes that)
 This is what it might look like:
- <img width="668" alt="newton-terminal-setup" src="https://github.com/pisoni-onshape/bash-profile/assets/87058498/3aa0d8cb-1ef3-4459-9245-ba7d1786b45b">
+
+ <img width="400" alt="newton-terminal-setup" src="https://github.com/pisoni-onshape/bash-profile/assets/87058498/3aa0d8cb-1ef3-4459-9245-ba7d1786b45b">
 
 
 ## How to use
