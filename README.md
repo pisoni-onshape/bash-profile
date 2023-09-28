@@ -25,6 +25,9 @@ cd ~/repos/newton && ensurenewtondirectory
 cd ~/repos/newton2 && ensurenewtondirectory
 ```
 (The command `ensurenewtondirectory` remains the same, it figures out which environment it is and initializes that)
+This is what it might look like:
+
+ 
 
 ## How to use
 There are many utility functions to use in these scripts. e.g.,
