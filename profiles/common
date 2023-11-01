@@ -42,7 +42,9 @@ function gitsetglobalignorefile() {
 
 # Text editors
 # Write your preferred text editor of choice, in the order of preference
-# List of their intended aliases and their app path to search
+# List of their intended aliases and their app path to search. The first preferred editor
+# to find would be set as the command `texteditor`, and you can also just call `edit`
+# to use it.
 PREFERRED_EDITORS_ARR=(
     "sublime: /Applications/Sublime Text.app"
     "bbedit: /Applications/BBEdit.app"
@@ -54,7 +56,6 @@ for editor in "${PREFERRED_EDITORS_ARR[@]}" ; do
     path=${editor#*: }
     if system.direxists "$path"
     then
-        echo "alias is $aliasName and path is $path"
         alias $aliasName="open -a \"$path\""
         # If the texteditor alias is still not assigned, do it now.
         if string.isemptyorblank "$(command -v texteditor)"

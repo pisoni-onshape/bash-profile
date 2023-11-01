@@ -345,3 +345,4 @@ function git.deletecurrentbranch() {
 alias stoptrackingfile='git.skipworktree'
 alias starttrackingfile='git.unskipworktree'
 alias git.currentbranch='git.getcurrentbranch'
+alias git.copybranch='git.makecopy'

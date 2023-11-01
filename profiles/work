@@ -856,10 +856,14 @@ function fstopbelcad() {
   fi
 }
 
+function isdockerrunning() {
+  [ string.isnotemptyorblank $(command -v docker) ] && [ string.isnotemptyorblank $((docker ps 2> /dev/null) | grep -i "container") ]
+}
+
 function restartbelcad() {
   fstopbelcad
 
-  if ! system.isprocessrunning "Docker"
+  if ! isdockerrunning
   then
     startServices
   fi
@@ -892,7 +896,7 @@ function buildgradleparallel() {
   ensurenewtondirectory
 
   # Same goes with docker not running
-  if ! system.isprocessrunning "Docker"
+  if ! isdockerrunning
   then
     startServices
   fi
@@ -1222,13 +1226,14 @@ function mergetoreleasethenmaster() {
 }
 
 function startDockerApp() {
-  if (system.isprocessrunning "docker")
+  if isdockerrunning
   then
     echo "Docker is already running"
     return
   fi
 
-  if system.commandsucceeds $(open -a /Applications/Docker.app)
+  # [2023/11/01] : We use Rancher Desktop now instead of Docker Desktop
+  if system.commandsucceeds $(open -a /Applications/Rancher\ Desktop.app)
   then
     # Give Docker some time to get initialized, otherwise
     # starting services fails.
@@ -1249,7 +1254,7 @@ function startDockerApp() {
 # startservers for that). Also starts Docker
 # is not already running.
 function startServices() {
-  if ! (system.isprocessrunning "docker")
+  if ! isdockerrunning
   then
     echo "Starting Docker process as it was not found to be running"
     startDockerApp
@@ -1263,7 +1268,7 @@ function startServices() {
 # Starts both the Onshape (belcad) server
 # and calls grunt quickServe to
 function startservers() {
-  if ! (system.isprocessrunning "docker")
+  if ! isdockerrunning
   then
     # startServices is supposed to start
     # Docker as well if not running
@@ -1276,7 +1281,7 @@ function startservers() {
 # Start onshape server and grunt quickServe only if they
 # are not already running.
 function startserversifnotalready() {
-  if ! (system.isprocessrunning "docker")
+  if ! isdockerrunning
   then
     # startServices is supposed to start
     # Docker as well if not running
