@@ -856,8 +856,79 @@ function fstopbelcad() {
   fi
 }
 
+# Another version of the official 'checkServices'. Tells you if 
+function checkessentialservices() {
+  local output=$(checkServices)
+
+  ESSENTIAL_SERVICES=(
+      "memcached"
+      "mongod"
+      "Rabbit MQ Server"
+      "ZooKeeper"
+  )
+
+  local allRunning="true"
+  for service in "${ESSENTIAL_SERVICES[@]}" ; do
+      local serviceRunning=$(echo $output | grep "$service.. ok docker container")
+
+      if string.isemptyorblank $serviceRunning
+      then
+        echo "Essential service $service is not running"
+        allRunning="false"
+      fi
+  done
+
+  if string.equals $allRunning "true"
+  then
+    echo "All essential services are running"
+    return 0
+  else
+    return 1
+  fi
+}
+
+function fastcheckessentialservices() {
+  local envString=""
+  if string.isnotemptyorblank $HOST_PROPERTIES_ENVNUM
+  then
+    envString="_myenv$HOST_PROPERTIES_ENVNUM"
+  fi
+  local runningServicesArray=( $(docker ps --format '{{.Names}}') )
+  #local output=$(docker ps --format '{{.Names}}')
+  local allRunning="true"
+  if [[ ! " ${runningServicesArray[@]} " =~ " zookeeper " ]] #Zookeeper is shared between all environments
+  then
+    echo "Essential service zookeeper is not running"
+    allRunning="false"
+  fi  
+
+  ESSENTIAL_SERVICES=(
+      "memcached"
+      "mongod_4.4"
+      "rabbitmq"
+  )
+
+  for service in "${ESSENTIAL_SERVICES[@]}" ; do
+      #local serviceRunning=$(echo $output | grep "$service$envString.. ok docker container")
+
+      if [[ ! " ${runningServicesArray[@]} " =~ " $service$envString " ]]
+      then
+        echo "Essential service $service is not running"
+        allRunning="false"
+      fi
+  done
+
+  if string.equals $allRunning "true"
+  then
+    echo "All essential services are running"
+    return 0
+  else
+    return 1
+  fi
+}
+
 function isdockerrunning() {
-  [ string.isnotemptyorblank $(command -v docker) ] && [ string.isnotemptyorblank $((docker ps 2> /dev/null) | grep -i "container") ]
+  string.isnotemptyorblank $(command -v docker) && string.isnotemptyorblank $((docker ps 2> /dev/null) | grep -i "container")
 }
 
 function restartbelcad() {
@@ -1474,6 +1545,7 @@ alias bsserverpath="$STAGE/BSServer/bin/BSServer"
 alias grdlbuildjavaonly='grdlu gen java' #Build java only, download binaries for others
 alias grdlbuildjsonly='grdlu gen js' #Build javascript only, download binaries for others
 alias grdlbuildjavaandjsonly='grdlu gen java js' #Build java and javascript only, download binaries for others
+alias checknecessaryservices='checkessentialservices'
 alias checkJsCode='grunt checkJsCode'
 alias checkjs='grunt eslint:javascript'
 alias checkts='grunt eslint:typescript'

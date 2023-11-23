@@ -248,6 +248,10 @@ function system.alert() {
 	osascript -e "display alert \"$1\" message \"$2\""
 }
 
+function system.killallwithname() {
+	pkill -9 -f -i "$1"
+}
+
 # Incomplete.
 function system.replacefilenames() {
 	local searchRegex="$1"
