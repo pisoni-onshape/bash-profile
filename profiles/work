@@ -894,7 +894,6 @@ function fastcheckessentialservices() {
     envString="_myenv$HOST_PROPERTIES_ENVNUM"
   fi
   local runningServicesArray=( $(docker ps --format '{{.Names}}') )
-  #local output=$(docker ps --format '{{.Names}}')
   local allRunning="true"
   if [[ ! " ${runningServicesArray[@]} " =~ " zookeeper " ]] #Zookeeper is shared between all environments
   then
@@ -909,8 +908,6 @@ function fastcheckessentialservices() {
   )
 
   for service in "${ESSENTIAL_SERVICES[@]}" ; do
-      #local serviceRunning=$(echo $output | grep "$service$envString.. ok docker container")
-
       if [[ ! " ${runningServicesArray[@]} " =~ " $service$envString " ]]
       then
         echo "Essential service $service is not running"
@@ -925,6 +922,15 @@ function fastcheckessentialservices() {
   else
     return 1
   fi
+}
+
+function monitorServices() {
+    while fastcheckessentialservices; do
+      sleep 5
+    done
+
+    beep;beep
+    say "Essential services have stopped"
 }
 
 function isdockerrunning() {
