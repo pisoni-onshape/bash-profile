@@ -82,12 +82,8 @@ function ensurenewtondirectory() {
 # ------------------
 # Now when the environment should be set, some exports used by this script:
 function exportAfterInitVariables() {
-  local extension=0
-  if string.isnotemptyorblank $HOST_PROPERTIES_ENVNUM
-  then
-      extension=$HOST_PROPERTIES_ENVNUM
-  fi
-  export CURRENT_RELEASE=$(system.readvarfromdisk CURRENT_RELEASE $extension)
+  local envNum=$(getEnvNumber)
+  export CURRENT_RELEASE=$(system.readvarfromdisk CURRENT_RELEASE $envNum)
   export LSB_MASTER=lsb/master
   export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
   export GIT_MERGE_AUTOEDIT=no
@@ -103,13 +99,10 @@ function exportAfterInitVariables() {
   export undefinedbtserverwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/btserver.log"
   export undefinedbtservermodpath="$STAGE/ModelingSvc/logsDir_IS_UNDEFINED/btserver.log"
   export undefinedtimerlogwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/timer.log"
+  export DEFAULT_GRUNT_SERVE_PORT="8000"
 
-  # Set GRUNT_SERVE_PORT to env number
-  export GRUNT_SERVE_PORT=8000
-  if string.isnotemptyorblank $HOST_PROPERTIES_ENVNUM
-  then
-    export GRUNT_SERVE_PORT=$((GRUNT_SERVE_PORT+HOST_PROPERTIES_ENVNUM))
-  fi
+  # Set GRUNT_SERVE_PORT according to the env number
+  export GRUNT_SERVE_PORT=$(($DEFAULT_GRUNT_SERVE_PORT+$envNum))
 }
 
 # Import Utility modules
@@ -180,11 +173,8 @@ function refreshcurrentreleasebranch() {
 
   # The current release can only either be the current
   # newton version, or one before it.
-  local extension=0
-  if string.isnotemptyorblank $HOST_PROPERTIES_ENVNUM
-  then
-      extension=$HOST_PROPERTIES_ENVNUM
-  fi
+  local extension=$(getEnvNumber)
+
   CURRENT_RELEASE=$(system.readvarfromdisk CURRENT_RELEASE $extension)
   # So if it's already equivalent to NEWTON_VERSION,
   # there's no point pulling latest branch from github
@@ -204,11 +194,6 @@ function refreshcurrentreleasebranch() {
   echo "CURRENT_RELEASE set to $CURRENT_RELEASE"
 
   # Write current release to a file
-  local extension=0
-  if string.isnotemptyorblank $HOST_PROPERTIES_ENVNUM
-  then
-      extension=$HOST_PROPERTIES_ENVNUM
-  fi
   system.writevartodisk CURRENT_RELEASE $extension
 }
 
@@ -560,11 +545,7 @@ function rbtpostfrombranch() {
   fi
 
   # To-Do : Handle --target-people <username,...> (reviewers)
-  local extension=0
-  if string.isnotemptyorblank $HOST_PROPERTIES_ENVNUM
-  then
-      extension=$HOST_PROPERTIES_ENVNUM
-  fi
+  local extension=$(getEnvNumber)
   local reviewers=$(system.readvarfromdisk RBT_REVIEWERS $extension)
   if ! string.isemptyorblank $reviewers
   then
@@ -580,12 +561,7 @@ function rbtpostfrombranch() {
 function setrbtreviewer() {
   local RBT_REVIEWERS="$1"
 
-  local extension=0
-  if string.isnotemptyorblank $HOST_PROPERTIES_ENVNUM
-  then
-      extension=$HOST_PROPERTIES_ENVNUM
-  fi
-  system.writevartodisk RBT_REVIEWERS $extension
+  system.writevartodisk RBT_REVIEWERS $(getEnvNumber)
 }
 
 # Return the branch name/tag this branch is based off
@@ -829,10 +805,31 @@ function isquickserverunning() {
 }
 
 function areserversrunning() {
-  echo -n "Belcad: "
-  general.showtrueorfalse $(isonshapeserverrunning)
-  echo -n "Quick serve: "
-  general.showtrueorfalse $(isquickserverunning)
+  local hasError="false"
+
+  if ! isonshapeserverrunning
+  then
+    hasError="true"
+    echo "Onshape server is NOT running"
+  else
+    echo "Onshape server is running"
+  fi
+
+  if ! isquickserverunning
+  then
+    hasError="true"
+    echo "quickServe is NOT running"
+  else
+    echo "quickServe is running"
+  fi
+
+  if string.equals $hasError "false"
+  then
+    # echo "Both Onshape server and grunt quickServe are running."
+    return 0 # success
+  else
+    return 1
+  fi
 }
 
 function fstopquickserve() {
@@ -860,7 +857,7 @@ function fstopbelcad() {
 function checkessentialservices() {
   local output=$(checkServices)
 
-  ESSENTIAL_SERVICES=(
+  local ESSENTIAL_SERVICES=(
       "memcached"
       "mongod"
       "Rabbit MQ Server"
@@ -889,9 +886,10 @@ function checkessentialservices() {
 
 function fastcheckessentialservices() {
   local envString=""
-  if string.isnotemptyorblank $HOST_PROPERTIES_ENVNUM
+  local envNumber=$(getEnvNumber)
+  if ! string.equals $envNumber "0"
   then
-    envString="_myenv$HOST_PROPERTIES_ENVNUM"
+    envString="_myenv$envNumber"
   fi
   local runningServicesArray=( $(docker ps --format '{{.Names}}') )
   local allRunning="true"
@@ -901,7 +899,7 @@ function fastcheckessentialservices() {
     allRunning="false"
   fi  
 
-  ESSENTIAL_SERVICES=(
+  local ESSENTIAL_SERVICES=(
       "memcached"
       "mongod_4.4"
       "rabbitmq"
@@ -937,6 +935,65 @@ function isdockerrunning() {
   string.isnotemptyorblank $(command -v docker) && string.isnotemptyorblank $((docker ps 2> /dev/null) | grep -i "container")
 }
 
+function checkenv() {
+  # 1. Check if docker is running.
+  if isdockerrunning
+  then
+    echo "Docker is running"
+  else
+    echo "Docker is NOT running"
+    return 1
+  fi
+
+  # 2. Check if all essential services are running.
+  if ! fastcheckessentialservices
+  then
+    return 1
+  fi
+
+  # 3. Check if Onshape Server and grunt quickServe are running
+  if ! areserversrunning
+  then
+    return 1
+  fi
+
+  # Success, everything seems to be working fine. 
+  return 0
+}
+
+function getEnvNumber() {
+  if string.isnotemptyorblank $HOST_PROPERTIES_ENVNUM
+  then
+    echo $HOST_PROPERTIES_ENVNUM
+  else
+    echo "0"
+  fi
+}
+
+function monitorenv() {
+  local wasWorkingBefore="false"
+  while checkenv; do
+    echo ""    
+    echo $(system.getcurrentdate)
+    wasWorkingBefore="true"
+    sleep 5
+  done
+
+  if string.equals $wasWorkingBefore "true"
+  then
+    beep;beep
+    local message="Something has crashed in Environment $(getEnvNumber)"
+    echo $message
+    say $message
+  else
+    echo "Environment check failed."
+  fi
+}
+
+function getbsservers() {
+  ps -ef | grep "BSServer" | grep "$STAGE/" | awk '{print $2}'
+}
+
 function restartbelcad() {
   fstopbelcad
 
@@ -959,7 +1016,7 @@ function beep() {
 
 # Only works on mac by default (No linux support)
 function playfinishsound() {
-  beep;beep;
+  beep;beep
   if string.isemptyorblank $1
   then
     say "Build Complete"
