@@ -324,8 +324,25 @@ function git.applypatch() {
   git apply --reject --whitespace=fix $1 # patch file path
 }
 
+# Pass the remote name : e.g. "origin" / others. 
 function git.setupstream() {
-  git branch --set-upstream-to "$1"/$(git.getcurrentbranch)
+  local remoteName="$1"
+  local branchNameToPush="$2"
+  if string.isemptyorblank $remoteName
+  then
+    remoteName="origin"
+  fi
+
+  if string.isemptyorblank $branchNameToPush
+  then
+    branchNameToPush="$(git.getcurrentbranch)"
+  fi
+
+  git branch --set-upstream-to "$remoteName"/"$branchNameToPush"
+}
+
+function git.unsetupstream() {
+  git branch --unset-upstream
 }
 
 # Checkout the branch that was checked out just before

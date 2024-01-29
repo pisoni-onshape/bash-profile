@@ -76,7 +76,7 @@ function system.commandsucceeds() {
 }
 
 # Essentially the same as above.
-function system.lastcommandwassuccessful() {
+function system.waslastcommandsuccessful() {
     [ $? -eq 0 ]
 }
 

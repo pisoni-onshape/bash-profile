@@ -85,6 +85,30 @@ function edit() {
     texteditor $1
 }
 
+function color.red() {
+    tput setaf 1
+}
+
+function color.green() {
+    tput setaf 2
+}
+
+function color.reset() {
+    tput sgr0	
+}
+
+function print_error() {
+	color.red
+    echo "$@" >&2
+    color.reset
+}
+
+function print_success() {
+	color.green
+    echo "$@"
+    color.reset
+}
+
 alias te='texteditor'
 alias editor='texteditor'
 alias bundleid='findappbundleid'

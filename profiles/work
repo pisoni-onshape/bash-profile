@@ -15,9 +15,13 @@ export BTI_ENABLE_TIMERS=1
 # So that BSServer doesn't time out so early
 export BTI_DISABLE_HEARTBEATS=1
 
-# So that thumbnails are generated in the dev environment (off by default)
-# Remove if not needed.
-#export ENABLE_THUMBNAIL_SERVICE=1
+# # So that thumbnails are generated in the dev environment (off by default)
+# # Remove if not needed.
+# export ENABLE_THUMBNAIL_SERVICE=1
+
+# # For creating drawings shaded view (BEL-216201)
+# export START_RENDERER_IN_MAIN_THREAD=1
+
 
 # If debugging BSServer, cut down on the number of BSServers available to attach to
 # ****** CAUTION: REMOVE WHEN WORKING WITH THUMBNAILS, otherwise it won't create Thumbnail
@@ -237,11 +241,12 @@ function fixDiskImagesJS() {
 function importextractedfile() {
   local time1=$SECONDS
   waitforenterkey "If the file doesn't include std, make sure you've run 'mongoDropToProduction' and 'gradle runBtUpgrade' before this (press enter if yes, and Ctrl+C if you haven't)"
-  restoreDump "$1" --nodrop --remap=btadmin@onshape.com
-  # restoreDump "$1" --nodrop --remap=pisoni@onshape.com
+  # restoreDump "$1" --nodrop --remap=btadmin@onshape.com
+  restoreDump "$1" --nodrop --remap=pisoni@onshape.com
   local time2=$SECONDS
   local duration=$(($time2-$time1))
   echo "Time taken in restore: $duration seconds"
+  say "Document import complete"
 }
 
 function runupgrade() {
@@ -371,6 +376,17 @@ function setupforproductionretrieval() {
 
 function waitforenterkey() {
   read -p "$1"
+}
+
+function openmocks3cache() {
+  local envNum=$(getEnvNumber)
+  local envString="myenv"
+  if ! string.equals $envNum "0"
+  then
+    envString="myenv$envNum"
+  fi
+
+  open "$STAGE/MockS3/onshape-cache-us-west-2/test/cache/$envString/c/15"
 }
 
 function runjunittest() {
@@ -509,7 +525,7 @@ function pulllatestbranch() {
 
     echo "Calling pullmerge $1 $argument"
     pullmerge "$1" $argument
-    if system.lastcommandwassuccessful
+    if system.waslastcommandsuccessful
     then
       echo "$USER: pullmerge successful"
       return 0
@@ -679,7 +695,7 @@ function rbtupdate() {
 
 function rbtpostwithrebase() {
   rebaselatest
-  if system.lastcommandwassuccessful
+  if system.waslastcommandsuccessful
   then
     rbtpost
   else
@@ -689,7 +705,7 @@ function rbtpostwithrebase() {
 
 function rbtupdatewithrebase() {
   rebaselatest
-  if system.lastcommandwassuccessful
+  if system.waslastcommandsuccessful
   then
     rbtupdate
   else
@@ -730,7 +746,7 @@ function setupjumpboxcertificates() {
 
 # Multi-env aware
 function getbelcadpid() {
-  local jettypid=$(ps -ef | grep jetty | grep -v grep | grep "$STAGE/" | awk '{print $2}')
+  local jettypid=$(ps -ef | grep jetty | grep "$STAGE/" | awk '{print $2}')
   echo $jettypid
 }
 
@@ -762,6 +778,18 @@ function killprocessid() {
     # Allow the process to be killed (I observed a couple of times that it doesn't immediately get killed
     # and the next command like system.whoisusingport 8080 still shows that PID)
     sleep 2
+  fi
+}
+
+function stopallservices() {
+  . "${TOOLS_BASH}/lib/docker/stopDockerContainer.bash"
+  btEnvDown
+  stopZookeeperIfRunning
+  stopDockerContainer dns-proxy
+  stopDockerContainer $(getContainerName https)
+  if isdebuggingdrawings
+  then
+    stopDrawingDocker
   fi
 }
 
@@ -857,15 +885,11 @@ function fstopbelcad() {
 function checkessentialservices() {
   local output=$(checkServices)
 
-  local ESSENTIAL_SERVICES=(
-      "memcached"
-      "mongod"
-      "Rabbit MQ Server"
-      "ZooKeeper"
-  )
+  declareEssentialServices
 
   local allRunning="true"
-  for service in "${ESSENTIAL_SERVICES[@]}" ; do
+  for entry in "${ESSENTIAL_SERVICES_AND_COMMANDS[@]}" ; do
+      service=${entry%%:*}
       local serviceRunning=$(echo $output | grep "$service.. ok docker container")
 
       if string.isemptyorblank $serviceRunning
@@ -887,28 +911,43 @@ function checkessentialservices() {
 function fastcheckessentialservices() {
   local envString=""
   local envNumber=$(getEnvNumber)
+  local autoFix=$1
+  local autoFixString=""
+  if string.equals $autoFix "true"
+  then
+    autoFixString=", starting it"
+  fi
+
   if ! string.equals $envNumber "0"
   then
     envString="_myenv$envNumber"
   fi
+
+  declareEssentialServices
+
   local runningServicesArray=( $(docker ps --format '{{.Names}}') )
   local allRunning="true"
   if [[ ! " ${runningServicesArray[@]} " =~ " zookeeper " ]] #Zookeeper is shared between all environments
   then
-    echo "Essential service zookeeper is not running"
+    echo "Essential service zookeeper is not running$autoFixString"
+    if string.equals $autoFix "true"
+    then
+      startZookeeper
+    fi
     allRunning="false"
-  fi  
+  fi
 
-  local ESSENTIAL_SERVICES=(
-      "memcached"
-      "mongod_4.4"
-      "rabbitmq"
-  )
-
-  for service in "${ESSENTIAL_SERVICES[@]}" ; do
+  for entry in "${ESSENTIAL_SERVICES_AND_COMMANDS[@]}" ; do
+      service=${entry%%:*}
+      startCommandName=${entry#*: }
       if [[ ! " ${runningServicesArray[@]} " =~ " $service$envString " ]]
       then
-        echo "Essential service $service is not running"
+        echo "Essential service $service is not running$autoFixString"
+        if string.equals $autoFix "true"
+        then
+          $startCommandName # start the service.
+        fi
+        
         allRunning="false"
       fi
   done
@@ -918,7 +957,18 @@ function fastcheckessentialservices() {
     echo "All essential services are running"
     return 0
   else
-    return 1
+    # All services were not running, but may have been started now. 
+    if string.equals $autoFix "true"
+    then
+      if fastcheckessentialservices #check if services are running now
+      then
+        echo "Essential services were not running but have been fixed"
+      else
+        echo "Essential services could not be fixed"
+      fi
+    else
+      return 1
+    fi
   fi
 }
 
@@ -932,7 +982,17 @@ function monitorServices() {
 }
 
 function isdockerrunning() {
-  string.isnotemptyorblank $(command -v docker) && string.isnotemptyorblank $((docker ps 2> /dev/null) | grep -i "container")
+  if calledfromterminal
+  then
+    if (string.isnotemptyorblank $(command -v docker) && string.isnotemptyorblank $((docker ps 2> /dev/null) | grep -i "container"))
+    then
+      echo "Yes"
+    else
+      echo "No"
+    fi
+  else
+    string.isnotemptyorblank $(command -v docker) && string.isnotemptyorblank $((docker ps 2> /dev/null) | grep -i "container")
+  fi
 }
 
 function checkenv() {
@@ -961,6 +1021,35 @@ function checkenv() {
   return 0
 }
 
+function fixessentialservices() {
+  fastcheckessentialservices "true" #auto-fix
+}
+
+function fixenv() {
+  if ! isdockerrunning
+  then
+    startDockerApp
+  fi
+
+  fixessentialservices
+
+  startserversifnotalready
+
+  if isdebuggingdrawings
+  then
+    startDrawingDocker skipupdate
+  fi
+}
+
+function stopenv() {
+  # Stop Onshape server and grunt quickServe
+  stopservers
+  # Stop all Docker services
+  stopallservices
+  # Finally, stop Rancher Desktop itself.
+  system.killallwithname "Rancher Desktop"
+}
+
 function getEnvNumber() {
   if string.isnotemptyorblank $HOST_PROPERTIES_ENVNUM
   then
@@ -971,7 +1060,9 @@ function getEnvNumber() {
 }
 
 function monitorenv() {
+  export MONITORING_ENV="true"
   local wasWorkingBefore="false"
+
   while checkenv; do
     echo ""    
     echo $(system.getcurrentdate)
@@ -979,15 +1070,46 @@ function monitorenv() {
     sleep 5
   done
 
+  unset MONITORING_ENV
+
   if string.equals $wasWorkingBefore "true"
   then
     beep;beep
     local message="Something has crashed in Environment $(getEnvNumber)"
     echo $message
     say $message
+    return 1
   else
     echo "Environment check failed."
+    return 1
   fi
+}
+
+function declareEssentialServices() {
+  # This if else is in this form mostly because I don't know how to dynamically add
+  # just one element in the array :), but it's ok for now. 
+  ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod_4.4: startMongod" "rabbitmq: startRabbitMQServer")
+  if isdebuggingdrawings
+  then
+    ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod_4.4: startMongod" "rabbitmq: startRabbitMQServer" "xenon: startDrawingDocker")
+  fi  
+}
+
+function setdebuggingdrawings() {
+  local DEBUGGING_DRAWINGS=$1
+  if string.isemptyorblank $DEBUGGING_DRAWINGS
+  then
+    DEBUGGING_DRAWINGS="true"
+  fi
+  local extension=$(getEnvNumber)
+  system.writevartodisk DEBUGGING_DRAWINGS $extension
+}
+
+function isdebuggingdrawings() {
+  local envNum=$(getEnvNumber)
+  local DEBUGGING_DRAWINGS=$(system.readvarfromdisk DEBUGGING_DRAWINGS $envNum)  
+  system.readvarfromdisk DEBUGGING_DRAWINGS $extension
+  string.equals $DEBUGGING_DRAWINGS "true"
 }
 
 function getbsservers() {
@@ -1032,11 +1154,11 @@ function buildgradleparallel() {
   # Same goes with docker not running
   if ! isdockerrunning
   then
-    startServices
+    startServices # Will ensure docker and services run
   fi
 
-  gradle --parallel
-  if system.lastcommandwassuccessful
+  gradle --parallel $@
+  if system.waslastcommandsuccessful
   then
     playfinishsound "Build successful"
     # If the build was successful, and a handler is defined, call it now.
@@ -1154,7 +1276,7 @@ function mergetomaster() {
   else
     currentbranch=$(git.getcurrentbranch)
     rebaselatestbranch "master"
-    if ! system.lastcommandwassuccessful
+    if ! system.waslastcommandsuccessful
     then
       echo "Rebase didn't succeed. Please manually rebase/pull latest master branch and try again."
       return
@@ -1162,7 +1284,7 @@ function mergetomaster() {
 
     waitforenterkey "Press enter if and when rebase is successful to continue to merge to master"
     git checkout master
-    if ! system.lastcommandwassuccessful
+    if ! system.waslastcommandsuccessful
     then
       echo "git checkout failed, did not merge to master"
       return
@@ -1172,7 +1294,7 @@ function mergetomaster() {
     then
       echo "Calling  mergepush $currentbranch --no-review -m \"$1\""
       mergepush "$currentbranch" --no-review -m "$1" # In this case the first argument is the revert comment.
-      if system.lastcommandwassuccessful
+      if system.waslastcommandsuccessful
       then
         setnotreverting
       fi
@@ -1180,7 +1302,7 @@ function mergetomaster() {
       local cmd="mergepush $currentbranch -r $1"
       echo "Calling $cmd"
       mergepush $currentbranch -r $1
-      if system.lastcommandwassuccessful
+      if system.waslastcommandsuccessful
       then
         # Not really required, but mark the branch as merged.
         git checkout $currentbranch
@@ -1231,7 +1353,7 @@ function revertbranchfrommaster() {
   waitforenterkey "Press enter if all of your changes are in one top commit, and ready to create the revert branch from it (Otherwise press Ctrl+C and try again after squashing them to one change, or do manually)."
   createrevertmasterbranchfrombranchtopchange
 
-  if ! system.lastcommandwassuccessful
+  if ! system.waslastcommandsuccessful
   then
     echo "Revert has merge problems. Resolve those, and then merge the branch to master using mergetomaster"
     return
@@ -1313,7 +1435,7 @@ function mergetoreleasethenmaster() {
 
     rebaselatestbranch $CURRENT_RELEASE
 
-    if ! system.lastcommandwassuccessful
+    if ! system.waslastcommandsuccessful
     then
       echo "Rebase didn't succeed. Please manually rebase/pull latest master branch and try again."
       return 1
@@ -1324,7 +1446,7 @@ function mergetoreleasethenmaster() {
     echo "Calling mergepush $currentbranch -r $reviewrequestid"
     mergepush $currentbranch -r $reviewrequestid
 
-    if ! system.lastcommandwassuccessful
+    if ! system.waslastcommandsuccessful
     then
       echo "mergepush didn't succeed. Please manually resolve the problem and try again."
       return 1
@@ -1340,7 +1462,7 @@ function mergetoreleasethenmaster() {
     currentbranch=$(git.getcurrentbranch)
     git merge $CURRENT_RELEASE
 
-    if ! system.lastcommandwassuccessful
+    if ! system.waslastcommandsuccessful
     then
       waitforenterkey "Merging release into master was NOT successful. Please resolve merge issues in another tab and then press enter here to continue, or press Ctrl+C and carry remaining steps manually."
       waitforenterkey "Just double checking. You are sure the merge issues are resolved in another tab? Press enter if yes, or Ctrl+C to quit from here and do rest of the steps manually."
@@ -1408,7 +1530,14 @@ function startservers() {
     # Docker as well if not running
     startServices
   fi
+
   startbelcad
+  if ! system.waslastcommandsuccessful
+  then
+    echo "Error: Could not start Onshape server. Not starting quickServer"
+    return
+  fi
+
   grunt quickServe
 }
 
@@ -1428,6 +1557,11 @@ function startserversifnotalready() {
   else
     echo "Onshape server not already running, starting it now"
     startbelcad
+    if ! system.waslastcommandsuccessful
+    then
+      echo "Error: Could not start Onshape server. Not starting quickServer"
+      return
+    fi
   fi
 
   if isquickserverunning
@@ -1477,7 +1611,7 @@ function buildjsonly() {
     #  that for that you'd either buildjava, OR generate serializables separately
     # using the `genser` command
     export SKIP_SERIALIZABLES=1
-    buildgradleparallel
+    buildgradleparallel -x runBtUpgrade
     local returnvalue=$?
     unset SKIP_CPP
     unset SKIP_JAVA
@@ -1541,6 +1675,33 @@ function openbug() {
   open "https://belmonttechinc.atlassian.net/browse/$bugNumber"
 }
 
+function createbugfolder() {
+  if string.isemptyorblank $1
+  then
+    echo "Bug number not provided"
+    return
+  fi
+
+  local bugNumber="$1"
+  bugNumber=$(string.simplereplace $(string.tolower $bugNumber) "bel-" "")
+  bugNumber="BEL-$bugNumber"
+  mkdir "$HOME/Bugs/$bugNumber" > /dev/null 2>&1
+}
+
+function openbugfolder() {
+  if string.isemptyorblank $1
+  then
+    echo "Bug number not provided"
+    return
+  fi
+
+  local bugNumber="$1"
+  bugNumber=$(string.simplereplace $(string.tolower $bugNumber) "bel-" "")
+  bugNumber="BEL-$bugNumber"
+  open "$HOME/Bugs/$bugNumber"
+}
+
+
 function ptortest() {
  ptor $1 --verbose --flags=fastFail --target=https://localhost.onshape.io:8000/
 }
@@ -1550,6 +1711,7 @@ function pushtos3() {
   # as otherwise kibana logs show the branch name only as "bel" and nothing else
   local originalbranchname=$(git.getcurrentbranch)
   local currentdatetime=$(system.getcurrentdate "_")
+  currentdatetime=$(string.concatenate "$currentdatetime" "_")
 
   # Change bel-xxxxxx to bel_xxxxxx
   # sed syntax : "s,search_string,replace_string,regex_flags" (most other characters allowed as separator instead of ,)
@@ -1666,7 +1828,7 @@ alias staging='cd $STAGE'
 alias starttimerdisplay='runTimerDisplay'
 alias stopServices='btEnvDown'
 alias startallservers='startservers'
-alias restartServices='stopServices;startServices'
+alias restartServices='stopallservices;startServices'
 alias startfrontend='grunt quickServe'
 alias timerdisplay='runTimerDisplay'
 alias updaterbt='rbtupdate'
