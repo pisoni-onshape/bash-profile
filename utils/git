@@ -8,6 +8,10 @@ export git_defined=1
 export GIT_SKIP_TREE_FILES_LIST=~/.git-skipped-worktree-files
 export GIT_PATCH_DIR=~/patches
 
+## Ignore
+export globalgitignorefile=$HOME/.gitignore
+
+
 # Credit to this alias goes to this Slack conversation : https://onshape.slack.com/archives/C18HMGX32/p1495031914762665
 alias gb='cur=$(git rev-parse --abbrev-ref HEAD); prev=$(git rev-parse --abbrev-ref @{-1}); git for-each-ref --sort=committerdate refs/heads/ --format="%(color:reset)  %(refname:short)|%(color:black bold)%(committerdate:relative)%(color:reset)" | column -ts"|" | sed -e "s,  ${cur} ,$(tput setaf 2)$(tput bold)* ${cur} ," | sed -e "s,  ${prev} ,$(tput setaf 3)$(tput bold)  ${prev} ,";'
 
@@ -324,7 +328,7 @@ function git.applypatch() {
   git apply --reject --whitespace=fix $1 # patch file path
 }
 
-# Pass the remote name : e.g. "origin" / others. 
+# Pass the remote name : e.g. "origin" / others.
 function git.setupstream() {
   local remoteName="$1"
   local branchNameToPush="$2"
@@ -359,7 +363,19 @@ function git.deletecurrentbranch() {
 	git branch -D $currentbranch
 }
 
+function git.setglobalignorefile() {
+	if string.isemptyorblank $1
+	then
+		git config --global core.excludesfile $globalgitignorefile
+	else
+		git config --global core.excludesfile $1
+	fi
+}
+
 alias stoptrackingfile='git.skipworktree'
 alias starttrackingfile='git.unskipworktree'
 alias git.currentbranch='git.getcurrentbranch'
 alias git.copybranch='git.makecopy'
+alias opengitglobalignorefile='edit $globalgitignorefile'
+alias openglobalgitignorefile='opengitglobalignorefile'
+alias opengitignorefile='opengitglobalignorefile'

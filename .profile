@@ -37,4 +37,5 @@ done
 for filepath in $BASH_PROFILE_PATH/utils/*; do
 	filename=$(basename $filepath)
 	alias refresh$filename="importutility $filename -f"
+	alias open$filename="texteditor $filepath"
 done

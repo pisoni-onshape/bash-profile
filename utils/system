@@ -252,6 +252,20 @@ function system.killallwithname() {
 	pkill -9 -f -i "$1"
 }
 
+function system.enablelocate() {
+	system.buildlocatedb
+}
+
+function system.buildlocatedb() {
+  sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.locate.plist
+}
+
+function system.refreshlocatedb() {
+	echo "Creating backup of locate database file at /var/db/locate.database.backup"
+	sudo mv /var/db/locate.database /var/db/locate.database.backup
+	sudo /usr/libexec/locate.updatedb
+}
+
 # Incomplete.
 function system.replacefilenames() {
 	local searchRegex="$1"

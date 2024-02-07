@@ -27,15 +27,6 @@ function findbyname() {
 	find "$directory" -name "$filename" 2>/dev/null
 }
 
-function gitsetglobalignorefile() {
-	if [ -z "$1"]
-	then
-		git config --global core.excludesfile $globalgitignorefile
-	else
-		git config --global core.excludesfile $1
-	fi
-}
-
 # alias sublime='open -a "/Applications/Sublime Text.app"'
 # alias bbedit='open -a /Applications/BBEdit.app'
 # alias z='open -a /Applications/Zed.app/'
@@ -94,7 +85,7 @@ function color.green() {
 }
 
 function color.reset() {
-    tput sgr0	
+    tput sgr0
 }
 
 function print_error() {
@@ -125,12 +116,6 @@ alias openkarabinerconfig='edit "$karabinerconfigfile"'
 ## Please ensure bash-completion is installed by calling
 ## brew install bash-completion
 [ -f /usr/local/etc/bash_completion ] && . /usr/local/etc/bash_completion
-
-## Ignore
-export globalgitignorefile=$HOME/.gitignore
-alias opengitglobalignorefile='edit $globalgitignorefile'
-alias openglobalgitignorefile='opengitglobalignorefile'
-alias opengitignorefile='opengitglobalignorefile'
 
 # IDEs
 alias wstorm='webstorm'

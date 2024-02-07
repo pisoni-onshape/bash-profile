@@ -493,15 +493,37 @@ function pulllatest() {
   elif git.branchislsbreleasebased
   then
     echo "Detected lsb/rel-* based branch. Rebasing w.r.t. to that"
-    pulllatestbranch "$LSB_CURRENT_RELEASE" $1
+    if string.isemptyorblank "$LSB_CURRENT_RELEASE"
+    then
+        refreshcurrentreleasebranch
+    fi
+
+    if string.isnotemptyorblank "$LSB_CURRENT_RELEASE"
+    then
+        pulllatestbranch "$LSB_CURRENT_RELEASE" $1
+    else
+        echo "refreshing CURRENT_RELEASE and LSB_CURRENT_RELEASE failed. Please set them manually. Exiting now."
+        return 1
+    fi
   elif git.branchismasterbased || string.equals "$branchname" "master"
   then
     echo "Detected master based branch. Rebasing w.r.t. to that"
     pulllatestbranch "master" $1
   elif git.branchisreleasebased || string.equals "$branchname" "$CURRENT_RELEASE"
   then
-  echo "Detected rel-* based branch. Rebasing w.r.t. to that"
-    pulllatestbranch "$CURRENT_RELEASE" $1
+    echo "Detected rel-* based branch. Rebasing w.r.t. to that"
+    if string.isemptyorblank "$CURRENT_RELEASE"
+    then
+        refreshcurrentreleasebranch
+    fi
+
+    if string.isnotemptyorblank "$CURRENT_RELEASE"
+    then
+        pulllatestbranch "$CURRENT_RELEASE" $1
+    else
+        echo "refreshing CURRENT_RELEASE failed. Please set it manually. Exiting now."
+        return 1
+    fi
   else
     echo "Didn't detect standard (lsb/)master/release based branches, defaulting to master based rebase"
     pulllatestbranch "master" $1
@@ -881,7 +903,7 @@ function fstopbelcad() {
   fi
 }
 
-# Another version of the official 'checkServices'. Tells you if 
+# Another version of the official 'checkServices'. Tells you if
 function checkessentialservices() {
   local output=$(checkServices)
 
@@ -947,7 +969,7 @@ function fastcheckessentialservices() {
         then
           $startCommandName # start the service.
         fi
-        
+
         allRunning="false"
       fi
   done
@@ -957,7 +979,7 @@ function fastcheckessentialservices() {
     echo "All essential services are running"
     return 0
   else
-    # All services were not running, but may have been started now. 
+    # All services were not running, but may have been started now.
     if string.equals $autoFix "true"
     then
       if fastcheckessentialservices #check if services are running now
@@ -1017,7 +1039,7 @@ function checkenv() {
     return 1
   fi
 
-  # Success, everything seems to be working fine. 
+  # Success, everything seems to be working fine.
   return 0
 }
 
@@ -1064,7 +1086,7 @@ function monitorenv() {
   local wasWorkingBefore="false"
 
   while checkenv; do
-    echo ""    
+    echo ""
     echo $(system.getcurrentdate)
     wasWorkingBefore="true"
     sleep 5
@@ -1087,12 +1109,12 @@ function monitorenv() {
 
 function declareEssentialServices() {
   # This if else is in this form mostly because I don't know how to dynamically add
-  # just one element in the array :), but it's ok for now. 
-  ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod_4.4: startMongod" "rabbitmq: startRabbitMQServer")
+  # just one element in the array :), but it's ok for now.
+  ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod_7.0: startMongod" "rabbitmq: startRabbitMQServer")
   if isdebuggingdrawings
   then
-    ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod_4.4: startMongod" "rabbitmq: startRabbitMQServer" "xenon: startDrawingDocker")
-  fi  
+    ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod_7.0: startMongod" "rabbitmq: startRabbitMQServer" "xenon: startDrawingDocker")
+  fi
 }
 
 function setdebuggingdrawings() {
@@ -1107,7 +1129,7 @@ function setdebuggingdrawings() {
 
 function isdebuggingdrawings() {
   local envNum=$(getEnvNumber)
-  local DEBUGGING_DRAWINGS=$(system.readvarfromdisk DEBUGGING_DRAWINGS $envNum)  
+  local DEBUGGING_DRAWINGS=$(system.readvarfromdisk DEBUGGING_DRAWINGS $envNum)
   system.readvarfromdisk DEBUGGING_DRAWINGS $extension
   string.equals $DEBUGGING_DRAWINGS "true"
 }
