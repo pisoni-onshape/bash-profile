@@ -55,6 +55,10 @@ function dirismultienvnewton() {
 	[[ $1 =~ $regexNewtonLike ]]
 }
 
+function setupnewton() {
+  ensurenewtondirectory
+}
+
 # Ensure we're in the newton directory
 # or one of its subdirectories.
 function ensurenewtondirectory() {
