@@ -1266,77 +1266,95 @@ function createlsbmasterbranchfromlsbreleasetopchange() {
   git cherry-pick $topSHAId
 }
 
+# Merge a branch to master following the complete process outlined in Onshape's Software Release Process
+# (https://belmonttechinc.atlassian.net/wiki/spaces/DEV/pages/10387559/Software+Release+Process)
+# Syntax: Call `mergetomaster [review-request-id]` - review-request-id is optional. If you don't pass
+# it, it will automatically find the *approved* RBCommons Review request with the same branch name.
+# If it's not approved it won't be merged. It works as expected as long as the branch was originally
+# created by checkoutfromlsbmaster or checkoutfrommaster - which merely adds a "-lsb-master" or "-master"
+# at the end of the branch to denote the original branch it was based off of.
 function mergetomaster() {
   ensurenewtondirectory
+  local reviewrequestid="$1"
 
   if git.hasUncommittedChanges
   then
     echo "There are uncommitted changes. Please fix before merging to master"
-    return
+    return 1
   fi
 
   if git.isoneoftheofficialbranches
   then
     echo "Wrong branch. You should call it on your feature branch and not on one of the official branches"
-    return
+    return 1
   fi
 
   if ! git.branchislsbmasterbased && ! git.branchismasterbased
   then
-    echo "Branch is not lsb/master or master based. Please check and try again"
-    return
+    echo "Branch is not lsb/master or master based (Was it created using checkoutfrommaster or checkoutfromlsbmaster?). It is checked by whether the branch name ends with "-master" or "-lsb-master"). Please fix and try again"
+    return 1
   fi
 
   # Check if a specific rbcommons review request id is given
   # Search for an approved request for the current git branch if not.
-  if string.isemptyorblank "$1" && ! isreverting # If reverting we don't need to pull review request id
+  if string.isemptyorblank "$reviewrequestid" && ! isreverting # If reverting we don't need to pull review request id
   then
     reviewrequestid=$(rbt.getcurrentid $REVIEW_STATUS_APPROVED)
-    if string.isemptyorblank $reviewrequestid
+    if string.isemptyorblank $reviewrequestid || ! string.isnumber $reviewrequestid
     then
       echo "Didn't find an approved review request for the branch, enter manually."
+      return 1
     else
-      echo "Automatically found approved review request id: $reviewrequestid for current branch, merging with the same"
-      mergetomaster $reviewrequestid
+      echo "Automatically found approved review request id: $reviewrequestid for current branch, using that for merging."
+    fi
+  fi
+
+  # Start the merging process now.
+  currentbranch=$(git.getcurrentbranch)
+
+  # Step 1: Rebase latest master branch (regardless of whether it was an lsb/master based branch or just master based)
+  rebaselatestbranch "master"
+  if ! system.waslastcommandsuccessful
+  then
+    echo "Rebase didn't succeed. Please manually rebase/pull latest master branch and try again."
+    return 1
+  fi
+
+  waitforenterkey "Press enter if and when rebase is successful to continue to merge to master"
+
+  # Step 2: Checkout master
+  git checkout master
+  if ! system.waslastcommandsuccessful
+  then
+    echo "git checkout failed, did not merge to master"
+    return 1
+  fi
+
+  # If we are reverting this branch from master (this branch itself was
+  # previously merged, and we are calling `revertbranchfrommaster` function)
+  # then we don't need a review request id
+  if isreverting
+  then
+    echo "Calling  mergepush $currentbranch --no-review -m \"$1\""
+    mergepush "$currentbranch" --no-review -m "$1" # In this case the first argument is the revert comment.
+    if system.waslastcommandsuccessful
+    then
+      setnotreverting
     fi
   else
-    currentbranch=$(git.getcurrentbranch)
-    rebaselatestbranch "master"
-    if ! system.waslastcommandsuccessful
+    # Step 3: Call mergepush
+    local cmd="mergepush $currentbranch -r $1"
+    echo "Calling $cmd"
+    mergepush $currentbranch -r $1
+    if system.waslastcommandsuccessful
     then
-      echo "Rebase didn't succeed. Please manually rebase/pull latest master branch and try again."
-      return
-    fi
-
-    waitforenterkey "Press enter if and when rebase is successful to continue to merge to master"
-    git checkout master
-    if ! system.waslastcommandsuccessful
-    then
-      echo "git checkout failed, did not merge to master"
-      return
-    fi
-
-    if isreverting
-    then
-      echo "Calling  mergepush $currentbranch --no-review -m \"$1\""
-      mergepush "$currentbranch" --no-review -m "$1" # In this case the first argument is the revert comment.
-      if system.waslastcommandsuccessful
-      then
-        setnotreverting
-      fi
+      git checkout $currentbranch
+      # This is not really needed, but rename the current branch as 'merged' to keep for
+      # a few days in case you need to revert it. It can be deleted later.
+      markbranchmerged $currentbranch
     else
-      local cmd="mergepush $currentbranch -r $1"
-      echo "Calling $cmd"
-      mergepush $currentbranch -r $1
-      if system.waslastcommandsuccessful
-      then
-        # Not really required, but mark the branch as merged.
-        git checkout $currentbranch
-        # rename the current branch as 'merged' to keep for a few days
-        markbranchmerged $currentbranch
-      else
-        echo "mergepush was not succecsful, please call it again on the master."
-      fi
+      echo "mergepush was not succecsful, please call it again on the master."
+      return 1
     fi
   fi
 }
@@ -1344,7 +1362,9 @@ function mergetomaster() {
 # Revert a branch you merged to master. You should be on the branch
 # to revert for calling this.
 # Please make sure all the changes you did are in a single top
-# commit in this branch (Squash changes first if that's not the case)
+# commit in this branch (Squash changes first if that's not the case).
+# The revert branch would be created by cherry picking the top-most commit
+# in that branch.
 function revertbranchfrommaster() {
   local revertcomment="$1"
   if string.isemptyorblank "$revertcomment"
