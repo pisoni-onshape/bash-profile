@@ -1428,23 +1428,19 @@ function setnoresolve() {
 
 function mergetoreleasethenmaster() {
   ensurenewtondirectory
+  local reviewrequestid=$1
 
   if git.hasUncommittedChanges
   then
     echo "There are uncommitted changes. Please fix before merging to release"
-    return
+    return 1
   fi
 
   if git.isoneoftheofficialbranches
   then
     echo "Wrong branch. You should call it on your feature branch and not on one of the official branches"
-    return
+    return 1
   fi
-
-  # Fetch the latest release branch from the server
-  refreshcurrentreleasebranch
-
-  waitforenterkey "Will merge to release branch : $CURRENT_RELEASE. Press enter if that's correct, else press Ctrl+C to terminate this function, call 'export CURRENT_RELEASE=rel-<correct-version>' without single quotes and call this function again."
 
   local currentbranch=$(git.getcurrentbranch)
 
@@ -1461,70 +1457,82 @@ function mergetoreleasethenmaster() {
       echo "Created branch $currentbranch from the lsb/master based branch with the same commit"
     else
       echo "Branch does not end with a -rel-x.y* pattern. Please check and run manually"
-      return
+      return 1
     fi
   fi
 
-  if string.isemptyorblank $1
+  if string.isemptyorblank $reviewrequestid
   then
     reviewrequestid=$(rbt.getcurrentid $REVIEW_STATUS_APPROVED)
-    if string.isemptyorblank $reviewrequestid
+    if string.isemptyorblank $reviewrequestid || ! string.isnumber $reviewrequestid
     then
       echo "Didn't find an approved review request for the branch, enter manually."
+      return 1
     else
       echo "Automatically found approved review request id: $reviewrequestid for current branch, merging with the same"
-      mergetoreleasethenmaster $reviewrequestid
     fi
-  else
-    reviewrequestid=$1
-    # Merge to release first
+  fi
 
-    rebaselatestbranch $CURRENT_RELEASE
+  # Fetch the latest release branch from the server
+  refreshcurrentreleasebranch
+  waitforenterkey "Will merge to release branch : $CURRENT_RELEASE. Press enter if that's correct, else press Ctrl+C to terminate this function, call 'export CURRENT_RELEASE=rel-<correct-version>' without single quotes and call this function again."
 
-    if ! system.waslastcommandsuccessful
-    then
+  # Merge to release first
+  # Step 1: Rebase latest release branch.
+  rebaselatestbranch $CURRENT_RELEASE
+
+  if ! system.waslastcommandsuccessful
+  then
       echo "Rebase didn't succeed. Please manually rebase/pull latest master branch and try again."
       return 1
-    fi
+  fi
 
-    waitforenterkey "Press enter if and when rebase is successful to continue to merge to release, otherwise press Ctrl+C and do it manually"
-    git checkout $CURRENT_RELEASE
-    echo "Calling mergepush $currentbranch -r $reviewrequestid"
-    mergepush $currentbranch -r $reviewrequestid
+  waitforenterkey "Press enter if and when rebase is successful to continue to merge to release, otherwise press Ctrl+C and do it manually"
 
-    if ! system.waslastcommandsuccessful
-    then
+  # Step 2: Checkout latest release
+  git checkout $CURRENT_RELEASE
+
+  # Step 3: Call mergepush to release.
+  echo "Calling mergepush $currentbranch -r $reviewrequestid"
+  mergepush $currentbranch -r $reviewrequestid
+
+  if ! system.waslastcommandsuccessful
+  then
       echo "mergepush didn't succeed. Please manually resolve the problem and try again."
       return 1
-    fi
+  fi
 
-    # Merge changes back to master
-    waitforenterkey "Merging changes to master now, press enter when ready"
-    checkoutfrommaster $currentbranch # Will create new branch from master taking name from $currentbranch
+  # Merge changes back to master
+  waitforenterkey "Merging changes to master now, press enter when ready"
+  checkoutfrommaster $currentbranch # Will create new branch from master taking name from $currentbranch
 
-    #Rename the last branch before reassigning the variable to the current one.
-    markbranchmerged $currentbranch
+  # Rename the last branch before reassigning the variable to the current one.
+  markbranchmerged $currentbranch
 
-    currentbranch=$(git.getcurrentbranch)
-    git merge $CURRENT_RELEASE
+  currentbranch=$(git.getcurrentbranch)
 
-    if ! system.waslastcommandsuccessful
-    then
+  # Step 4: Merge latest release into current branch.
+  git merge $CURRENT_RELEASE
+
+  if ! system.waslastcommandsuccessful
+  then
       waitforenterkey "Merging release into master was NOT successful. Please resolve merge issues in another tab and then press enter here to continue, or press Ctrl+C and carry remaining steps manually."
       waitforenterkey "Just double checking. You are sure the merge issues are resolved in another tab? Press enter if yes, or Ctrl+C to quit from here and do rest of the steps manually."
-    fi
-
-    # Validate that only your commits are included. If you see more than your changes here, wait for other authors to push  theirs, do pullmerge master after that or ask them if it is OK to push the changes to master.
-    git log --format="%an: %s" master..$currentbranch
-
-    waitforenterkey "Press enter if you see only your commits above, otherwise press Ctrl+C and do it manually"
-
-    git checkout master
-    mergepush $currentbranch -r $reviewrequestid --no-resolve # don't resolve the bug again, so fixed-in hash keeps pointing to the rel branch
-
-    git checkout $currentbranch
-    markbranchmerged $currentbranch
   fi
+
+  # Step 5: Validate that only your commits are included. If you see more than your changes here, wait for other authors to push  theirs, do pullmerge master after that or ask them if it is OK to push the changes to master.
+  git log --format="%an: %s" master..$currentbranch
+  waitforenterkey "Press enter if you see only your commits above, otherwise press Ctrl+C and do it manually"
+
+  # Step 6: Checkout master
+  git checkout master
+
+  # Step 7: Call mergepush with master this time.
+  mergepush $currentbranch -r $reviewrequestid --no-resolve # don't resolve the bug again, so fixed-in hash keeps pointing to the rel branch
+
+  # Just like we did in `mergetomaster`, these steps are not required but we do it in case we would need to revert them for a few days.
+  git checkout $currentbranch
+  markbranchmerged $currentbranch
 }
 
 function startDockerApp() {
