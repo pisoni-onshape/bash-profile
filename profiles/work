@@ -177,32 +177,21 @@ function newonshapeversion() {
 }
 
 function refreshcurrentreleasebranch() {
-  CURRENT_RELEASE=""
-
-  # The current release can only either be the current
-  # newton version, or one before it.
-  local extension=$(getEnvNumber)
-
-  CURRENT_RELEASE=$(system.readvarfromdisk CURRENT_RELEASE $extension)
-  # So if it's already equivalent to NEWTON_VERSION,
-  # there's no point pulling latest branch from github
-  # (as we wrote in the file in the first place)
-  if ! string.equals "$CURRENT_RELEASE" "rel-$NEWTON_VERSION"
+  ensurenewtondirectory
+  local latestremoterelease=$(git branch -r | grep -E "origin/rel-\d+\.\d+$" | sort -V | tail -n 1)
+  if ! system.waslastcommandsuccessful || string.isemptyorblank $latestremoterelease
   then
-    echo "Refreshing CURRENT_RELEASE (pulling from remote) ..."
-    CURRENT_RELEASE="rel-$NEWTON_VERSION"
-    if ! git.remotebranchexists $CURRENT_RELEASE
-    then
-      CURRENT_RELEASE=$(newonshapeversion $CURRENT_RELEASE -1)
-    fi
+    print_error "Could not find latest remote release branch. Please check if you're in the correct directory and git is working as expected."
+    return 1
   fi
 
+  CURRENT_RELEASE=$(string.simplereplace $latestremoterelease "origin/" "")
   # Refresh the current lsb release branch as well.
   LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
   echo "CURRENT_RELEASE set to $CURRENT_RELEASE"
 
   # Write current release to a file
-  system.writevartodisk CURRENT_RELEASE $extension
+  system.writevartodisk CURRENT_RELEASE $(getEnvNumber)
 }
 
 function debugstaging() {
@@ -861,20 +850,22 @@ function isquickserverunning() {
 function areserversrunning() {
   local hasError="false"
 
+  echo -n "Onshape server is "
   if ! isonshapeserverrunning
   then
     hasError="true"
-    echo "Onshape server is NOT running"
+    print_error "NOT running"
   else
-    echo "Onshape server is running"
+    print_success "running"
   fi
 
+  echo -n "quickServe is "
   if ! isquickserverunning
   then
     hasError="true"
-    echo "quickServe is NOT running"
+    print_error "NOT running"
   else
-    echo "quickServe is running"
+    print_success "running"
   fi
 
   if string.equals $hasError "false"
@@ -1698,6 +1689,24 @@ function buildjavaandjsonly() {
     return $returnvalue
 }
 
+function grdlbuildjavaandjsonly() {
+  ensurenewtondirectory
+  grdlu gen java js #Download binaries for CPP
+  if system.waslastcommandsuccessful
+  then
+    playfinishsound "Build successful"
+    # If the build was successful, and a handler is defined, call it now.
+    if system.functionexists onsuccessfulbuild
+    then
+      onsuccessfulbuild & >/dev/null # Fire the onsuccessfulbuild function async.
+    fi
+    return 0
+  else
+    playfinishsound "Build failed"
+    return 1
+  fi  
+}
+
 # Create a patch of all the committed/uncommitted changes
 # and compare with the remote origin master / lsb/master
 # CAUTION : Doesn't handle new files as of now. ToDo.
@@ -1821,9 +1830,6 @@ function updatedummylsbmaster() {
 alias bfnodestop='bf job rm'
 alias bfjobremove='bfnodestop'
 alias bsserverpath="$STAGE/BSServer/bin/BSServer"
-alias grdlbuildjavaonly='grdlu gen java' #Build java only, download binaries for others
-alias grdlbuildjsonly='grdlu gen js' #Build javascript only, download binaries for others
-alias grdlbuildjavaandjsonly='grdlu gen java js' #Build java and javascript only, download binaries for others
 alias checknecessaryservices='checkessentialservices'
 alias checkJsCode='grunt checkJsCode'
 alias checkjs='grunt eslint:javascript'

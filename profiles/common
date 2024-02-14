@@ -89,15 +89,19 @@ function color.reset() {
 }
 
 function print_error() {
-	color.red
-    echo "$@" >&2
-    color.reset
+  color.red
+  echo "$@" >&2
+  color.reset
 }
 
 function print_success() {
-	color.green
-    echo "$@"
-    color.reset
+  color.green
+  echo "$@"
+  color.reset
+}
+
+function print_nonewline() {
+echo -n "$@"
 }
 
 alias te='texteditor'
@@ -128,3 +132,4 @@ alias python='/usr/bin/python3'
 alias findfile='findbyname'
 alias cd..='cd ..'
 alias cd...='cd ../..'
+alias print='echo'
