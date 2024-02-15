@@ -1123,9 +1123,7 @@ function setdebuggingdrawings() {
 }
 
 function isdebuggingdrawings() {
-  local envNum=$(getEnvNumber)
-  local DEBUGGING_DRAWINGS=$(system.readvarfromdisk DEBUGGING_DRAWINGS $envNum)
-  system.readvarfromdisk DEBUGGING_DRAWINGS $extension
+  local DEBUGGING_DRAWINGS=$(system.readvarfromdisk DEBUGGING_DRAWINGS $(getEnvNumber))
   string.equals $DEBUGGING_DRAWINGS "true"
 }
 
