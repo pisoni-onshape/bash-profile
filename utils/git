@@ -342,7 +342,8 @@ function git.setupstream() {
     branchNameToPush="$(git.getcurrentbranch)"
   fi
 
-  git branch --set-upstream-to "$remoteName"/"$branchNameToPush"
+  local newUpstream="$remoteName"/"$branchNameToPush"
+  git push --set-upstream "$remoteName" "$branchNameToPush"
 }
 
 function git.unsetupstream() {

@@ -111,6 +111,8 @@ function exportAfterInitVariables() {
 
   # Set GRUNT_SERVE_PORT according to the env number
   export GRUNT_SERVE_PORT=$(($DEFAULT_GRUNT_SERVE_PORT+$envNum))
+
+  export CURRENT_BUILD_TOOLS_PATH="$ROOT_DIR"
 }
 
 # Import Utility modules
@@ -380,6 +382,10 @@ function openmocks3cache() {
   fi
 
   open "$STAGE/MockS3/onshape-cache-us-west-2/test/cache/$envString/c/15"
+}
+
+function openbuildtools() {
+  open $CURRENT_BUILD_TOOLS_PATH
 }
 
 function runjunittest() {
@@ -783,6 +789,23 @@ function isonshapeserverrunning() {
   string.isnotemptyorblank $jettypid
 }
 
+# Sometimes the process itself is running, 
+# but it's non-functional. Validate it. Thanks PT Rajkumar.
+function isvalidonshapeserver() {
+  local output=$(curl -s "https://multienv$(getEnvNumber).onshape.io/api/build" | grep Manifest-Version)
+  if calledfromterminal
+  then
+    if string.isemptyorblank $output
+    then
+      print_error "No."
+    else
+      print_success "Yes"
+    fi
+  fi
+
+  string.isnotemptyorblank "$output"
+}
+
 # Assumes pid to kill is a valid one
 function killprocessid() {
   echo "Killing $2 PID $1"
@@ -911,14 +934,14 @@ function checkessentialservices() {
 
       if string.isemptyorblank $serviceRunning
       then
-        echo "Essential service $service is not running"
+        print_error "Essential service $service is not running"
         allRunning="false"
       fi
   done
 
   if string.equals $allRunning "true"
   then
-    echo "All essential services are running"
+    print_success "All essential services are running"
     return 0
   else
     return 1
@@ -946,7 +969,7 @@ function fastcheckessentialservices() {
   local allRunning="true"
   if [[ ! " ${runningServicesArray[@]} " =~ " zookeeper " ]] #Zookeeper is shared between all environments
   then
-    echo "Essential service zookeeper is not running$autoFixString"
+    print_error "Essential service zookeeper is not running$autoFixString"
     if string.equals $autoFix "true"
     then
       startZookeeper
@@ -959,7 +982,7 @@ function fastcheckessentialservices() {
       startCommandName=${entry#*: }
       if [[ ! " ${runningServicesArray[@]} " =~ " $service$envString " ]]
       then
-        echo "Essential service $service is not running$autoFixString"
+        print_error "Essential service $service is not running$autoFixString"
         if string.equals $autoFix "true"
         then
           $startCommandName # start the service.
@@ -971,7 +994,7 @@ function fastcheckessentialservices() {
 
   if string.equals $allRunning "true"
   then
-    echo "All essential services are running"
+    print_success "All essential services are running"
     return 0
   else
     # All services were not running, but may have been started now.
@@ -979,9 +1002,9 @@ function fastcheckessentialservices() {
     then
       if fastcheckessentialservices #check if services are running now
       then
-        echo "Essential services were not running but have been fixed"
+        print_success "Essential services were not running but have been fixed"
       else
-        echo "Essential services could not be fixed"
+        print_error "Essential services could not be fixed"
       fi
     else
       return 1
@@ -1034,6 +1057,13 @@ function checkenv() {
     return 1
   fi
 
+  # 4. Check if the Onshape server is 'valid'
+  if ! isvalidonshapeserver
+  then
+    print_error "Onshape server is running, but is not functioning"
+    return 1
+  fi
+
   # Success, everything seems to be working fine.
   return 0
 }
@@ -1051,6 +1081,19 @@ function fixenv() {
   fixessentialservices
 
   startserversifnotalready
+
+  if ! isvalidonshapeserver
+  then
+    echo "Onshape server is running but is not functional. Restarting..."
+    restartbelcad
+
+    if ! isvalidonshapeserver
+    then
+      # It's still not valid for some reason
+      print_error "Could not fix Onshape server"
+      return 1
+    fi
+  fi
 
   if isdebuggingdrawings
   then
@@ -1628,14 +1671,14 @@ function restartservers() {
 
 function buildall() {
   cd $REPO_NEWTON
-  buildgradleparallel
+  buildgradleparallel $@
 }
 
 function buildjavaonly() {
     export SKIP_DRAWING=1
     export SKIP_CPP=1
     export SKIP_JSLIB=1
-    buildgradleparallel
+    buildgradleparallel $@
     local returnvalue=$?
     unset SKIP_CPP
     unset SKIP_JSLIB
@@ -1654,7 +1697,7 @@ function buildjsonly() {
     #  that for that you'd either buildjava, OR generate serializables separately
     # using the `genser` command
     export SKIP_SERIALIZABLES=1
-    buildgradleparallel -x runBtUpgrade
+    buildgradleparallel -x runBtUpgrade $@
     local returnvalue=$?
     unset SKIP_CPP
     unset SKIP_JAVA
@@ -1668,7 +1711,7 @@ function buildcpponly() {
     export SKIP_JSLIB=1
     export SKIP_JAVA=1
     export SKIP_SERIALIZABLES=1
-    buildgradleparallel
+    buildgradleparallel $@
     local returnvalue=$?
     unset SKIP_JSLIB
     unset SKIP_JAVA
@@ -1680,7 +1723,7 @@ function buildcpponly() {
 function buildjavaandjsonly() {
     export SKIP_DRAWING=1
     export SKIP_CPP=1
-    buildgradleparallel
+    buildgradleparallel $@
     local returnvalue=$?
     unset SKIP_CPP
     unset SKIP_DRAWING
