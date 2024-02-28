@@ -485,7 +485,12 @@ function rebaselatest() {
 # Unless otherwise specified, default branch for rbt is master
 function pulllatest() {
   local branchname=$(git.getcurrentbranch)
-  if git.branchislsbmasterbased
+  if string.equals $branchname "master" || string.equals "$branchname" "$CURRENT_RELEASE"
+  then
+    echo "Detected $branchname branch itself. Just doing a git pull"
+    # Branch is master or latest release itself. Just do a git pull
+    git pull
+  elif git.branchislsbmasterbased
   then
     echo "Detected lsb/master based branch. Rebasing w.r.t. to that"
     pulllatestbranch "$LSB_MASTER" $1 # Assuming $1 would be "rebase" when needed (e.g. called from rebaselatest), and empty otherwise
@@ -1107,13 +1112,14 @@ function stopenv() {
   # Stop all Docker services
   stopallservices
   # Finally, stop Rancher Desktop itself.
+  echo "Killing Rancher Desktop"
   system.killallwithname "Rancher Desktop"
 }
 
 function getEnvNumber() {
-  if string.isnotemptyorblank $HOST_PROPERTIES_ENVNUM
+  if string.isnotemptyorblank $(getBuildProp HOST_PROPERTIES_ENVNUM)
   then
-    echo $HOST_PROPERTIES_ENVNUM
+    echo $(getBuildProp HOST_PROPERTIES_ENVNUM)
   else
     echo "0"
   fi
@@ -1645,8 +1651,8 @@ function startserversifnotalready() {
     startbelcad
     if ! system.waslastcommandsuccessful
     then
-      echo "Error: Could not start Onshape server. Not starting quickServer"
-      return
+      print_error "Error: Could not start Onshape server. Not starting quickServer"
+      return 1
     fi
   fi
 
@@ -1655,7 +1661,7 @@ function startserversifnotalready() {
     echo "quickServe is already running"
   else
     echo "quickServe is not already running, starting it now"
-    grunt quickServe
+    nohup grunt quickServe &> /dev/null
   fi
 }
 
