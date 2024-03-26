@@ -103,6 +103,10 @@ function system.fileexists() {
 	[ -f "$1" ]
 }
 
+function system.isfile() {
+	system.fileexists "$1"
+}
+
 function system.isfileexecutable() {
 	[[ -x "$1" ]] || [[ -x $(which "$1") ]]
 }
@@ -113,6 +117,17 @@ function system.functionexists() {
 
 function system.direxists() {
 	[ -d "$1" ]
+}
+
+# Path of directory etc. A symbolic link to a directory
+# does get classified as a directory. 
+function system.isdirectory() {
+	system.direxists "$1"
+}
+
+# Path of symbolic link etc.
+function system.issymboliclink() {
+	test -L "$1"
 }
 
 # Clean all the file contents (make its size zero bytes)

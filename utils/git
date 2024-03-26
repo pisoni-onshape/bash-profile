@@ -12,6 +12,7 @@ export GIT_PATCH_DIR=~/patches
 export globalgitignorefile=$HOME/.gitignore
 
 
+# Show your git branches sorted by latest commit 
 # Credit to this alias goes to this Slack conversation : https://onshape.slack.com/archives/C18HMGX32/p1495031914762665
 alias gb='cur=$(git rev-parse --abbrev-ref HEAD); prev=$(git rev-parse --abbrev-ref @{-1}); git for-each-ref --sort=committerdate refs/heads/ --format="%(color:reset)  %(refname:short)|%(color:black bold)%(committerdate:relative)%(color:reset)" | column -ts"|" | sed -e "s,  ${cur} ,$(tput setaf 2)$(tput bold)* ${cur} ," | sed -e "s,  ${prev} ,$(tput setaf 3)$(tput bold)  ${prev} ,";'
 

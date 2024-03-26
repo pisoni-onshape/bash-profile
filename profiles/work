@@ -496,11 +496,8 @@ function pulllatest() {
     pulllatestbranch "$LSB_MASTER" $1 # Assuming $1 would be "rebase" when needed (e.g. called from rebaselatest), and empty otherwise
   elif git.branchislsbreleasebased
   then
-    echo "Detected lsb/rel-* based branch. Rebasing w.r.t. to that"
-    if string.isemptyorblank "$LSB_CURRENT_RELEASE"
-    then
-        refreshcurrentreleasebranch
-    fi
+    refreshcurrentreleasebranch
+    echo "Detected lsb/rel-* based branch. Rebasing w.r.t. to $LSB_CURRENT_RELEASE"
 
     if string.isnotemptyorblank "$LSB_CURRENT_RELEASE"
     then
@@ -700,22 +697,22 @@ function rbtupdate() {
   if git.branchislsbmasterbased
   then
     echo "Detected lsb/master based branch. Creating diff w.r.t. to that"
-    rbtupdatefrombranch $LSB_MASTER
+    rbtupdatefrombranch $LSB_MASTER $@
   elif git.branchislsbreleasebased
   then
     echo "Detected lsb/rel-* based branch. Creating diff w.r.t. to that"
-    rbtupdatefrombranch $LSB_CURRENT_RELEASE
+    rbtupdatefrombranch $LSB_CURRENT_RELEASE $@
   elif git.branchismasterbased
   then
     echo "Detected lsb/master based branch. Creating diff w.r.t. to that"
-    rbtupdatefrombranch "master"
+    rbtupdatefrombranch "master" $@
   elif git.branchisreleasebased
   then
   echo "Detected rel-* based branch. Creating diff w.r.t. to that"
-    rbtupdatefrombranch $CURRENT_RELEASE
+    rbtupdatefrombranch $CURRENT_RELEASE $@
   else
     echo "Didn't detect standard (lsb/)master/release based branches, defaulting to master based diff"
-    rbtupdatefrombranch "master"
+    rbtupdatefrombranch "master" $@
   fi
 }
 
@@ -785,9 +782,15 @@ function isonshapeserverrunning() {
   then
     if string.isemptyorblank $jettypid
     then
-      echo "No."
+      print_error "No."
     else
-      echo "Yes, PID : $jettypid"
+      if isvalidonshapeserver
+      then
+        print_success "Yes, PID : $jettypid"
+      else
+        print_error "Yes, PID : $jettypid, but it's NOT a valid connection"
+      fi
+
     fi
   fi
 
@@ -1645,7 +1648,7 @@ function startserversifnotalready() {
 
   if isonshapeserverrunning
   then
-    echo "Onshape server is already running"
+    echo "Onshape server is already running"    
   else
     echo "Onshape server not already running, starting it now"
     startbelcad
