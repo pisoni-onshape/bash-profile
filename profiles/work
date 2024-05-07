@@ -670,7 +670,7 @@ function rbtupdatefrombranch() {
     echo "Please give the branch name"
   elif string.isemptyorblank $2
   then
-    reviewrequestid=$(rbt.getcurrentid $REVIEW_STATUS_ANY)
+    reviewrequestid=$(rbt.getcurrentid $rbt_REVIEW_STATUS_ANY)
     if string.isemptyorblank $reviewrequestid
     then
       echo "Didn't find a matching review request for the branch, enter manually."
@@ -1340,7 +1340,7 @@ function mergetomaster() {
   # Search for an approved request for the current git branch if not.
   if string.isemptyorblank "$reviewrequestid" && ! isreverting # If reverting we don't need to pull review request id
   then
-    reviewrequestid=$(rbt.getcurrentid $REVIEW_STATUS_APPROVED)
+    reviewrequestid=$(rbt.getcurrentid $rbt_REVIEW_STATUS_APPROVED)
     if string.isemptyorblank $reviewrequestid || ! string.isnumber $reviewrequestid
     then
       echo "Didn't find an approved review request for the branch, enter manually."
@@ -1361,7 +1361,7 @@ function mergetomaster() {
     return 1
   fi
 
-  waitforenterkey "Press enter if and when rebase is successful to continue to merge to master"
+  waitforenterkey "Press enter if rebase is successful to continue to merge to master"
 
   # Step 2: Checkout master
   git checkout master
@@ -1376,17 +1376,17 @@ function mergetomaster() {
   # then we don't need a review request id
   if isreverting
   then
-    echo "Calling  mergepush $currentbranch --no-review -m \"$1\""
-    mergepush "$currentbranch" --no-review -m "$1" # In this case the first argument is the revert comment.
+    echo "Calling  mergepush $currentbranch --no-review -m \"$reviewrequestid\""
+    mergepush "$currentbranch" --no-review -m "$reviewrequestid" # In this case the first argument is the revert comment.
     if system.waslastcommandsuccessful
     then
       setnotreverting
     fi
   else
     # Step 3: Call mergepush
-    local cmd="mergepush $currentbranch -r $1"
+    local cmd="mergepush $currentbranch -r $reviewrequestid"
     echo "Calling $cmd"
-    mergepush $currentbranch -r $1
+    mergepush $currentbranch -r $reviewrequestid
     if system.waslastcommandsuccessful
     then
       git checkout $currentbranch
@@ -1504,7 +1504,7 @@ function mergetoreleasethenmaster() {
 
   if string.isemptyorblank $reviewrequestid
   then
-    reviewrequestid=$(rbt.getcurrentid $REVIEW_STATUS_APPROVED)
+    reviewrequestid=$(rbt.getcurrentid $rbt_REVIEW_STATUS_APPROVED)
     if string.isemptyorblank $reviewrequestid || ! string.isnumber $reviewrequestid
     then
       echo "Didn't find an approved review request for the branch, enter manually."
@@ -1915,7 +1915,7 @@ alias mongobackup='mongoDump'
 alias mongorestore='mongoRestore'
 alias backupmongo='mongoDump'
 alias restoremongo='mongoRestore'
-alias newton='cd $REPO_NEWTON'
+alias gonewton='cd $REPO_NEWTON'
 alias kibanatools='cd $DEV_TOOLS/kibanaTools'
 alias pofix='fixpo'
 alias prepeclipse='gradle prepEclipse'

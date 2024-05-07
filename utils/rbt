@@ -60,11 +60,18 @@ esac
   echo $reviewrequestid
 }
 
+# Open the last created review request associated with the branch (if any)
+# or the review request id passed as parameter in the default browser
 function rbt.openreviewrequest() {
-  currentreviewrequestid=$(rbt.getcurrentid)
+  local currentreviewrequestid="$1"
+  if string.isemptyorblank $currentreviewrequestid
+  then
+    currentreviewrequestid=$(rbt.getcurrentid)
+  fi
+
   if string.isnotemptyorblank $currentreviewrequestid
   then
-    open -a firefox -g "https://rbcommons.com/s/bti/r/$currentreviewrequestid"
+    open "https://rbcommons.com/s/bti/r/$currentreviewrequestid"
   else
     echo "Can't find a valid review request id matching the current branch"
   fi
