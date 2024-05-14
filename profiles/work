@@ -797,7 +797,7 @@ function isonshapeserverrunning() {
   string.isnotemptyorblank $jettypid
 }
 
-# Sometimes the process itself is running, 
+# Sometimes the process itself is running,
 # but it's non-functional. Validate it. Thanks PT Rajkumar.
 function isvalidonshapeserver() {
   local output=$(curl -s "https://multienv$(getEnvNumber).onshape.io/api/build" | grep Manifest-Version)
@@ -1371,6 +1371,26 @@ function mergetomaster() {
     return 1
   fi
 
+  if string.isemptyorblank $(git.getbugnumberfrombranch)
+  then
+    # No bug number found in the branch name. Merge without a bug number if the user agrees.
+    if user_agrees_to "Branch name does not contain a bug number. Do you want to merge with '--no-resolve'?"
+    then
+      echo "Sure, will mergepush with --no-resolve"
+      setnoresolve
+    else
+      echo "No bug number found in the branch name. Please ensure the branch name is of the form <username>/bel-xxxxxx[/optional-description]-[lsb/master/lsb/rel-*.***] and run again. Or, you could just create the branch name using checkoutfromlsbmaster or checkoutfromlsbrelease"
+      return 1
+    fi
+  fi
+
+  # Actually check for no-resolve here
+  local noresolvestring=""
+  if getisnotresolving
+  then
+    noresolvestring="--no-resolve"
+  fi
+
   # If we are reverting this branch from master (this branch itself was
   # previously merged, and we are calling `revertbranchfrommaster` function)
   # then we don't need a review request id
@@ -1384,15 +1404,16 @@ function mergetomaster() {
     fi
   else
     # Step 3: Call mergepush
-    local cmd="mergepush $currentbranch -r $reviewrequestid"
+    local cmd="mergepush $currentbranch -r $reviewrequestid $noresolvestring"
     echo "Calling $cmd"
-    mergepush $currentbranch -r $reviewrequestid
+    mergepush $currentbranch -r $reviewrequestid "$noresolvestring"
     if system.waslastcommandsuccessful
     then
       git checkout $currentbranch
       # This is not really needed, but rename the current branch as 'merged' to keep for
       # a few days in case you need to revert it. It can be deleted later.
       markbranchmerged $currentbranch
+      unsetnoresolve
     else
       echo "mergepush was not succecsful, please call it again on the master."
       return 1
@@ -1465,6 +1486,14 @@ function setnotreverting() {
 
 function setnoresolve() {
   export RBCOMMONS_NO_RESOLVE=1
+}
+
+function unsetnoresolve() {
+  unset RBCOMMONS_NO_RESOLVE
+}
+
+function getisnotresolving() {
+  string.isnotemptyorblank $RBCOMMONS_NO_RESOLVE
 }
 
 function mergetoreleasethenmaster() {
@@ -1648,7 +1677,7 @@ function startserversifnotalready() {
 
   if isonshapeserverrunning
   then
-    echo "Onshape server is already running"    
+    echo "Onshape server is already running"
   else
     echo "Onshape server not already running, starting it now"
     startbelcad
@@ -1754,7 +1783,7 @@ function grdlbuildjavaandjsonly() {
   else
     playfinishsound "Build failed"
     return 1
-  fi  
+  fi
 }
 
 # Create a patch of all the committed/uncommitted changes
