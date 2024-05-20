@@ -1351,7 +1351,20 @@ function mergetomaster() {
   fi
 
   # Start the merging process now.
-  currentbranch=$(git.getcurrentbranch)
+  local currentbranch=$(git.getcurrentbranch)
+
+  if string.isemptyorblank $(git.getbugnumberfrombranch)
+  then
+    # No bug number found in the branch name. Merge without a bug number if the user agrees.
+    if user_agrees_to "Branch name does not contain a bug number. Do you want to merge with '--no-resolve'?"
+    then
+      echo "Sure, will mergepush with --no-resolve"
+      setnoresolve
+    else
+      echo "No bug number found in the branch name. Please ensure the branch name is of the form <username>/bel-xxxxxx[/optional-description]-[lsb/master/lsb/rel-*.***] and run again. Or, you could just create the branch name using checkoutfromlsbmaster or checkoutfromlsbrelease"
+      return 1
+    fi
+  fi
 
   # Step 1: Rebase latest master branch (regardless of whether it was an lsb/master based branch or just master based)
   rebaselatestbranch "master"
@@ -1369,19 +1382,6 @@ function mergetomaster() {
   then
     echo "git checkout failed, did not merge to master"
     return 1
-  fi
-
-  if string.isemptyorblank $(git.getbugnumberfrombranch)
-  then
-    # No bug number found in the branch name. Merge without a bug number if the user agrees.
-    if user_agrees_to "Branch name does not contain a bug number. Do you want to merge with '--no-resolve'?"
-    then
-      echo "Sure, will mergepush with --no-resolve"
-      setnoresolve
-    else
-      echo "No bug number found in the branch name. Please ensure the branch name is of the form <username>/bel-xxxxxx[/optional-description]-[lsb/master/lsb/rel-*.***] and run again. Or, you could just create the branch name using checkoutfromlsbmaster or checkoutfromlsbrelease"
-      return 1
-    fi
   fi
 
   # Actually check for no-resolve here
