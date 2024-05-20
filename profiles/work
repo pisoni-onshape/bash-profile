@@ -1366,6 +1366,13 @@ function mergetomaster() {
     fi
   fi
 
+  # Actually check for no-resolve here
+    local noresolvestring=""
+    if getisnotresolving
+    then
+      noresolvestring="--no-resolve"
+    fi
+
   # Step 1: Rebase latest master branch (regardless of whether it was an lsb/master based branch or just master based)
   rebaselatestbranch "master"
   if ! system.waslastcommandsuccessful
@@ -1384,13 +1391,6 @@ function mergetomaster() {
     return 1
   fi
 
-  # Actually check for no-resolve here
-  local noresolvestring=""
-  if getisnotresolving
-  then
-    noresolvestring="--no-resolve"
-  fi
-
   # If we are reverting this branch from master (this branch itself was
   # previously merged, and we are calling `revertbranchfrommaster` function)
   # then we don't need a review request id
@@ -1406,7 +1406,7 @@ function mergetomaster() {
     # Step 3: Call mergepush
     local cmd="mergepush $currentbranch -r $reviewrequestid $noresolvestring"
     echo "Calling $cmd"
-    mergepush $currentbranch -r $reviewrequestid "$noresolvestring"
+    mergepush $currentbranch -r $reviewrequestid $noresolvestring
     if system.waslastcommandsuccessful
     then
       git checkout $currentbranch
