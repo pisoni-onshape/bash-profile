@@ -326,7 +326,7 @@ function git.patchuncommittedchanges() {
 # Applies a patch and creates .rej files for the changes
 # that it could not apply.
 function git.applypatch() {
-  git apply --reject --whitespace=fix $1 # patch file path
+  git apply --reject --whitespace=fix "$1" # patch file path
 }
 
 # Pass the remote name : e.g. "origin" / others.
