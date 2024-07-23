@@ -38,8 +38,8 @@ export BASH_SILENCE_DEPRECATION_WARNING=1
 #export HOST_PROPERTIES_PRIVATEIP="$(dockerCreateLoopbackAlias)"
 # This is only an issue if you usually extract std from stacks and upgrade has to process lot of std versions
 # In that case, there might be out of memory problems while building java
-export UPGRADE_MAX_MEMORY_GB=8
-export JAVA_MAX_MEMORY_MB=8192
+#export UPGRADE_MAX_MEMORY_GB=8
+#export JAVA_MAX_MEMORY_MB=8192
 # Use jaeger for local tracing instead of SignalFx:
 export DEV_SIGNALFX_TRACING=2
 # Dev Tools Path
@@ -180,7 +180,30 @@ function newonshapeversion() {
 
 function refreshcurrentreleasebranch() {
   ensurenewtondirectory
-  local latestremoterelease=$(git branch -r | grep -E "origin/rel-\d+\.\d+$" | sort -V | tail -n 1)
+  local arg="$1"
+  local latestremoterelease=""
+  if string.equals "$arg" "--slow" || string.equals "$arg" "--force" || string.equals "$arg" "--remote"
+  then
+    local successful="false"
+    local branchref=$(git ls-remote -q | grep -E "refs/heads/rel-\d+\.\d+$" | awk '{print $2}' | sort -V | tail -n 1)
+    if string.isnotemptyorblank "$branchref"
+    then
+      latestremoterelease=$(string.simplereplace "$branchref" "refs/heads/" "")
+      if string.beginswith "$latestremoterelease" "rel-"
+      then
+        successful="true"
+      fi
+    fi
+
+    if string.equals "$successful" "false"
+    then
+      print_error "Could not find latest remote release branch. Please check if you're in the correct directory and git is working as expected."
+      return 1
+    fi
+  else
+    latestremoterelease=$(git branch -r | grep -E "origin/rel-\d+\.\d+$" | sort -V | tail -n 1)
+  fi
+
   if ! system.waslastcommandsuccessful || string.isemptyorblank $latestremoterelease
   then
     print_error "Could not find latest remote release branch. Please check if you're in the correct directory and git is working as expected."
@@ -1011,8 +1034,10 @@ function fastcheckessentialservices() {
       if fastcheckessentialservices #check if services are running now
       then
         print_success "Essential services were not running but have been fixed"
+        return 0
       else
         print_error "Essential services could not be fixed"
+        return 1
       fi
     else
       return 1
@@ -1545,7 +1570,7 @@ function mergetoreleasethenmaster() {
   fi
 
   # Fetch the latest release branch from the server
-  refreshcurrentreleasebranch
+  refreshcurrentreleasebranch --remote
   waitforenterkey "Will merge to release branch : $CURRENT_RELEASE. Press enter if that's correct, else press Ctrl+C to terminate this function, call 'export CURRENT_RELEASE=rel-<correct-version>' without single quotes and call this function again."
 
   # Merge to release first
