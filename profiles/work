@@ -411,6 +411,10 @@ function openbuildtools() {
   open $CURRENT_BUILD_TOOLS_PATH
 }
 
+function getbuildtoolsversion() {
+  string.simplereplace $CURRENT_BUILD_TOOLS_PATH "$HOME/build_tools/build-tools/" ""
+}
+
 function runjunittest() {
     gradle safelyRunSpecificTests -Dtest=$1
 }
@@ -1137,6 +1141,13 @@ function fixenv() {
 function stopenv() {
   # Stop Onshape server and grunt quickServe
   stopservers
+
+  if ! isdockerrunning
+  then
+    echo "Docker was already stopped, no services running."
+    return
+  fi
+
   # Stop all Docker services
   stopallservices
   # Finally, stop Rancher Desktop itself.
@@ -1182,10 +1193,10 @@ function monitorenv() {
 function declareEssentialServices() {
   # This if else is in this form mostly because I don't know how to dynamically add
   # just one element in the array :), but it's ok for now.
-  ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod_7.0: startMongod" "rabbitmq: startRabbitMQServer")
+  ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod_7.0-shardable: startMongod" "rabbitmq: startRabbitMQServer")
   if isdebuggingdrawings
   then
-    ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod_7.0: startMongod" "rabbitmq: startRabbitMQServer" "xenon: startDrawingDocker")
+    ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod_7.0-shardable: startMongod" "rabbitmq: startRabbitMQServer" "xenon: startDrawingDocker")
   fi
 }
 
@@ -1978,6 +1989,8 @@ alias mongorestore='mongoRestore'
 alias backupmongo='mongoDump'
 alias restoremongo='mongoRestore'
 alias gonewton='cd $REPO_NEWTON'
+alias cdnewton='cd $REPO_NEWTON'
+alias newtondir='cd $REPO_NEWTON'
 alias kibanatools='cd $DEV_TOOLS/kibanaTools'
 alias pofix='fixpo'
 alias prepeclipse='gradle prepEclipse'
