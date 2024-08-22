@@ -36,12 +36,17 @@ export BASH_SILENCE_DEPRECATION_WARNING=1
 #export OBJECT_STORE_REPO_REGION=ap-south-1
 
 #export HOST_PROPERTIES_PRIVATEIP="$(dockerCreateLoopbackAlias)"
+
+# Give more memory to Onshape server to be able to open bigger documents
+export JAVA_MAX_MEMORY_MB=8192
+
 # This is only an issue if you usually extract std from stacks and upgrade has to process lot of std versions
 # In that case, there might be out of memory problems while building java
-#export UPGRADE_MAX_MEMORY_GB=8
-#export JAVA_MAX_MEMORY_MB=8192
+export UPGRADE_MAX_MEMORY_GB=8
+
 # Use jaeger for local tracing instead of SignalFx:
 export DEV_SIGNALFX_TRACING=2
+
 # Dev Tools Path
 export DEV_TOOLS=$HOME/repos/onshape-dev-tools
 
@@ -113,6 +118,7 @@ function exportAfterInitVariables() {
   export GRUNT_SERVE_PORT=$(($DEFAULT_GRUNT_SERVE_PORT+$envNum))
 
   export CURRENT_BUILD_TOOLS_PATH="$ROOT_DIR"
+  export JETTY_ARGS="jetty.http.port=$(onshapePort)"
 }
 
 # Import Utility modules
@@ -476,6 +482,7 @@ function checkoutfrommaster() {
 
 function checkoutfromrelease() {
   ensurenewtondirectory
+  refreshcurrentreleasebranch #local refresh
   git checkout $CURRENT_RELEASE
   git pull
   git checkout -b $(getnewbranchname $1 $CURRENT_RELEASE)
@@ -485,10 +492,12 @@ function checkoutfromrelease() {
 function checkoutfromlsbbranch() {
   if string.isemptyorblank $1
   then
-    echo "Please provide new branch name"
+    print_error "Please provide new branch name"
+    return 1
   elif string.isemptyorblank $2
   then
-    echo "Please provide the base branch name"
+    print_error "Please provide the base branch name"
+    return 1
   else
     gitBranchLsb $(getnewbranchname $1 "lsb/$2") $2
   fi
@@ -503,6 +512,7 @@ function checkoutfromlsbmaster() {
 
 function checkoutfromlsbrelease() {
   ensurenewtondirectory
+  refreshcurrentreleasebranch #local refresh
   checkoutfromlsbbranch "$1" "$CURRENT_RELEASE" #lsb/ is eventually appended by gitBranchLsb
 }
 
@@ -520,12 +530,12 @@ function pulllatest() {
     git pull
   elif git.branchislsbmasterbased
   then
-    echo "Detected lsb/master based branch. Rebasing w.r.t. to that"
+    echo "Detected lsb/master based branch. Rebasing w.r.t. that"
     pulllatestbranch "$LSB_MASTER" $1 # Assuming $1 would be "rebase" when needed (e.g. called from rebaselatest), and empty otherwise
   elif git.branchislsbreleasebased
   then
     refreshcurrentreleasebranch
-    echo "Detected lsb/rel-* based branch. Rebasing w.r.t. to $LSB_CURRENT_RELEASE"
+    echo "Detected lsb/rel-* based branch. Rebasing w.r.t. $LSB_CURRENT_RELEASE"
 
     if string.isnotemptyorblank "$LSB_CURRENT_RELEASE"
     then
@@ -536,11 +546,11 @@ function pulllatest() {
     fi
   elif git.branchismasterbased || string.equals "$branchname" "master"
   then
-    echo "Detected master based branch. Rebasing w.r.t. to that"
+    echo "Detected master based branch. Rebasing w.r.t. that"
     pulllatestbranch "master" $1
   elif git.branchisreleasebased || string.equals "$branchname" "$CURRENT_RELEASE"
   then
-    echo "Detected rel-* based branch. Rebasing w.r.t. to that"
+    echo "Detected rel-* based branch. Rebasing w.r.t. that"
     if string.isemptyorblank "$CURRENT_RELEASE"
     then
         refreshcurrentreleasebranch
@@ -672,19 +682,19 @@ function rbtpost() {
 
   if git.branchislsbmasterbased
   then
-    echo "Detected lsb/master based branch. Creating diff w.r.t. to that"
+    echo "Detected lsb/master based branch. Creating diff w.r.t. that"
     rbtpostfrombranch $LSB_MASTER
   elif git.branchislsbreleasebased
   then
-    echo "Detected lsb/rel-* based branch. Creating diff w.r.t. to that"
+    echo "Detected lsb/rel-* based branch. Creating diff w.r.t. that"
     rbtpostfrombranch $LSB_CURRENT_RELEASE
   elif git.branchismasterbased
   then
-    echo "Detected lsb/master based branch. Creating diff w.r.t. to that"
+    echo "Detected lsb/master based branch. Creating diff w.r.t. that"
     rbtpostfrombranch "master"
   elif git.branchisreleasebased
   then
-  echo "Detected rel-* based branch. Creating diff w.r.t. to that"
+  echo "Detected rel-* based branch. Creating diff w.r.t. that"
     rbtpostfrombranch $CURRENT_RELEASE
   else
     echo "Didn't detect standard (lsb/)master/release based branches, defaulting to master based diff"
@@ -724,19 +734,19 @@ function rbtupdate() {
 
   if git.branchislsbmasterbased
   then
-    echo "Detected lsb/master based branch. Creating diff w.r.t. to that"
+    echo "Detected lsb/master based branch. Creating diff w.r.t. that"
     rbtupdatefrombranch $LSB_MASTER $@
   elif git.branchislsbreleasebased
   then
-    echo "Detected lsb/rel-* based branch. Creating diff w.r.t. to that"
+    echo "Detected lsb/rel-* based branch. Creating diff w.r.t. that"
     rbtupdatefrombranch $LSB_CURRENT_RELEASE $@
   elif git.branchismasterbased
   then
-    echo "Detected lsb/master based branch. Creating diff w.r.t. to that"
+    echo "Detected lsb/master based branch. Creating diff w.r.t. that"
     rbtupdatefrombranch "master" $@
   elif git.branchisreleasebased
   then
-  echo "Detected rel-* based branch. Creating diff w.r.t. to that"
+  echo "Detected rel-* based branch. Creating diff w.r.t. that"
     rbtupdatefrombranch $CURRENT_RELEASE $@
   else
     echo "Didn't detect standard (lsb/)master/release based branches, defaulting to master based diff"
@@ -1993,6 +2003,7 @@ alias gonewton='cd $REPO_NEWTON'
 alias cdnewton='cd $REPO_NEWTON'
 alias newtondir='cd $REPO_NEWTON'
 alias kibanatools='cd $DEV_TOOLS/kibanaTools'
+alias devtools='cd $DEV_TOOLS'
 alias pofix='fixpo'
 alias prepeclipse='gradle prepEclipse'
 alias prepclion='gradle :cpp:prepCLion --parallel'
