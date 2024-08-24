@@ -1961,6 +1961,60 @@ function updatedummylsbmaster() {
   fi
 }
 
+function cleaneverythingthatcanbecleaned() {
+  if ! general.inputyesorno "This is a really, really nuclear solution. Are you sure you want to go with it" "caution"
+  then
+    return 0
+  fi
+
+  if ! general.inputyesorno "Ok, one more time. If you have to clean everything that is there to clean, probably fetching a new newton env might be better. Still sure want to clean everything that can be cleaned for this env" "caution"
+  then
+    return 0
+  fi
+
+  echo "Ok, here we go."
+  ensurenewtondirectory
+
+  echo "mongoDropAll"
+  mongoDropAll
+
+  echo "mongoDropToProduction"
+  mongoDropToProduction
+
+  echo "cleanEverything"
+  cleanEverything
+
+  echo "Removing $STAGE"
+  rm -rf "$STAGE"
+
+  echo "cleanMockS3"
+    cleanMockS3
+
+  if general.inputyesorno "Remove angular cache"
+  then
+    echo "Removing .angular/cache"
+    rm -rf ".angular/cache"
+  fi
+
+  if general.inputyesorno "Clean gradle cache"
+  then
+    echo "Removing ~/.gradle"
+    rm -rf "~/.gradle"
+  fi
+
+  if general.inputyesorno "Remove webpack cache"
+  then
+    echo "Removing $STAGE/webpack"
+    rm -rf "$STAGE/webpack"
+  fi
+
+  if general.inputyesorno "Clean build_tools"
+    then
+      echo "Removing ~/build_toools"
+      rm -rf "~/build_toools"
+    fi
+}
+
 alias bfnodestop='bf job rm'
 alias bfjobremove='bfnodestop'
 alias bsserverpath="$STAGE/BSServer/bin/BSServer"
@@ -1977,7 +2031,12 @@ alias eslintfix='grunt eslint:fix'
 alias fixgruntnotfound='fixDiskImagesJS'
 alias fixjs='grunt eslint:fix'
 alias fixts='grunt eslint:fix'
-alias fixpo='grunt xgettext --fix'
+alias fixlocalization='grunt xgettext --fix'
+alias localizationfix='fixlocalization'
+alias fixpo='fixlocalization'
+alias languagefix='fixlocalization'
+alias fixtranslation='fixlocalization'
+alias translationfix='fixlocalization'
 alias generateserializables='grunt generateSerializables'
 alias genser='grunt generateSerializables'
 alias gitlistskipignoredfiles='git ls-files -v . | grep ^S'

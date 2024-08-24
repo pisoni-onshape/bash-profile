@@ -33,6 +33,40 @@ function general.subtract() {
   echo $(($1-$2))
 }
 
+# Parameter : message to show. Inputs "yes / y" or "no / n" and returns
+# true for yes and false for no. Use with if. 
+function general.inputyesorno() {
+  local message="$1"
+  local colorHint="$2"
+  local colorChanged="false"
+  if string.equals $colorHint "caution"
+  then
+    color.red
+    colorChanged="true"
+  fi
+
+  echo "$message (y/n)?"
+  if string.equals $colorChanged "true"
+  then
+    color.reset
+  fi
+
+  while true; do
+    read response
+
+    response=$(string.tolower "$response")
+    if [[ "$response" == "y" || "$response" == "yes" ]]; then
+      return 0 # success
+    elif [[ "$response" == "n" || "$response" == "no" ]]; then
+      return 1 # failure
+    else
+      echo "Invalid input. Please enter 'y' or 'n'."
+    fi
+  done
+
+  return 1
+}
+
 # Just pass a function name to it, should
 # work for _most_ of them
 function general.duration() {
