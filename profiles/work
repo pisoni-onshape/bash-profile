@@ -1975,6 +1975,10 @@ function cleaneverythingthatcanbecleaned() {
   echo "Ok, here we go."
   ensurenewtondirectory
 
+  echo "Stopping servers and services"
+  stopservers
+  stopallservices
+
   echo "mongoDropAll"
   mongoDropAll
 
