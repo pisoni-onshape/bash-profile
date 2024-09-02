@@ -1847,7 +1847,7 @@ function grdlbuildjavaandjsonly() {
 function patchallchanges() {
   echo "Refreshing tags..."
   git fetch origin --tags --force --prune
-  local path=$(git.getpatchfilepath "$1")
+  local path=$(git.getpatchfilepath "$@")
   system.createfileifdoesnotexist $path
   git diff "$(getbasebranchname origin)" > "$path"
   echo "Patch file created at $path"
