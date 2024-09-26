@@ -826,7 +826,6 @@ function getbelcadpid() {
 # Prints an output (True/False) only when called
 # directly from the Terminal (else returns true/false)
 function isonshapeserverrunning() {
-  echo "entering isonshapeserverrunning"
   local jettypid=$(getbelcadpid)
   if calledfromterminal
   then
