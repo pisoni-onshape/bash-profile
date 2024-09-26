@@ -120,7 +120,7 @@ function system.direxists() {
 }
 
 # Path of directory etc. A symbolic link to a directory
-# does get classified as a directory. 
+# does get classified as a directory.
 function system.isdirectory() {
 	system.direxists "$1"
 }
@@ -292,4 +292,15 @@ function system.replacefilenames() {
 	 	# Assume only filename specified, search in current directory
 		directory="."
 	fi
+}
+
+# List the paths of all files present in the given directory
+# recursively, ignoring the .DS_Store file
+function system.listallfilesrecursively() {
+  local directory="$1"
+  if string.isemptyorblank "$directory"
+  then
+    directory="."
+  fi
+  find "$directory" -type f | grep -v .DS_Store
 }

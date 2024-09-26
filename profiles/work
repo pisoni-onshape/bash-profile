@@ -50,6 +50,9 @@ export DEV_SIGNALFX_TRACING=2
 # Dev Tools Path
 export DEV_TOOLS=$HOME/repos/onshape-dev-tools
 
+# Do not store command in the bash history if it's prefixed with a space
+export HISTCONTROL=ignoreboth
+
 # Others
 #set -o nounset # Make the script fail if trying to access an unset variable.
 
@@ -615,6 +618,14 @@ function rbtpostfrombranch() {
   fi
 
   # Populate information for the 'Branch' field on rbcommons
+  local masterVersion=$(getNewtonVersion)
+  local suffix=""
+  if string.isnotemptyorblank $masterVersion
+  then
+    suffix=" ($masterVersion)"
+  fi
+
+  # local branchStr="--branch \"master$suffix\"" #not working :|
   local branchStr="--branch master"
   if string.contains $sourcebranch "rel-"
   then
@@ -815,6 +826,7 @@ function getbelcadpid() {
 # Prints an output (True/False) only when called
 # directly from the Terminal (else returns true/false)
 function isonshapeserverrunning() {
+  echo "entering isonshapeserverrunning"
   local jettypid=$(getbelcadpid)
   if calledfromterminal
   then
@@ -880,9 +892,9 @@ function stopallservices() {
 # Test if a function is called directly
 # from terminal or from another function.
 function calledfromterminal() {
-  #caller | awk '{print $2}'
   # ${FUNCNAME[2]} represents the caller name of *this* function.
   # Empty if caller was called directly from terminal.
+  #echo "${FUNCNAME[*]}"
   (string.isemptyorblank "${FUNCNAME[2]}")
 }
 
@@ -1175,6 +1187,16 @@ function getEnvNumber() {
   fi
 }
 
+function getNewtonVersion() {
+  local newtonVersion=$(getBuildProp NEWTON_VERSION)
+  if string.isnotemptyorblank $newtonVersion
+  then
+    echo "rel-$newtonVersion"
+  else
+    echo ""
+  fi
+}
+
 function monitorenv() {
   export MONITORING_ENV="true"
   local wasWorkingBefore="false"
@@ -1261,17 +1283,32 @@ function playfinishsound() {
   fi
 }
 
+function isJSBuildActive() {
+  ! string.equals $(getBuildProp "SKIP_JSLIB") "1"
+}
+
 function buildgradleparallel() {
   # Not being in newton directory has caused problems too many times while building
   ensurenewtondirectory
 
-  # Same goes with docker not running
+  if isJSBuildActive && isquickserverunning
+  then
+    # Stop webpack server if already running
+    # because the build process would start a few
+    # of its own, taking a LOT of your RAM.
+    fstopquickserve
+  fi
+
+  # Similarly, our build tools don't figure out if docker itself is not running
   if ! isdockerrunning
   then
     startServices # Will ensure docker and services run
   fi
 
-  gradle --parallel $@
+  echo "Calling gradle --parallel $@"
+  # Start the actual build now.
+  gradle --parallel "$@"
+
   if system.waslastcommandsuccessful
   then
     playfinishsound "Build successful"
@@ -1713,9 +1750,15 @@ function startservers() {
   grunt quickServe
 }
 
+function quickserve() {
+  ensurenewtondirectory
+  grunt quickServe
+}
+
 # Start onshape server and grunt quickServe only if they
 # are not already running.
 function startserversifnotalready() {
+  ensurenewtondirectory
   if ! isdockerrunning
   then
     # startServices is supposed to start
@@ -1994,6 +2037,12 @@ function cleaneverythingthatcanbecleaned() {
   echo "cleanMockS3"
     cleanMockS3
 
+  if general.inputyesorno "Prune mongodb volumes"
+  then
+    echo "Pruning mongodb volumes"
+    docker volume prune -af
+  fi
+
   if general.inputyesorno "Remove angular cache"
   then
     echo "Removing .angular/cache"
@@ -2017,6 +2066,12 @@ function cleaneverythingthatcanbecleaned() {
       echo "Removing ~/build_toools"
       rm -rf "~/build_toools"
     fi
+}
+
+# Change the timezone in the btserver.log etc. logs on the machine
+# from UTC to Indian Standard Time
+function changelogstimezonetoist() {
+  locate "$STAGE/*logback.xml" | xargs sed -i '' 's/ISO8601, UTC/ISO8601, Asia\/Kolkata/g'
 }
 
 alias bfnodestop='bf job rm'
@@ -2076,7 +2131,6 @@ alias runptortest='ptortest'
 # alias pullmaster='pullmerge master'
 # alias pullmergemaster='pullmerge master'
 alias pushtobuild='pushToBuildFarm @precommit @uitest @mocha'
-alias quickserve='grunt quickServe'
 # alias rebasemaster='pullmerge master --rebase'
 alias serial='grunt generateSerializables'
 alias serialize='grunt generateSerializables'

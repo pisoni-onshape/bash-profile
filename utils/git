@@ -10,6 +10,7 @@ export GIT_PATCH_DIR=~/patches
 
 ## Ignore
 export globalgitignorefile=$HOME/.gitignore
+export globalgitconfigfile=$HOME/.gitconfig
 
 
 # Show your git branches sorted by latest commit
@@ -19,6 +20,7 @@ alias gb='cur=$(git rev-parse --abbrev-ref HEAD); prev=$(git rev-parse --abbrev-
 # Import utility modules
 importutility string
 importutility system
+importutility general
 
 function __ensurepatchdirexists() {
   if ! system.direxists $GIT_PATCH_DIR
@@ -394,6 +396,64 @@ function git.setglobalignorefile() {
 	fi
 }
 
+# Given a commit SHA1 id, finds out the
+# id of the merge commit in the given branch. Default
+# branch is master
+function git.getmergecommit() {
+  if string.isemptyorblank $(which git-get-merge)
+  then
+    echo "git-get-merge utility not found. Please install from https://github.com/jianli/git-get-merge"
+    return 1
+  fi
+
+  git-get-merge "$@"
+}
+
+function git.deletebranch() {
+  if general.inputyesorno "Are you sure you want to delete the branch"
+  then
+    echo "calling git branch -D $1"
+    git branch -D "$1"
+  fi
+}
+
+# to be called like `if git.isvalidcommitid <commitId>`; then .... fi
+function git.isvalidcommitid() {
+  local commitId="$1"
+  git cat-file -t $commitId 2>/dev/null | grep -q commit
+}
+
+# Copies all the files in the given commit to the given output directory
+# by maintaining the exact folder structure for copying later
+function git.copyfilesincommit() {
+  local commitID="$1"
+  local rootDirectory="$2"
+
+  if ! git.isvalidcommitid "$commitID" || string.isemptyorblank "$rootDirectory"
+  then
+    echo "Syntax: git.copyfilesincommit <commitId> <rootDirectory>"
+    return 1
+  fi
+
+  if ! system.direxists "$rootDirectory"
+  then
+    mkdir -p "$rootDirectory"
+  fi
+
+  # Get the list of files changed or added in the commit
+  files=$(git diff-tree --no-commit-id --name-only -r $commitID)
+
+  # Loop through each file and copy it to the root directory, preserving the directory structure
+  for file in $files; do
+      mkdir -p "$rootDirectory/$(dirname $file)"
+      cp "$file" "$rootDirectory/$file"
+  done
+
+  echo "Files from commit $commitID have been copied to $rootDirectory"
+}
+
+alias git.findmerge='commit=$0 && branch=${1:-HEAD} && (git rev-list $commit..$branch --ancestry-path | cat -n; git rev-list $commit..$branch --first-parent | cat -n) | sort -k2 -s | uniq -f1 -d | sort -n | tail -1 | cut -f2'
+alias git.showmmerge='merge=$(git find-merge $0 $1) && [ -n \"$merge\" ] && git show $merge'
 alias stoptrackingfile='git.skipworktree'
 alias starttrackingfile='git.unskipworktree'
 alias git.currentbranch='git.getcurrentbranch'
@@ -403,3 +463,5 @@ alias git.branchhistory='git.history'
 alias opengitglobalignorefile='edit $globalgitignorefile'
 alias openglobalgitignorefile='opengitglobalignorefile'
 alias opengitignorefile='opengitglobalignorefile'
+alias openglobalgitconfigfile='edit $globalgitconfigfile'
+alias opengitconfigfile='openglobalgitconfigfile'
