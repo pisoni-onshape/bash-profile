@@ -897,20 +897,18 @@ function calledfromterminal() {
   (string.isemptyorblank "${FUNCNAME[2]}")
 }
 
-# Multi-env aware as long as GRUNT_SERVE_PORT is defined
+function getquickserveport() {
+  echo $GRUNT_SERVE_PORT
+}
+
 function getquickservepid() {
-  local port=$GRUNT_SERVE_PORT
-  if string.isemptyorblank $port
-  then
-    port=8000
-  fi
+  local port=$(getquickserveport)
   local searchString="node.*127\.0\.0\.1:$port.*LISTEN"
 
   local pid=$(lsof -iTCP -n -P | grep "$searchString" | awk '{print $2}')
   echo $pid
 }
 
-# Multi-env aware as long as GRUNT_SERVE_PORT is defined
 function isquickserverunning() {
   local pid=$(getquickservepid)
 
@@ -1940,9 +1938,23 @@ function openbugfolder() {
   open "$HOME/Bugs/$bugNumber"
 }
 
+function getdefaultonshapepath() {
+  local portString=""
+  if isquickserverunning
+  then
+    portString=":$(getquickserveport)"
+  fi
 
-function ptortest() {
- ptor $1 --verbose --flags=fastFail --target=https://localhost.onshape.io:8000/
+  if string.equals "$(getEnvNumber)" "0"
+  then
+      echo "https://localhost.onshape.io$portString/"
+  else
+      echo "https://multienv$(getEnvNumber).onshape.io$portString/"
+  fi
+}
+
+function playtest() {
+  play $1 --verbose --flags=fastFail --target="$(getdefaultonshapepath)"
 }
 
 function pushtos3() {
@@ -2130,6 +2142,7 @@ alias runptortest='ptortest'
 # alias pullmaster='pullmerge master'
 # alias pullmergemaster='pullmerge master'
 alias pushtobuild='pushToBuildFarm @precommit @uitest @mocha'
+alias ptortest='playtest'
 # alias rebasemaster='pullmerge master --rebase'
 alias serial='grunt generateSerializables'
 alias serialize='grunt generateSerializables'

@@ -56,6 +56,12 @@ for editor in "${PREFERRED_EDITORS_ARR[@]}" ; do
     fi
 done
 
+# If none of the preferred editors are found:
+if string.isemptyorblank "$(command -v texteditor)"
+then
+    alias texteditor='nano'
+fi
+
 # if system.direxists "/Applications/Zed.app"
 # then
 #     alias texteditor='zed'
@@ -69,7 +75,7 @@ done
 #     alias texteditor='nano'
 # fi
 
-alias texteditor='sublime'
+#alias texteditor='sublime'
 
 function edit() {
     system.createfileifdoesnotexist "$1"
