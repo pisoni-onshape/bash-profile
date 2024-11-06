@@ -1223,10 +1223,10 @@ function monitorenv() {
 function declareEssentialServices() {
   # This if else is in this form mostly because I don't know how to dynamically add
   # just one element in the array :), but it's ok for now.
-  ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod_7.0-shardable: startMongod" "rabbitmq: startRabbitMQServer")
+  ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod: startMongod" "rabbitmq: startRabbitMQServer")
   if isdebuggingdrawings
   then
-    ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod_7.0-shardable: startMongod" "rabbitmq: startRabbitMQServer" "xenon: startDrawingDocker")
+    ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod: startMongod" "rabbitmq: startRabbitMQServer" "xenon: startDrawingDocker")
   fi
 }
 
@@ -1954,6 +1954,7 @@ function getdefaultonshapepath() {
 }
 
 function playtest() {
+  # other flags:
   play $1 --verbose --flags=fastFail --target="$(getdefaultonshapepath)"
 }
 
@@ -2039,6 +2040,10 @@ function cleaneverythingthatcanbecleaned() {
   echo "mongoDropToProduction"
   mongoDropToProduction
 
+
+  echo "Cleaning logs"
+  cleanlogs
+
   echo "cleanEverything"
   cleanEverything
 
@@ -2064,12 +2069,6 @@ function cleaneverythingthatcanbecleaned() {
   then
     echo "Removing ~/.gradle"
     rm -rf "~/.gradle"
-  fi
-
-  if general.inputyesorno "Remove webpack cache"
-  then
-    echo "Removing $STAGE/webpack"
-    rm -rf "$STAGE/webpack"
   fi
 
   if general.inputyesorno "Clean build_tools"
