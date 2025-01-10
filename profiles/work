@@ -1893,15 +1893,21 @@ function patchallchanges() {
   echo "Patch file created at $path"
 }
 
-# Pass jira number
+# Pass jira number, or leave blank for picking
+# bug number from the branch name.
 function openbug() {
-  if string.isemptyorblank $1
+local bugNumber="$1"
+  if string.isemptyorblank "$bugNumber"
   then
-    echo "Bug number not provided"
-    return
+    # Assume we're trying to open the bug number contained in the branch
+    bugNumber=$(git.getbugnumberfrombranch)
+    if string.isemptyorblank "$bugNumber"
+    then
+      echo "Bug number not provided, and can't find one from the branch name."
+      return
+    fi
   fi
 
-  local bugNumber=$1
   bugNumber=$(string.toupper $bugNumber)
   if string.isnumber $bugNumber
   then
@@ -1910,19 +1916,6 @@ function openbug() {
   fi
 
   open "https://belmonttechinc.atlassian.net/browse/$bugNumber"
-}
-
-function createbugfolder() {
-  if string.isemptyorblank $1
-  then
-    echo "Bug number not provided"
-    return
-  fi
-
-  local bugNumber="$1"
-  bugNumber=$(string.simplereplace $(string.tolower $bugNumber) "bel-" "")
-  bugNumber="BEL-$bugNumber"
-  mkdir "$HOME/Bugs/$bugNumber" > /dev/null 2>&1
 }
 
 function openbugfolder() {
@@ -1935,7 +1928,29 @@ function openbugfolder() {
   local bugNumber="$1"
   bugNumber=$(string.simplereplace $(string.tolower $bugNumber) "bel-" "")
   bugNumber="BEL-$bugNumber"
-  open "$HOME/Bugs/$bugNumber"
+  local bugsFolder=""
+  if system.direxists "$HOME/Bugs"
+  then
+    bugsFolder="$HOME/Bugs"
+  elif system.direxists "$HOME/Library/CloudStorage/OneDrive-PTC"
+  then
+    bugsFolder="$HOME/Library/CloudStorage/OneDrive-PTC/Documents/Bugs"
+    system.createdirifdoesnotexist "$bugsFolder"
+    # Create a symbolic link for this bug folder to the $HOME directory
+    # for easy access later
+    system.createsymboliclinkfromto "$bugsFolder" "$HOME/Bugs"
+  fi
+
+  system.createdirifdoesnotexist "$bugsFolder/$bugNumber"
+
+  # Do a success check
+  if ! system.direxists "$bugsFolder/$bugNumber"
+  then
+    print_error "Cannot create bug folder. Please create a 'Bugs' folder in $HOME, check write permissions and try again"
+    return 1
+  fi
+
+  open "$bugsFolder/$bugNumber"
 }
 
 function getdefaultonshapepath() {

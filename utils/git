@@ -303,6 +303,12 @@ function git.makecopy() {
   local replacestring=$bugNumber/copy
   local additionalNotes=""
   local newbranch=$currentbranch
+  if string.isemptyorblank $bugNumber
+  then
+    searchstring="/"
+    replacestring="/copy/"
+  fi
+
   if ! string.contains $currentbranch "$bugNumber/copy" # already contains the word copy
   then
     newbranch=${currentbranch/$searchstring/$replacestring}
@@ -465,3 +471,5 @@ alias openglobalgitignorefile='opengitglobalignorefile'
 alias opengitignorefile='opengitglobalignorefile'
 alias openglobalgitconfigfile='edit $globalgitconfigfile'
 alias opengitconfigfile='openglobalgitconfigfile'
+alias git.getparentcommit='git.getmergecommit'
+alias git.parentcommit='git.getmergecommit'

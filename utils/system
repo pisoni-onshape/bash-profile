@@ -130,6 +130,13 @@ function system.issymboliclink() {
 	test -L "$1"
 }
 
+# The only reason this function exists is
+# that I keep on forgetting which argument
+# comes first after "ln -s"
+function system.createsymboliclinkfromto() {
+  ln -s "$1" "$2"
+}
+
 # Clean all the file contents (make its size zero bytes)
 # without deleting it. Pass a second argument "--silent" or "-s"
 # if it should be silent (no error if the file doesn't exist).
@@ -188,6 +195,11 @@ function system.dirnamefrompath() {
 	fi
 }
 
+function system.createdirifdoesnotexist() {
+	# mkdir would have no effect if the directory already exists so safe to call.
+  mkdir -p "$1"
+}
+
 # Create a file with any level deep folder structure
 # even if the folders don't already exist
 function system.createfileifdoesnotexist() {
@@ -196,8 +208,7 @@ function system.createfileifdoesnotexist() {
 		return
 	fi
 
-	# mkdir would have no effect if the directory already exists so safe to call.
-	mkdir -p $(dirname $1)
+	system.createdirifdoesnotexist "$(dirname $1)"
 	touch "$1"
 }
 
