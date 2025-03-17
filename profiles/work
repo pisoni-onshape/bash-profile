@@ -122,6 +122,18 @@ function exportAfterInitVariables() {
 
   export CURRENT_BUILD_TOOLS_PATH="$ROOT_DIR"
   export JETTY_ARGS="jetty.http.port=$(onshapePort)"
+
+  if isdebuggingdrawings
+  then
+    enableDrawingsExports
+  fi
+}
+
+function enableDrawingsExports() {
+  export ENABLE_THUMBNAIL_SERVICE=1
+  export START_RENDERER_IN_MAIN_THREAD=1
+  # disable if debugging thumbnails.
+  export BTI_BLOCK_THUMBNAIL_CPP_SERVER_POOL=1
 }
 
 # Import Utility modules
@@ -1175,6 +1187,16 @@ function stopenv() {
   system.killallwithname "Rancher Desktop"
 }
 
+function startenv() {
+  startServices
+  startservers
+}
+
+function restartenv() {
+  stopenv
+  startenv
+}
+
 function getEnvNumber() {
   if string.isnotemptyorblank $(getBuildProp HOST_PROPERTIES_ENVNUM)
   then
@@ -1236,6 +1258,11 @@ function setdebuggingdrawings() {
   then
     DEBUGGING_DRAWINGS="true"
   fi
+
+  if string.equals $DEBUGGING_DRAWINGS "true"
+  then
+    enableDrawingsExports
+  fi
   local extension=$(getEnvNumber)
   system.writevartodisk DEBUGGING_DRAWINGS $extension
 }
@@ -1247,6 +1274,10 @@ function isdebuggingdrawings() {
 
 function getbsservers() {
   ps -ef | grep "BSServer" | grep "$STAGE/" | awk '{print $2}'
+}
+
+function killbsservers() {
+  getbsservers | xargs kill
 }
 
 function restartbelcad() {
@@ -1744,6 +1775,11 @@ function startservers() {
     return
   fi
 
+  if isdebuggingdrawings
+  then
+    startDrawingDocker skipupdate
+  fi
+
   grunt quickServe
 }
 
@@ -1896,7 +1932,7 @@ function patchallchanges() {
 # Pass jira number, or leave blank for picking
 # bug number from the branch name.
 function openbug() {
-local bugNumber="$1"
+  local bugNumber="$1"
   if string.isemptyorblank "$bugNumber"
   then
     # Assume we're trying to open the bug number contained in the branch
@@ -1919,13 +1955,18 @@ local bugNumber="$1"
 }
 
 function openbugfolder() {
-  if string.isemptyorblank $1
+  local bugNumber="$1"
+  if string.isemptyorblank "$bugNumber"
   then
-    echo "Bug number not provided"
-    return
+    # Assume we're trying to open the bug number contained in the branch
+    bugNumber=$(git.getbugnumberfrombranch)
+    if string.isemptyorblank "$bugNumber"
+    then
+      echo "Bug number not provided, and can't find one from the branch name."
+      return
+    fi
   fi
 
-  local bugNumber="$1"
   bugNumber=$(string.simplereplace $(string.tolower $bugNumber) "bel-" "")
   bugNumber="BEL-$bugNumber"
   local bugsFolder=""
@@ -2118,6 +2159,7 @@ alias fixts='grunt eslint:fix'
 alias fixlocalization='grunt xgettext --fix'
 alias localizationfix='fixlocalization'
 alias fixpo='fixlocalization'
+alias killallbsservers='killbsservers'
 alias languagefix='fixlocalization'
 alias fixtranslation='fixlocalization'
 alias translationfix='fixlocalization'
@@ -2134,6 +2176,8 @@ alias jsbuild='buildjsonly'
 alias jumpboxaddstaticroute='addstaticroutetojumpbox'
 alias jumpboxnetstat='netstat -rn | grep 52.210.113.201'
 alias jumpboxssh='sshjumpbox'
+alias listbsservers='getbsservers'
+alias stopbsservers='killbsservers'
 alias localprecommit='yarn precommit'
 alias lsbreleasecheckout='checkoutfromlsbrelease'
 # alias mergelatestmaster='pullmerge master'
@@ -2161,8 +2205,8 @@ alias ptortest='playtest'
 alias serial='grunt generateSerializables'
 alias serialize='grunt generateSerializables'
 alias setisreverting='setreverting'
+alias setdebugdrawings='setdebuggingdrawings'
 alias sshjumpbox="ssh -X $USER@jumpbox-primary.dev.onshape.com"
-alias startenv='startServices;startservers';
 alias startquickserve='quickserve'
 alias staging='cd $STAGE'
 alias starttimerdisplay='runTimerDisplay'
