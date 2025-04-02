@@ -946,7 +946,15 @@ function areserversrunning() {
     hasError="true"
     print_error "NOT running"
   else
-    print_success "running"
+    # Check if the Onshape server is 'valid'
+    if ! isvalidonshapeserver
+    then
+      hasError="true"
+      print_error "running, but not functioning"
+      return 1
+    else
+      print_success "running"
+    fi
   fi
 
   echo -n "quickServe is "
@@ -1126,13 +1134,6 @@ function checkenv() {
     return 1
   fi
 
-  # 4. Check if the Onshape server is 'valid'
-  if ! isvalidonshapeserver
-  then
-    print_error "Onshape server is running, but is not functioning"
-    return 1
-  fi
-
   # Success, everything seems to be working fine.
   return 0
 }
@@ -1166,6 +1167,7 @@ function fixenv() {
 
   if isdebuggingdrawings
   then
+    #ToDo: Do it only if xenon is not already running
     startDrawingDocker skipupdate
   fi
 }
@@ -1824,6 +1826,10 @@ function startserversifnotalready() {
 
 function stopservers() {
   fstopbelcad "nosleep"
+  if isdebuggingdrawings
+  then
+    stopDrawingDocker
+  fi
   fstopquickserve
 }
 
