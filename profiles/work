@@ -116,12 +116,14 @@ function exportAfterInitVariables() {
   export undefinedbtservermodpath="$STAGE/ModelingSvc/logsDir_IS_UNDEFINED/btserver.log"
   export undefinedtimerlogwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/timer.log"
   export DEFAULT_GRUNT_SERVE_PORT="8000"
+  export DEFAULT_ONSHAPE_PORT="8400"
 
   # Set GRUNT_SERVE_PORT according to the env number
   export GRUNT_SERVE_PORT=$(($DEFAULT_GRUNT_SERVE_PORT+$envNum))
+  export ONSHAPE_PORT=$(($DEFAULT_ONSHAPE_PORT+$envNum))
 
   export CURRENT_BUILD_TOOLS_PATH="$ROOT_DIR"
-  export JETTY_ARGS="jetty.http.port=$(onshapePort)"
+  export JETTY_ARGS="jetty.ssl.port=$ONSHAPE_PORT"
 
   if isdebuggingdrawings
   then
@@ -146,9 +148,10 @@ importutility general
 
 # Set CPP builder according to the platform
 function platformspecificsettings() {
-  if system.ismacos
+  local useclion=$(system.readvarfromdisk REMEMBER_CLION_BUILD $(getEnvNumber))
+  if system.ismacos && ! string.equals "$useclion" "true"
   then
-    echo "Detected macOS, using XCODEBUILD"
+    echo "Using XCODEBUILD by default"
     unset CLIONBUILD
     export XCODEBUILD=1
   else # Assume Linux for now.
@@ -156,6 +159,24 @@ function platformspecificsettings() {
     unset XCODEBUILD
     export CLIONBUILD=1
   fi
+}
+
+function setclionbuild() {
+  if string.isemptyorblank "$1" || string.equals "$1" "true"
+  then
+    REMEMBER_CLION_BUILD="true"
+    echo "Will choose CLION for building cpp code"
+    system.writevartodisk REMEMBER_CLION_BUILD $(getEnvNumber)
+    platformspecificsettings
+  else
+    resetclionbuild
+  fi
+}
+
+function resetclionbuild() {
+  echo "Removing clion build override, your platform specific default will be used"
+  system.removevarfromdisk REMEMBER_CLION_BUILD $(getEnvNumber)
+  platformspecificsettings
 }
 
 function setrelease() {
@@ -278,15 +299,47 @@ function fixDiskImagesJS() {
   source buildenv.bash
 }
 
+function setserveonlan() {
+  if string.equals "$1" "false"
+  then
+    unset NEWTON_WEBPACK_SERVE_ON_LAN
+  else
+    export NEWTON_WEBPACK_SERVE_ON_LAN=1
+  fi
+  restartquickserve
+}
+
+function resetserveonlan() {
+  setserveonlan "false"
+}
+
 function importextractedfile() {
+  if string.isemptyorblank "$1"
+  then
+    print_error "Please provide file path to restore."
+    return 1
+  fi
+  local filePath="$1"
   local time1=$SECONDS
   waitforenterkey "If the file doesn't include std, make sure you've run 'mongoDropToProduction' and 'gradle runBtUpgrade' before this (press enter if yes, and Ctrl+C if you haven't)"
-  # restoreDump "$1" --nodrop --remap=btadmin@onshape.com
-  restoreDump "$1" --nodrop --remap=pisoni@onshape.com
+  # restoreDump "$filePath" --nodrop --remap=btadmin@onshape.com
+  restoreDump "$filePath" --nodrop --remap=pisoni@onshape.com
   local time2=$SECONDS
   local duration=$(($time2-$time1))
   echo "Time taken in restore: $duration seconds"
   say "Document import complete"
+  if ! general.inputyesorno "Do you want to open the document now?"
+  then
+    local documentId=$(echo "$filePath" | sed 's/.*new-\([^-]*\)-.*/\1/')
+    if string.isemptyorblank "$documentId"
+    then
+      print_error "Could not find documentId from path. Looked for string between 'new-' and next '-'"
+      return 1
+    else
+      local onshapePath="$(getdefaultonshapepath)/documents/$documentId"
+      open "$onshapePath"
+    fi
+  fi
 }
 
 function runupgrade() {
@@ -1023,6 +1076,8 @@ function checkessentialservices() {
   fi
 }
 
+# Arguments:
+  # 1. "true" / "false" - autoFix services.
 function fastcheckessentialservices() {
   local envString=""
   local envNumber=$(getEnvNumber)
@@ -1087,6 +1142,11 @@ function fastcheckessentialservices() {
       return 1
     fi
   fi
+}
+
+function isdrawingservicerunning() {
+  . "${TOOLS_BASH}/lib/docker/isDrawingDockerRunning.bash"
+  isDrawingDockerRunning
 }
 
 function monitorServices() {
@@ -2173,6 +2233,7 @@ alias generateserializables='grunt generateSerializables'
 alias genser='grunt generateSerializables'
 alias gitlistskipignoredfiles='git ls-files -v . | grep ^S'
 alias gruntQuickServe='grunt quickServe'
+alias gruntserveonlan='setserveonlan'
 alias inteli='intellij'
 alias intellij='idea' #Jetbrains Toolbox generates the script 'idea' for version dependent IntelliJ IDEA
 alias jira='openbug'
@@ -2210,6 +2271,7 @@ alias ptortest='playtest'
 # alias rebasemaster='pullmerge master --rebase'
 alias serial='grunt generateSerializables'
 alias serialize='grunt generateSerializables'
+alias serveonlan='setserveonlan'
 alias setisreverting='setreverting'
 alias setdebugdrawings='setdebuggingdrawings'
 alias sshjumpbox="ssh -X $USER@jumpbox-primary.dev.onshape.com"

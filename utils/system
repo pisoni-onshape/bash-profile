@@ -212,6 +212,24 @@ function system.createfileifdoesnotexist() {
 	touch "$1"
 }
 
+function __getfilepathforvar() {
+	local varname=$1
+	local extension=$2
+	if string.isemptyorblank $varname
+	then
+	  echo ""
+		return 1 #Error
+	fi
+
+	local filepath="$DISK_VARIABLES_PATH/$varname"
+	if ! string.isemptyorblank $extension
+	then
+		filepath="$filepath.$extension"
+	fi
+
+	echo "$filepath"
+}
+
 # send a variable name to write its value to a file
 # on disk so that it can be retrieved later. Pass the *name* of
 # the variable only, not its value with "$".
@@ -221,20 +239,9 @@ function system.createfileifdoesnotexist() {
 function system.writevartodisk() {
 	local varname=$1
 	local extension=$2
-	if string.isemptyorblank $varname
-	then
-		return 1 #Error
-	fi
-
-	local value="${!varname}"
-	local filepath="$DISK_VARIABLES_PATH/$varname"
-
-	if ! string.isemptyorblank $extension
-	then
-		filepath="$filepath.$extension"
-	fi
-
+  local filepath=$(__getfilepathforvar "$varname" "$extension")
 	system.createfileifdoesnotexist "$filepath"
+	local value="${!varname}"
 	echo "$value" > "$filepath"
 }
 
@@ -247,17 +254,7 @@ function system.writevartodisk() {
 function system.readvarfromdisk() {
 	local varname=$1
 	local extension=$2
-	if string.isemptyorblank $varname
-	then
-		return 1 #Error
-	fi
-
-	local filepath="$DISK_VARIABLES_PATH/$varname"
-	if ! string.isemptyorblank $extension
-	then
-		filepath="$filepath.$extension"
-	fi
-
+  local filepath=$(__getfilepathforvar "$varname" "$extension")
 	if system.fileexists $filepath
 	then
 		local value="$(<"$filepath")"
@@ -266,6 +263,13 @@ function system.readvarfromdisk() {
 		echo ""
 		return 1
 	fi
+}
+
+function system.removevarfromdisk() {
+	local varname=$1
+	local extension=$2
+  local filepath=$(__getfilepathforvar "$varname" "$extension")
+  rm -rf "$filepath"
 }
 
 # Syntax:
