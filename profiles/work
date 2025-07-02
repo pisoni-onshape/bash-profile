@@ -705,8 +705,8 @@ function rbtpostfrombranch() {
     reviewers="--target-people ""$reviewers"
   fi
 
-  echo "Calling rbt post -o $branchStr $bugNumberStr $reviewers $sourcebranch...HEAD"
-  rbt post -o $branchStr $bugNumberStr $reviewers $sourcebranch...HEAD
+  echo "Calling rbt post --markdown -o $branchStr $bugNumberStr $reviewers $sourcebranch...HEAD"
+  rbt post --markdown -o $branchStr $bugNumberStr $reviewers $sourcebranch...HEAD
 }
 
 # If a single or comma separated reviewer id is set (what you put in rbcommons reviewers list)
@@ -793,8 +793,8 @@ function rbtupdatefrombranch() {
       rbtupdatefrombranch $1 $reviewrequestid
     fi
   else
-    echo "Calling rbt post -o -u -r $2 $1...HEAD"
-    rbt post -o -u -r $2 $1...HEAD
+    echo "Calling rbt post --markdown -o -u -r $2 $1...HEAD"
+    rbt post --markdown -o -u -r $2 $1...HEAD
   fi
 }
 
@@ -1249,6 +1249,63 @@ function stopenv() {
   system.killallwithname "Rancher Desktop"
 }
 
+function stopthisenvonly() {
+  stopservers; stopServices
+}
+
+function createenv() {
+  local newEnvNumber="$1"
+  if string.isemptyorblank "$newEnvNumber"
+  then
+    print_error "Please give the environment number - 2 / 3 etc."
+    return 1
+  fi
+
+  local newPath=$(string.simplereplace "$REPO_NEWTON" "newton$(getEnvNumber)" "newton$newEnvNumber")
+  if ! general.inputyesorno "Are you sure you want to create a new environment at $newPath?"
+  then
+    return 0
+  fi
+
+  if system.direxists "$newPath"
+  then
+    print_error "Directory `$newPath` already exists. Please give a new environment number"
+    return 1
+  fi
+
+  # Begin creating the environment now.
+  git clone git@github.com:onshape/newton.git "$newPath"
+  if ! system.waslastcommandsuccessful
+  then
+    echo "git clone was not successful. Please fix possible errors and start all over again."
+    return 1
+  fi
+
+  cd "$newPath"
+  if ! system.waslastcommandsuccessful
+  then
+    echo "Change directory didn't succeed. Please check for possible errors and start again."
+    return 1
+  fi
+
+  source buildenv.bash
+  if ! system.waslastcommandsuccessful
+  then
+    echo "source buildenv.bash didn't succeed. Please check for possible errors and start again."
+    return 1
+  fi
+
+  btSetupEnv
+  if ! system.waslastcommandsuccessful
+  then
+    echo "btSetupEnv didn't succeed. Please check for possible errors and start again."
+    return 1
+  fi
+
+  source buildenv.bash
+  echo "Environment $newEnvNumber created successfully"
+}
+
 function startenv() {
   startServices
   startservers
@@ -1547,6 +1604,12 @@ function mergetomaster() {
       noresolvestring="--no-resolve"
     fi
 
+    local ignorebuildfarmstring=""
+    if getignorebuildfarmforrbcommons
+    then
+      ignorebuildfarmstring="--no-build-farm"
+    fi
+
   # Step 1: Rebase latest master branch (regardless of whether it was an lsb/master based branch or just master based)
   rebaselatestbranch "master"
   if ! system.waslastcommandsuccessful
@@ -1578,9 +1641,9 @@ function mergetomaster() {
     fi
   else
     # Step 3: Call mergepush
-    local cmd="mergepush $currentbranch -r $reviewrequestid $noresolvestring"
+    local cmd="mergepush $currentbranch -r $reviewrequestid $noresolvestring $ignorebuildfarmstring"
     echo "Calling $cmd"
-    mergepush $currentbranch -r $reviewrequestid $noresolvestring
+    mergepush $currentbranch -r $reviewrequestid $noresolvestring $ignorebuildfarmstring
     if system.waslastcommandsuccessful
     then
       git checkout $currentbranch
@@ -1588,6 +1651,7 @@ function mergetomaster() {
       # a few days in case you need to revert it. It can be deleted later.
       markbranchmerged $currentbranch
       unsetnoresolve
+      unsetignorebuildfarmforrbcommons
     else
       echo "mergepush was not succecsful, please call it again on the master."
       return 1
@@ -1670,6 +1734,18 @@ function getisnotresolving() {
   string.isnotemptyorblank $RBCOMMONS_NO_RESOLVE
 }
 
+function setignorebuildfarmforrbcommons() {
+  export IGNORE_BUILD_FARM_FOR_RBCOMMONS=1
+}
+
+function getignorebuildfarmforrbcommons() {
+  string.isnotemptyorblank $IGNORE_BUILD_FARM_FOR_RBCOMMONS
+}
+
+function unsetignorebuildfarmforrbcommons() {
+  unset IGNORE_BUILD_FARM_FOR_RBCOMMONS
+}
+
 function mergetoreleasethenmaster() {
   ensurenewtondirectory
   local reviewrequestid=$1
@@ -1722,6 +1798,12 @@ function mergetoreleasethenmaster() {
   refreshcurrentreleasebranch --remote
   waitforenterkey "Will merge to release branch : $CURRENT_RELEASE. Press enter if that's correct, else press Ctrl+C to terminate this function, call 'export CURRENT_RELEASE=rel-<correct-version>' without single quotes and call this function again."
 
+  local ignorebuildfarmstring=""
+  if getignorebuildfarmforrbcommons
+  then
+    ignorebuildfarmstring="--no-build-farm"
+  fi
+
   # Merge to release first
   # Step 1: Rebase latest release branch.
   rebaselatestbranch $CURRENT_RELEASE
@@ -1738,8 +1820,8 @@ function mergetoreleasethenmaster() {
   git checkout $CURRENT_RELEASE
 
   # Step 3: Call mergepush to release.
-  echo "Calling mergepush $currentbranch -r $reviewrequestid"
-  mergepush $currentbranch -r $reviewrequestid
+  echo "Calling mergepush $currentbranch -r $reviewrequestid $ignorebuildfarmstring"
+  mergepush $currentbranch -r $reviewrequestid $ignorebuildfarmstring
 
   if ! system.waslastcommandsuccessful
   then
@@ -1773,7 +1855,10 @@ function mergetoreleasethenmaster() {
   git checkout master
 
   # Step 7: Call mergepush with master this time.
-  mergepush $currentbranch -r $reviewrequestid --no-resolve # don't resolve the bug again, so fixed-in hash keeps pointing to the rel branch
+  mergepush $currentbranch -r $reviewrequestid --no-resolve $ignorebuildfarmstring # don't resolve the bug again, so fixed-in hash keeps pointing to the rel branch
+
+  # Step 8: Unset the IGNORE_BUILD_FARM_FOR_RBCOMMONS env variable
+  unsetignorebuildfarmforrbcommons
 
   # Just like we did in `mergetomaster`, these steps are not required but we do it in case we would need to revert them for a few days.
   git checkout $currentbranch
@@ -1818,6 +1903,10 @@ function startServices() {
   fi
   # Actually start the services now when Docker is confirmed to be running
   btEnvUp
+}
+
+function stopServices() {
+  btEnvDown
 }
 
 # Starts both the Onshape (belcad) server
@@ -1967,7 +2056,7 @@ function grdlbuildjavaandjsonly() {
     startServices # Will ensure docker and services run
   fi
 
-  grdlu gen java js #Download binaries for CPP
+  grdlu gen java js $@ --parallel #Download binaries for CPP
   if system.waslastcommandsuccessful
   then
     playfinishsound "Build successful"
@@ -2115,10 +2204,15 @@ function runTimerDisplay() {
 # lsb/master. For those non-ideal times you need lsb/master as a branch
 # and not as a tag.
 function updatedummylsbmaster() {
+  local checkoutPreviousBranch="$1"
+  if ! string.equals $checkoutPreviousBranch "true" && ! string.equals $checkoutPreviousBranch "false"
+  then
+    checkoutPreviousBranch="true"
+  fi
+
   # Store current branch
   local currentbranch=$(git.getcurrentbranch)
   local dummybranchname=$(getnewbranchname "dummy" "lsb/master")
-  local alreadyindummybranch="false"
   if git.localbranchexists $dummybranchname
   then
       if ! string.equals $currentbranch $dummybranchname
@@ -2131,11 +2225,48 @@ function updatedummylsbmaster() {
     checkoutfromlsbmaster "dummy"
   fi
 
-  if ! string.equals $currentbranch $dummybranchname
+  if ! string.equals $currentbranch $dummybranchname && string.equals $checkoutPreviousBranch "true"
   then
     echo "Checking out previous branch again"
     git checkout $currentbranch
   fi
+}
+
+function updateandcheckoutdummylsbmaster() {
+  updatedummylsbmaster "false"
+}
+
+function updatedummylsbrelease() {
+  local checkoutPreviousBranch="$1"
+  if ! string.equals $checkoutPreviousBranch "true" && ! string.equals $checkoutPreviousBranch "false"
+  then
+    checkoutPreviousBranch="true"
+  fi
+
+  # Store current branch
+  local currentbranch=$(git.getcurrentbranch)
+  local dummybranchname=$(getnewbranchname "dummy" "$LSB_CURRENT_RELEASE")
+  if git.localbranchexists $dummybranchname
+  then
+      if ! string.equals $currentbranch $dummybranchname
+      then
+        git checkout "$dummybranchname"
+      fi
+      pulllatest
+  else
+    echo "Updating $dummybranchname with latest lsb/release"
+    checkoutfromlsbrelease "dummy"
+  fi
+
+  if ! string.equals $currentbranch $dummybranchname && string.equals $checkoutPreviousBranch "true"
+  then
+    echo "Checking out previous branch again"
+    git checkout $currentbranch
+  fi
+}
+
+function updateandcheckoutdummylsbrelease() {
+  updatedummylsbrelease "false"
 }
 
 function cleaneverythingthatcanbecleaned() {
@@ -2278,7 +2409,6 @@ alias sshjumpbox="ssh -X $USER@jumpbox-primary.dev.onshape.com"
 alias startquickserve='quickserve'
 alias staging='cd $STAGE'
 alias starttimerdisplay='runTimerDisplay'
-alias stopServices='btEnvDown'
 alias startallservers='startservers'
 alias restartServices='stopallservices;startServices'
 alias startfrontend='grunt quickServe'
