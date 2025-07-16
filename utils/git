@@ -1,10 +1,15 @@
 #git utilities
 
 #include guard
-[ ! -z "$git_defined" ] && [ -z "$FORCE_IMPORT_UTILITY" ] && return 0
+if isFunctionDefined "git.defined" && ! isEnvVariableDefined "FORCE_IMPORT_UTILITY"
+then
+  return 0
+fi
 
+function git.defined() {
+  return 0
+}
 
-export git_defined=1
 export GIT_SKIP_TREE_FILES_LIST=~/.git-skipped-worktree-files
 export GIT_PATCH_DIR=~/patches
 
@@ -416,6 +421,13 @@ function git.getmergecommit() {
 }
 
 function git.deletebranch() {
+  local branchToDelete="$1"
+  if string.isemptyorblank "$branchToDelete"
+  then
+    git.deletecurrentbranch
+    return 0
+  fi
+
   if general.inputyesorno "Are you sure you want to delete the branch"
   then
     echo "calling git branch -D $1"

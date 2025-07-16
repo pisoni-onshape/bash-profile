@@ -1,8 +1,14 @@
 #rbt (rbcommons review) utilities
 
 #include guard
-[ ! -z "$rbt_defined" ] && [ -z "$FORCE_IMPORT_UTILITY" ] && return 0
-export rbt_defined=1
+if isFunctionDefined "rbt.defined" && ! isEnvVariableDefined "FORCE_IMPORT_UTILITY"
+then
+  return 0
+fi
+
+function rbt.defined() {
+  return 0
+}
 
 importutility string
 importutility git
@@ -14,7 +20,7 @@ rbt_REVIEW_STATUS_ANY="any"
 
 
 # Get the review request id associated with the current branch
-# and the given status 
+# and the given status
 # parameters : rbt.REVIEW_STATUS_* (defined above)
 function rbt.getcurrentid() {
   export COLUMNS=500 #So that the output of rbt status is not truncated and we get the whole branch name in one line
@@ -49,7 +55,7 @@ esac
 
   # It'll be quite usual that we'd get an lsb/master or master based branch and want to merge in both.
   # Handle the case that we got the lsb/master branch reviewed but are merging in release, or
-  # we got reviewed in lsb/rel-* but merging in 
+  # we got reviewed in lsb/rel-* but merging in
   if string.isemptyorblank $reviewrequestid #&& string.endswith $currentbranch "-rel*"
   then
     local testbranch=$(getnewbranchname $currentbranch "")

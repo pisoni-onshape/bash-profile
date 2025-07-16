@@ -1,12 +1,19 @@
 # System utils
 
 #include guard
-[ ! -z "$system_defined" ] && [ -z "$FORCE_IMPORT_UTILITY" ] && return 0
-export system_defined=1
+if isFunctionDefined "system.defined" && ! isEnvVariableDefined "FORCE_IMPORT_UTILITY"
+then
+  return 0
+fi
+
+function system.defined() {
+  return 0
+}
 
 importutility string
 
 export DISK_VARIABLES_PATH="$BASH_PROFILE_PATH/variables"
+export DOWNLOADS_DIR="$HOME/Downloads"
 
 function system.appbundleid() {
 	osascript -e "id of app \"$1\""
@@ -171,15 +178,12 @@ function system.filenamefrompath() {
 # Returns the full directory path
 # if it's a path of the file, or
 # itself if it's already a directory
-function system.dirfrompath() {
+function system.getdirectoryfrompath() {
 	if system.direxists "$1"
 	then
 		echo "$1"
-	elif system.fileexists "$1"
-	then
-		echo "$(dirname $1)"
 	else
-		echo ""
+		echo "$(dirname $1)"
 	fi
 }
 
@@ -319,3 +323,31 @@ function system.listallfilesrecursively() {
   fi
   find "$directory" -type f | grep -v .DS_Store
 }
+
+# returns the latest downloaded file
+# in the $DOWNLOADS_DIR (which defaults to ~/Downloads)
+# Example usecase, you just downloaded a patch file from
+# a website and want to apply it with git.applypath
+# Then you'd say : `git.applypatch $(system.latestdownload)`
+function system.getlatestdownload() {
+  local dir="$DOWNLOADS_DIR"
+  local latest
+
+  if stat --version &>/dev/null; then
+    # GNU/Linux (Ubuntu): GNU stat
+    latest=$(find "$dir" -type f -exec stat --format='%Y %n' {} + 2>/dev/null | sort -nr | head -n1 | cut -d' ' -f2-)
+  else
+    # macOS: BSD stat
+    latest=$(find "$dir" -type f -exec stat -f '%m %N' {} + 2>/dev/null | sort -nr | head -n1 | cut -d' ' -f2-)
+  fi
+
+  if [[ -n "$latest" ]]; then
+    echo "$latest"
+  else
+    echo "No files found in $dir" >&2
+    return 1
+  fi
+}
+
+alias system.dirfrompath='system.getdirectoryfrompath'
+alias system.latestdownload='system.getlatestdownload'

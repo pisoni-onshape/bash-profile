@@ -12,16 +12,29 @@ function importutility() {
 	unset FORCE_IMPORT_UTILITY
 }
 
+function isFunctionDefined() {
+  local funcName="$1"
+  type -t "$funcName" &>/dev/null
+}
+
+function isEnvVariableDefined() {
+  local varName="$1"
+  [[ -n "${!varName}" ]]
+}
+
 importutility system
 
 # This is your personal file. Add any other custom code
 # that you want to execute on startup
 export USER_LOCAL_PROFILE=$BASH_PROFILE_PATH/profiles/.personal
-system.createfileifdoesnotexist $USER_LOCAL_PROFILE
+system.createfileifdoesnotexist "$USER_LOCAL_PROFILE"
 source $USER_LOCAL_PROFILE
 
+alias refreshprofile="source $BASH_PROFILE_PATH/.profile"
+alias refreshall='refreshprofile'
 alias refreshpersonal="source $USER_LOCAL_PROFILE"
 alias openpersonal="texteditor $USER_LOCAL_PROFILE"
+
 
 # Load all the other files in the profiles folder.
 for filepath in $BASH_PROFILE_PATH/profiles/*; do

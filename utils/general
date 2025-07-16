@@ -1,6 +1,12 @@
 #include guard
-[ ! -z "$general_defined" ] && [ -z "$FORCE_IMPORT_UTILITY" ] && return 0
-export general_defined=1
+if isFunctionDefined "general.defined" && ! isEnvVariableDefined "FORCE_IMPORT_UTILITY"
+then
+  return 0
+fi
+
+function general.defined() {
+  return 0
+}
 
 importutility string
 
@@ -34,7 +40,7 @@ function general.subtract() {
 }
 
 # Parameter : message to show. Inputs "yes / y" or "no / n" and returns
-# true for yes and false for no. Use with if. 
+# true for yes and false for no. Use with if.
 function general.inputyesorno() {
   local message="$1"
   local colorHint="$2"

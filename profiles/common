@@ -62,21 +62,6 @@ then
     alias texteditor='nano'
 fi
 
-# if system.direxists "/Applications/Zed.app"
-# then
-#     alias texteditor='zed'
-# elif system.direxists "/Applications/BBEdit.app"
-# then
-#     alias texteditor='bbedit'
-# elif system.direxists "/Applications/Sublime Text.app"
-# then
-#     alias texteditor='sublime'
-# else
-#     alias texteditor='nano'
-# fi
-
-#alias texteditor='sublime'
-
 function edit() {
     system.createfileifdoesnotexist "$1"
     texteditor $1
@@ -107,7 +92,7 @@ function print_success() {
 }
 
 function print_nonewline() {
-echo -n "$@"
+  echo -n "$@"
 }
 
 # Send the message as an argument.
@@ -135,12 +120,6 @@ alias te='texteditor'
 alias editor='texteditor'
 alias bundleid='findappbundleid'
 alias appbundleid='findappbundleid'
-alias cputemp='sudo powermetrics --samplers smc |grep -i "CPU die temperature"'
-
-# Karabiner Elements
-export karabinerconfigfile=$HOME/.config/karabiner/karabiner.json
-alias karabinerconfig='texteditor "$karabinerconfigfile"'
-alias openkarabinerconfig='edit "$karabinerconfigfile"'
 
 # Git
 ## Auto Completion
