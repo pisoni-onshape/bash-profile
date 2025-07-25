@@ -152,3 +152,19 @@ function fastcheckessentialservices() {
 function fixessentialservices() {
   fastcheckessentialservices "true" #auto-fix
 }
+
+
+
+function isdrawingservicerunning() {
+  . "${TOOLS_BASH}/lib/docker/isDrawingDockerRunning.bash"
+  isDrawingDockerRunning
+}
+
+function monitorServices() {
+  while fastcheckessentialservices; do
+    sleep 5
+  done
+
+  beep;beep
+  say "Essential services have stopped"
+}

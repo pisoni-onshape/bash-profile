@@ -131,6 +131,15 @@ function user_agrees_to() {
     done
 }
 
+# Test if a function is called directly
+# from terminal or from another function.
+function calledfromterminal() {
+  # ${FUNCNAME[2]} represents the caller name of *this* function.
+  # Empty if caller was called directly from terminal.
+  #echo "${FUNCNAME[*]}"
+  (string.isemptyorblank "${FUNCNAME[2]}")
+}
+
 alias te='texteditor'
 alias editor='texteditor'
 alias bundleid='findappbundleid'

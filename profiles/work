@@ -924,14 +924,6 @@ function killprocessid() {
   fi
 }
 
-# Test if a function is called directly
-# from terminal or from another function.
-function calledfromterminal() {
-  # ${FUNCNAME[2]} represents the caller name of *this* function.
-  # Empty if caller was called directly from terminal.
-  #echo "${FUNCNAME[*]}"
-  (string.isemptyorblank "${FUNCNAME[2]}")
-}
 
 function getquickserveport() {
   echo $GRUNT_SERVE_PORT
@@ -1020,19 +1012,6 @@ function fstopbelcad() {
   fi
 }
 
-function isdrawingservicerunning() {
-  . "${TOOLS_BASH}/lib/docker/isDrawingDockerRunning.bash"
-  isDrawingDockerRunning
-}
-
-function monitorServices() {
-    while fastcheckessentialservices; do
-      sleep 5
-    done
-
-    beep;beep
-    say "Essential services have stopped"
-}
 
 function isdockerrunning() {
   if calledfromterminal
