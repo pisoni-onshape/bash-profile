@@ -56,15 +56,27 @@ export HISTCONTROL=ignoreboth
 # Others
 #set -o nounset # Make the script fail if trying to access an unset variable.
 
+
+# Import Utility modules
+importutility string
+importutility system
+importutility git
+importutility rbt
+importutility general
+
+# Import sources
+source "$BASH_PROFILE_PATH/sources/env"
+source "$BASH_PROFILE_PATH/sources/services"
+
+function setupnewton() {
+  ensurenewtondirectory
+}
+
 # Check if the current directory is either
 # 'newton' or newton<n> where n is a number
 function dirismultienvnewton() {
 	local regexNewtonLike='^newton$|^newton[1-9][0-9]*$'
 	[[ $1 =~ $regexNewtonLike ]]
-}
-
-function setupnewton() {
-  ensurenewtondirectory
 }
 
 # Ensure we're in the newton directory
@@ -93,6 +105,7 @@ function ensurenewtondirectory() {
     cd $REPO_NEWTON
   fi
 }
+
 
 # Unofficial exports
 # ------------------
@@ -137,13 +150,6 @@ function enableDrawingsExports() {
   # disable if debugging thumbnails.
   export BTI_BLOCK_THUMBNAIL_CPP_SERVER_POOL=1
 }
-
-# Import Utility modules
-importutility string
-importutility system
-importutility git
-importutility rbt
-importutility general
 
 
 # Set CPP builder according to the platform
@@ -850,29 +856,6 @@ function rbtupdatewithrebase() {
   fi
 }
 
-function testregex() {
-  var1='rel-1'
-  var2='rel-[0-9]*'
-  if [[ 'rel-1' =~ 'rel-[0-9]*' ]]
-  then
-    echo yes
-  else
-    echo no
-  fi
-
-  check_dec='^rel-[0-9]\.[0-9]+'
-  input=0
-
-  echo "Please enter a digit: "
-  read input
-
-  if [[ $input =~ $check_dec ]]
-  then
-           echo "The value is a decimal"
-  else
-          echo "The value is something else"
-  fi
-}
 
 function setupjumpboxcertificates() {
   scp $USERNAME@jumpbox-primary.dev.onshape.com:$USER.key /tmp
@@ -938,18 +921,6 @@ function killprocessid() {
     # Allow the process to be killed (I observed a couple of times that it doesn't immediately get killed
     # and the next command like system.whoisusingport 8080 still shows that PID)
     sleep 2
-  fi
-}
-
-function stopallservices() {
-  . "${TOOLS_BASH}/lib/docker/stopDockerContainer.bash"
-  btEnvDown
-  stopZookeeperIfRunning
-  stopDockerContainer dns-proxy
-  stopDockerContainer $(getContainerName https)
-  if isdebuggingdrawings
-  then
-    stopDrawingDocker
   fi
 }
 
@@ -1049,101 +1020,6 @@ function fstopbelcad() {
   fi
 }
 
-# Another version of the official 'checkServices'. Tells you if
-function checkessentialservices() {
-  local output=$(checkServices)
-
-  declareEssentialServices
-
-  local allRunning="true"
-  for entry in "${ESSENTIAL_SERVICES_AND_COMMANDS[@]}" ; do
-      service=${entry%%:*}
-      local serviceRunning=$(echo $output | grep "$service.. ok docker container")
-
-      if string.isemptyorblank $serviceRunning
-      then
-        print_error "Essential service $service is not running"
-        allRunning="false"
-      fi
-  done
-
-  if string.equals $allRunning "true"
-  then
-    print_success "All essential services are running"
-    return 0
-  else
-    return 1
-  fi
-}
-
-# Arguments:
-  # 1. "true" / "false" - autoFix services.
-function fastcheckessentialservices() {
-  local envString=""
-  local envNumber=$(getEnvNumber)
-  local autoFix=$1
-  local autoFixString=""
-  if string.equals $autoFix "true"
-  then
-    autoFixString=", starting it"
-  fi
-
-  if ! string.equals $envNumber "0"
-  then
-    envString="_myenv$envNumber"
-  fi
-
-  declareEssentialServices
-
-  local runningServicesArray=( $(docker ps --format '{{.Names}}') )
-  local allRunning="true"
-  if [[ ! " ${runningServicesArray[@]} " =~ " zookeeper " ]] #Zookeeper is shared between all environments
-  then
-    print_error "Essential service zookeeper is not running$autoFixString"
-    if string.equals $autoFix "true"
-    then
-      startZookeeper
-    fi
-    allRunning="false"
-  fi
-
-  for entry in "${ESSENTIAL_SERVICES_AND_COMMANDS[@]}" ; do
-      service=${entry%%:*}
-      startCommandName=${entry#*: }
-      if [[ ! " ${runningServicesArray[@]} " =~ " $service$envString " ]]
-      then
-        print_error "Essential service $service is not running$autoFixString"
-        if string.equals $autoFix "true"
-        then
-          $startCommandName # start the service.
-        fi
-
-        allRunning="false"
-      fi
-  done
-
-  if string.equals $allRunning "true"
-  then
-    print_success "All essential services are running"
-    return 0
-  else
-    # All services were not running, but may have been started now.
-    if string.equals $autoFix "true"
-    then
-      if fastcheckessentialservices #check if services are running now
-      then
-        print_success "Essential services were not running but have been fixed"
-        return 0
-      else
-        print_error "Essential services could not be fixed"
-        return 1
-      fi
-    else
-      return 1
-    fi
-  fi
-}
-
 function isdrawingservicerunning() {
   . "${TOOLS_BASH}/lib/docker/isDrawingDockerRunning.bash"
   isDrawingDockerRunning
@@ -1198,10 +1074,6 @@ function checkenv() {
   return 0
 }
 
-function fixessentialservices() {
-  fastcheckessentialservices "true" #auto-fix
-}
-
 function fixenv() {
   if ! isdockerrunning
   then
@@ -1253,59 +1125,6 @@ function stopthisenvonly() {
   stopservers; stopServices
 }
 
-function createenv() {
-  local newEnvNumber="$1"
-  if string.isemptyorblank "$newEnvNumber"
-  then
-    print_error "Please give the environment number - 2 / 3 etc."
-    return 1
-  fi
-
-  local newPath=$(string.simplereplace "$REPO_NEWTON" "newton$(getEnvNumber)" "newton$newEnvNumber")
-  if ! general.inputyesorno "Are you sure you want to create a new environment at $newPath?"
-  then
-    return 0
-  fi
-
-  if system.direxists "$newPath"
-  then
-    print_error "Directory `$newPath` already exists. Please give a new environment number"
-    return 1
-  fi
-
-  # Begin creating the environment now.
-  git clone git@github.com:onshape/newton.git "$newPath"
-  if ! system.waslastcommandsuccessful
-  then
-    echo "git clone was not successful. Please fix possible errors and start all over again."
-    return 1
-  fi
-
-  cd "$newPath"
-  if ! system.waslastcommandsuccessful
-  then
-    echo "Change directory didn't succeed. Please check for possible errors and start again."
-    return 1
-  fi
-
-  source buildenv.bash
-  if ! system.waslastcommandsuccessful
-  then
-    echo "source buildenv.bash didn't succeed. Please check for possible errors and start again."
-    return 1
-  fi
-
-  btSetupEnv
-  if ! system.waslastcommandsuccessful
-  then
-    echo "btSetupEnv didn't succeed. Please check for possible errors and start again."
-    return 1
-  fi
-
-  source buildenv.bash
-  echo "Environment $newEnvNumber created successfully"
-}
-
 function startenv() {
   startServices
   startservers
@@ -1314,15 +1133,6 @@ function startenv() {
 function restartenv() {
   stopenv
   startenv
-}
-
-function getEnvNumber() {
-  if string.isnotemptyorblank $(getBuildProp HOST_PROPERTIES_ENVNUM)
-  then
-    echo $(getBuildProp HOST_PROPERTIES_ENVNUM)
-  else
-    echo "0"
-  fi
 }
 
 function getNewtonVersion() {
@@ -1361,16 +1171,6 @@ function monitorenv() {
   fi
 }
 
-function declareEssentialServices() {
-  # This if else is in this form mostly because I don't know how to dynamically add
-  # just one element in the array :), but it's ok for now.
-  ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod: startMongod" "rabbitmq: startRabbitMQServer")
-  if isdebuggingdrawings
-  then
-    ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod: startMongod" "rabbitmq: startRabbitMQServer" "xenon: startDrawingDocker")
-  fi
-}
-
 function setdebuggingdrawings() {
   local DEBUGGING_DRAWINGS=$1
   if string.isemptyorblank $DEBUGGING_DRAWINGS
@@ -1384,11 +1184,6 @@ function setdebuggingdrawings() {
   fi
   local extension=$(getEnvNumber)
   system.writevartodisk DEBUGGING_DRAWINGS $extension
-}
-
-function isdebuggingdrawings() {
-  local DEBUGGING_DRAWINGS=$(system.readvarfromdisk DEBUGGING_DRAWINGS $(getEnvNumber))
-  string.equals $DEBUGGING_DRAWINGS "true"
 }
 
 function getbsservers() {
