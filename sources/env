@@ -9,6 +9,14 @@ source "$BASH_PROFILE_PATH/utils/system"
 source "$BASH_PROFILE_PATH/utils/string"
 
 
+# shellcheck source=./docker
+source "$BASH_PROFILE_PATH/sources/docker"
+# shellcheck source=./services
+source "$BASH_PROFILE_PATH/sources/services"
+# shellcheck source=./servers
+source "$BASH_PROFILE_PATH/sources/servers"
+
+
 function env.create() {
   local newEnvNumber="$1"
   if string.isemptyorblank "$newEnvNumber"
@@ -66,31 +74,101 @@ function env.create() {
   echo "Environment $newEnvNumber created successfully"
 }
 
-function env.start() {
-  echo "env.start"
-}
 
-function env.fix() {
-echo "env.fix"
+function env.check() {
+  # 1. Check if docker is running.
+  if docker.isrunning
+  then
+    echo "Docker is running"
+  else
+    echo "Docker is NOT running"
+    return 1
+  fi
+
+  # 2. Check if all essential services are running.
+  if ! fastcheckessentialservices
+  then
+    return 1
+  fi
+
+  # 3. Check if Onshape Server and grunt quickServe are running
+  if ! areserversrunning
+  then
+    return 1
+  fi
+
+  # Success, everything seems to be working fine.
+  return 0
 }
 
 function env.stopthis() {
-  echo "env.stopthis"
+  stopservers
+  stopServices
 }
 
+
+# ToDo : This only kills services of all environments
+# and Rancher desktop itself, but 'servers' of
+# other environments keep running.
 function env.stopall() {
-  echo "env.stopall"
+  # Stop Onshape server and grunt quickServe
+  stopservers
+
+  if ! docker.isrunning
+  then
+    echo "Docker was already stopped, no services running."
+    return 0
+  fi
+
+  # Stop all Docker services
+  stopallservices
+  # Finally, stop Rancher Desktop itself.
+  echo "Killing Rancher Desktop"
+  system.killallwithname "Rancher Desktop"
 }
 
-function env.getnumber() {
-  if string.isnotemptyorblank "$(getBuildProp HOST_PROPERTIES_ENVNUM)"
+function env.start() {
+  startServices
+  startservers
+}
+
+function env.restart() {
+  env.stopthis
+  env.start
+}
+
+
+function env.fix() {
+  if ! docker.isrunning
   then
-    getBuildProp HOST_PROPERTIES_ENVNUM
-  else
-    echo "0"
+    docker.startapp
+  fi
+
+  fixessentialservices
+
+  startserversifnotalready
+
+  if ! isvalidonshapeserver
+  then
+    echo "Onshape server is running but is not functional. Restarting..."
+    restartbelcad
+
+    if ! isvalidonshapeserver
+    then
+      # It's still not valid for some reason
+      print_error "Could not fix Onshape server"
+      return 1
+    fi
+  fi
+
+  if isdebuggingdrawings
+  then
+    #ToDo: Do it only if xenon is not already running
+    startDrawingDocker skipupdate
   fi
 }
 
-function getEnvNumber() {
-  env.getnumber
+
+function env.getnumber() {
+  getEnvNumber
 }

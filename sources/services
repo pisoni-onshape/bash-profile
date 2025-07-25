@@ -11,6 +11,17 @@ source "$BASH_PROFILE_PATH/utils/string"
 # shellcheck source=./docker
 source "$BASH_PROFILE_PATH/sources/docker"
 
+
+function getEnvNumber() {
+  if string.isnotemptyorblank "$(getBuildProp HOST_PROPERTIES_ENVNUM)"
+  then
+    getBuildProp HOST_PROPERTIES_ENVNUM
+  else
+    echo "0"
+  fi
+}
+
+
 # Start required services for the Onshape server
 # and newton to run (not the server itself, use
 # the functions defined in ./servers for that).
@@ -38,8 +49,10 @@ function isdebuggingdrawings() {
   string.equals "$DEBUGGING_DRAWINGS" "true"
 }
 
-# Stop all services for this environment
+# Stop all services for 'this' environment
 # something which stopServices doesn't.
+# But will ALSO affect other environment, as
+# there are shared services like zookeeper.
 function stopallservices() {
   # shellcheck disable=SC1091
   source "${TOOLS_BASH}/lib/docker/stopDockerContainer.bash"

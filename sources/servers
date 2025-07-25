@@ -12,16 +12,6 @@ source "$BASH_PROFILE_PATH/sources/services"
 
 
 
-function server.exportAfterInitVariables() {
-  export DEFAULT_GRUNT_SERVE_PORT="8000"
-  export DEFAULT_ONSHAPE_PORT="8400"
-
-  # Set GRUNT_SERVE_PORT according to the env number
-  export GRUNT_SERVE_PORT=$(($DEFAULT_GRUNT_SERVE_PORT+$envNum))
-  export ONSHAPE_PORT=$(($DEFAULT_ONSHAPE_PORT+$envNum))
-}
-
-
 # Starts both the Onshape (belcad) server
 # and calls grunt quickServe to start the
 # webpack compiler for incremental Typescript
@@ -134,3 +124,263 @@ function restartservers() {
   startservers
 }
 
+
+
+function getbsservers() {
+  # shellcheck disable=SC2009
+  ps -ef | grep "BSServer" | grep "$STAGE/" | awk '{print $2}'
+}
+
+function killbsservers() {
+  getbsservers | xargs kill
+}
+
+function restartbelcad() {
+  fstopbelcad
+
+  if ! docker.isrunning
+  then
+    startServices
+  fi
+
+  startbelcad
+}
+
+function restartquickserve() {
+  fstopquickserve
+  grunt quickServe
+}
+
+
+
+# Sometimes the process itself is running,
+# but it's non-functional. Validate it. Thanks PT Rajkumar
+# for the trick to validate.
+# ToDo : Sometimes the validation gets stuck. Check it
+function isvalidonshapeserver() {
+  local output
+  output=$(curl -s "https://multienv$(getEnvNumber).onshape.io/api/build" | grep Manifest-Version)
+  if calledfromterminal
+  then
+    if string.isemptyorblank "$output"
+    then
+      print_error "No."
+    else
+      print_success "Yes"
+    fi
+  fi
+
+  string.isnotemptyorblank "$output"
+}
+
+
+# Multi-env aware
+# Prints an output (True/False) only when called
+# directly from the Terminal (else returns true/false)
+function isonshapeserverrunning() {
+  local jettypid
+  jettypid=$(getbelcadpid)
+  if calledfromterminal
+  then
+    if string.isemptyorblank "$jettypid"
+    then
+      print_error "No."
+    else
+      if isvalidonshapeserver
+      then
+        print_success "Yes, PID : $jettypid"
+      else
+        print_error "Yes, PID : $jettypid, but it's NOT a valid connection"
+      fi
+    fi
+  fi
+
+  string.isnotemptyorblank "$jettypid"
+}
+
+
+
+function areserversrunning() {
+  local hasError="false"
+
+  echo -n "Onshape server is "
+  if ! isonshapeserverrunning
+  then
+    hasError="true"
+    print_error "NOT running"
+  else
+    # Check if the Onshape server is 'valid'
+    if ! isvalidonshapeserver
+    then
+      hasError="true"
+      print_error "running, but not functioning"
+      return 1
+    else
+      print_success "running"
+    fi
+  fi
+
+  echo -n "quickServe is "
+  if ! isquickserverunning
+  then
+    hasError="true"
+    print_error "NOT running"
+  else
+    print_success "running"
+  fi
+
+  if string.equals $hasError "false"
+  then
+    # echo "Both Onshape server and grunt quickServe are running."
+    return 0 # success
+  else
+    return 1
+  fi
+}
+
+
+
+
+# Check if the current directory is either
+# 'newton' or newton<n> where n is a number
+function dirismultienvnewton() {
+	local regexNewtonLike='^newton$|^newton[1-9][0-9]*$'
+	[[ $1 =~ $regexNewtonLike ]]
+}
+
+
+function enableDrawingsExports() {
+  export ENABLE_THUMBNAIL_SERVICE=1
+  export START_RENDERER_IN_MAIN_THREAD=1
+  # disable if debugging thumbnails.
+  export BTI_BLOCK_THUMBNAIL_CPP_SERVER_POOL=1
+}
+
+
+# Set CPP builder according to the platform
+function platformspecificsettings() {
+  local useclion
+  useclion=$(system.readvarfromdisk REMEMBER_CLION_BUILD "$(getEnvNumber)")
+  if system.ismacos && ! string.equals "$useclion" "true"
+  then
+    echo "Using XCODEBUILD by default"
+    unset CLIONBUILD
+    export XCODEBUILD=1
+  else # Assume Linux for now.
+    echo "Using CLIONBUILD for building C++"
+    unset XCODEBUILD
+    export CLIONBUILD=1
+  fi
+}
+
+
+# Unofficial exports
+# ------------------
+# Now when the environment should be set, some exports used by this script:
+# ToDo : This doesn't look like a good
+# file for placing this function.
+# ToDo : resolve few more lint issues.
+function exportAfterInitVariables() {
+  local envNum
+  envNum=$(getEnvNumber)
+  CURRENT_RELEASE=$(system.readvarfromdisk CURRENT_RELEASE "$envNum")
+  export CURRENT_RELEASE
+  export LSB_MASTER=lsb/master
+  export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
+  export GIT_MERGE_AUTOEDIT=no
+  export RETRIEVAL_REPORT_WRITE_TO_DISK=1
+  export PATH="$HOME/Library/Python/3.8/bin:${PATH}" # Mostly so that 'rbt' works.
+  export btserverwebpath="$STAGE/WebSvc/logs/btserver.log"
+  export btservermodpath="$STAGE/ModelingSvc/logs/btserver.log"
+  export timerlogwebpath="$STAGE/WebSvc/logs/timer.log"
+  export timerlogmodpath="$STAGE/ModelingSvc/logs/timer.log"
+  export upgradelogwebpath="$STAGE/WebSvc/logs/upgrade.log"
+  # Sometimes, for some reason the logs go in the logsDir_IS_UNDEFINED directory
+  # No one seems to know the exact reason at the time of writing this.
+  export undefinedbtserverwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/btserver.log"
+  export undefinedbtservermodpath="$STAGE/ModelingSvc/logsDir_IS_UNDEFINED/btserver.log"
+  export undefinedtimerlogwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/timer.log"
+  export DEFAULT_GRUNT_SERVE_PORT="8000"
+  export DEFAULT_ONSHAPE_PORT="8400"
+
+  # Set GRUNT_SERVE_PORT according to the env number
+  export GRUNT_SERVE_PORT=$(($DEFAULT_GRUNT_SERVE_PORT+$envNum))
+  export ONSHAPE_PORT=$(($DEFAULT_ONSHAPE_PORT+$envNum))
+
+  export CURRENT_BUILD_TOOLS_PATH="$ROOT_DIR"
+  export JETTY_ARGS="jetty.ssl.port=$ONSHAPE_PORT"
+
+  if isdebuggingdrawings
+  then
+    enableDrawingsExports
+  fi
+}
+
+
+# Ensure we're in the newton directory
+# or one of its subdirectories.
+# ToDo : This doesn't look like a good
+# file for placing this function.
+function ensurenewtondirectory() {
+  if string.isemptyorblank "$REPO_NEWTON"
+  then
+    # Should be the case when we've just started the Terminal.
+    local currentdirname
+    currentdirname=$(system.dirnamefrompath "$(pwd)")
+    if ! dirismultienvnewton "$currentdirname"
+    then
+      # $REPO_NEWTON is not set, and we are
+      # also not in a newton/newton<n> like directory
+      # assume newton '1'.
+      cd "$HOME/repos/newton" || exit
+    fi
+
+    # now when a newton like directory is ensured,
+    # call the buildenv.bash script
+    source buildenv.bash
+    exportAfterInitVariables
+    platformspecificsettings
+  elif ! string.contains "$(pwd)" "$REPO_NEWTON"
+  then
+    # $REPO_NEWTON is initialized but we're not in it or one of its subdirectories
+    cd "$REPO_NEWTON" || exit
+  fi
+}
+
+
+
+
+# Start onshape server and grunt quickServe only if they
+# are not already running.
+#ToDo: support ensurenewtondirectory here.
+function startserversifnotalready() {
+  ensurenewtondirectory
+  if ! docker.isrunning
+  then
+    # startServices is supposed to start
+    # Docker as well if not running
+    startServices
+  fi
+
+  if isonshapeserverrunning
+  then
+    echo "Onshape server is already running"
+  else
+    echo "Onshape server not already running, starting it now"
+    startbelcad
+    if ! system.waslastcommandsuccessful
+    then
+      print_error "Error: Could not start Onshape server. Not starting quickServer"
+      return 1
+    fi
+  fi
+
+  if isquickserverunning
+  then
+    echo "quickServe is already running"
+  else
+    echo "quickServe is not already running, starting it now"
+    #nohup grunt quickServe &> /dev/null
+    grunt quickServe &
+  fi
+}
