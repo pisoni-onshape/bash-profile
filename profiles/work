@@ -65,8 +65,12 @@ importutility rbt
 importutility general
 
 # Import sources
+# shellcheck source=../sources/env
 source "$BASH_PROFILE_PATH/sources/env"
+# shellcheck source=../sources/services
 source "$BASH_PROFILE_PATH/sources/services"
+# shellcheck source=../sources/docker
+source "$BASH_PROFILE_PATH/sources/docker"
 
 function setupnewton() {
   ensurenewtondirectory
@@ -383,13 +387,6 @@ function makelikeproduction() {
   gradle runBtUpgrade
 }
 
-function cleandocker() {
-  dockerKillAll
-  #docker rmi $(docker images -qf "dangling=true"    #Cleans dangligng images
-  #docker-compose rm -f   #Clean old images
-  docker system prune -f
-  docker volume prune -f
-}
 
 function cleanjars() {
   find "$HOME/stage/build/" -name *.jar -delete
@@ -1013,19 +1010,6 @@ function fstopbelcad() {
 }
 
 
-function isdockerrunning() {
-  if calledfromterminal
-  then
-    if (string.isnotemptyorblank $(command -v docker) && string.isnotemptyorblank $((docker ps 2> /dev/null) | grep -i "container"))
-    then
-      echo "Yes"
-    else
-      echo "No"
-    fi
-  else
-    string.isnotemptyorblank $(command -v docker) && string.isnotemptyorblank $((docker ps 2> /dev/null) | grep -i "container")
-  fi
-}
 
 function checkenv() {
   # 1. Check if docker is running.
@@ -1639,29 +1623,6 @@ function mergetoreleasethenmaster() {
   markbranchmerged $currentbranch
 }
 
-function startDockerApp() {
-  if isdockerrunning
-  then
-    echo "Docker is already running"
-    return
-  fi
-
-  # [2023/11/01] : We use Rancher Desktop now instead of Docker Desktop
-  if system.commandsucceeds $(open -a /Applications/Rancher\ Desktop.app)
-  then
-    # Give Docker some time to get initialized, otherwise
-    # starting services fails.
-    echo -n "Docker started, waiting for it to be ready"
-    while (! docker stats --no-stream > /dev/null 2>&1 ); do
-      echo -n "."
-      sleep 1
-    done
-    echo "" # print a newline character
-  else
-    echo "Can't open Docker app"
-    return
-  fi
-}
 
 # Start required services for the Onshape server
 # and newton to run (not the server itself, use

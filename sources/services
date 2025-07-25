@@ -1,6 +1,7 @@
 #!/bin/bash
 
 #utils
+# ToDo : Convert to importutility later.
 # shellcheck source=../utils/system
 source "$BASH_PROFILE_PATH/utils/system"
 # shellcheck source=../utils/string
@@ -16,7 +17,7 @@ function isdebuggingdrawings() {
 
 function stopallservices() {
   # shellcheck disable=SC1091
-  . "${TOOLS_BASH}/lib/docker/stopDockerContainer.bash"
+  source "${TOOLS_BASH}/lib/docker/stopDockerContainer.bash"
   btEnvDown
   stopZookeeperIfRunning
   stopDockerContainer dns-proxy
@@ -156,7 +157,7 @@ function fixessentialservices() {
 
 
 function isdrawingservicerunning() {
-  . "${TOOLS_BASH}/lib/docker/isDrawingDockerRunning.bash"
+  source "${TOOLS_BASH}/lib/docker/isDrawingDockerRunning.bash"
   isDrawingDockerRunning
 }
 
