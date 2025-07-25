@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # String utils
 
 #include guard
@@ -18,52 +16,49 @@ function string.equals() {
 
 # basic wild card characters seems to work
 function string.simplereplace() {
-	local input="$1"
-	local searchstring="$2"
-	local replacestring="$3"
+	local input=$1
+	local searchstring=$2
+	local replacestring=$3
 	echo "${input//$searchstring/$replacestring}"
 }
 
 function string.replacefirstoccurrence() {
-	local input="$1"
-	local searchstring="$2"
-	local replacestring="$3"
+	local input=$1
+	local searchstring=$2
+	local replacestring=$3
 	echo "${input/$searchstring/$replacestring}"
 }
 
 function string.beginswith() {
-	local input="$1"
-	local testString="$2"
+	local input=$1
+	local testString=$2
 	# Directly return true or false so that
 	# it can be used with if
  	[[ $input == $testString* ]]
 }
 
 function string.endswith() {
-	local input="$1"
-	local testString="$2"
+	local input=$1
+	local testString=$2
 	# Directly return true or false so that
 	# it can be used with if
  	[[ $input == *$testString ]]
 }
 
 function string.contains() {
-	local input="$1"
-	local testString="$2"
+	local input=$1
+	local testString=$2
 	# Directly return true or false so that
 	# it can be used with if
  	[[ $input == *$testString* ]]
 }
 
 function string.isemptyorblank() {
-  	# shellcheck disable=SC2086
-  	[ -z $1 ]
+  	[ -z "$1" ]
 }
 
 function string.isnotemptyorblank() {
-  	# shellcheck disable=SC2086
-  	# shellcheck disable=SC2236
-  	[ ! -z $1 ]
+  	[ ! -z "$1" ]
 }
 
 function string.length() {
@@ -71,16 +66,16 @@ function string.length() {
 }
 
 function string.tolower() {
-	echo "$1" | tr '[:upper:]' '[:lower:]'
+	echo $1 | tr '[:upper:]' '[:lower:]'
 }
 
 function string.toupper() {
-	echo "$1" | tr '[:lower:]' '[:upper:]'
+	echo $1 | tr '[:lower:]' '[:upper:]'
 }
 
 function string.isnumber() {
 	local regexNumber='^[0-9]+$'
-	[[ "$1" =~ $regexNumber ]]
+	[[ $1 =~ $regexNumber ]]
 }
 
 # ToDo: Implement for multiple strings.
@@ -90,11 +85,11 @@ function string.concatenate() {
 
 # Prepend a string if it's not already prepended
 function string.prependifnotalready() {
-	local sourcestring="$1"
-	local stringtoprepend="$2"
-	if ! string.beginswith "$sourcestring" "$stringtoprepend"
+	local sourcestring=$1
+	local stringtoprepend=$2
+	if ! string.beginswith $sourcestring $stringtoprepend
 	then
 		sourcestring="$stringtoprepend""$sourcestring"
 	fi
-	echo "$sourcestring"
+	echo $sourcestring
 }
