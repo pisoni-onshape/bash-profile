@@ -392,8 +392,8 @@ function git.checkoutpreviousbranch() {
 }
 
 function git.deletecurrentbranch() {
-	read -p "Are you sure you want to delete the current branch? Press any key to continue. Press Ctrl+C to cancel."
 	local currentbranch=$(git.getcurrentbranch)
+	read -p "Are you sure you want to delete the current branch ($currentbranch)? Press any key to continue. Press Ctrl+C to cancel."
 	git.checkoutpreviousbranch
 	git branch -D $currentbranch
 }
@@ -422,7 +422,7 @@ function git.getmergecommit() {
 
 function git.deletebranch() {
   local branchToDelete="$1"
-  if string.isemptyorblank "$branchToDelete"
+  if string.isemptyorblank "$branchToDelete" || string.equals "$(git.getcurrentbranch)" "$branchToDelete"
   then
     git.deletecurrentbranch
     return 0
