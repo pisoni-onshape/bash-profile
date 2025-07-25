@@ -6,7 +6,7 @@ source "$BASH_PROFILE_PATH/utils/system"
 # shellcheck source=../utils/string
 source "$BASH_PROFILE_PATH/utils/string"
 
-function isdockerrunning() {
+function docker.isrunning() {
   if calledfromterminal
   then
     if string.isnotemptyorblank "$(command -v docker)" && string.isnotemptyorblank "$( (docker ps 2> /dev/null) | grep -i "container")"
@@ -20,8 +20,8 @@ function isdockerrunning() {
   fi
 }
 
-function startDockerApp() {
-  if isdockerrunning
+function docker.startapp() {
+  if docker.isrunning
   then
     echo "Docker is already running"
     return 0
@@ -44,7 +44,7 @@ function startDockerApp() {
   fi
 }
 
-function cleandocker() {
+function docker.clean() {
   dockerKillAll
   #docker rmi $(docker images -qf "dangling=true"    #Cleans dangligng images
   #docker-compose rm -f   #Clean old images

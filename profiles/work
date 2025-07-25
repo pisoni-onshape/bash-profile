@@ -1013,7 +1013,7 @@ function fstopbelcad() {
 
 function checkenv() {
   # 1. Check if docker is running.
-  if isdockerrunning
+  if docker.isrunning
   then
     echo "Docker is running"
   else
@@ -1038,9 +1038,9 @@ function checkenv() {
 }
 
 function fixenv() {
-  if ! isdockerrunning
+  if ! docker.isrunning
   then
-    startDockerApp
+    docker.startapp
   fi
 
   fixessentialservices
@@ -1071,7 +1071,7 @@ function stopenv() {
   # Stop Onshape server and grunt quickServe
   stopservers
 
-  if ! isdockerrunning
+  if ! docker.isrunning
   then
     echo "Docker was already stopped, no services running."
     return
@@ -1160,7 +1160,7 @@ function killbsservers() {
 function restartbelcad() {
   fstopbelcad
 
-  if ! isdockerrunning
+  if ! docker.isrunning
   then
     startServices
   fi
@@ -1205,7 +1205,7 @@ function buildgradleparallel() {
   fi
 
   # Similarly, our build tools don't figure out if docker itself is not running
-  if ! isdockerrunning
+  if ! docker.isrunning
   then
     startServices # Will ensure docker and services run
   fi
@@ -1629,10 +1629,10 @@ function mergetoreleasethenmaster() {
 # startservers for that). Also starts Docker
 # is not already running.
 function startServices() {
-  if ! isdockerrunning
+  if ! docker.isrunning
   then
     echo "Starting Docker process as it was not found to be running"
-    startDockerApp
+    docker.startapp
   else
     echo "Docker found to be running"
   fi
@@ -1647,7 +1647,7 @@ function stopServices() {
 # Starts both the Onshape (belcad) server
 # and calls grunt quickServe to
 function startservers() {
-  if ! isdockerrunning
+  if ! docker.isrunning
   then
     # startServices is supposed to start
     # Docker as well if not running
@@ -1678,7 +1678,7 @@ function quickserve() {
 # are not already running.
 function startserversifnotalready() {
   ensurenewtondirectory
-  if ! isdockerrunning
+  if ! docker.isrunning
   then
     # startServices is supposed to start
     # Docker as well if not running
@@ -1786,7 +1786,7 @@ function buildjavaandjsonly() {
 function grdlbuildjavaandjsonly() {
   ensurenewtondirectory
 
-  if ! isdockerrunning
+  if ! docker.isrunning
   then
     startServices # Will ensure docker and services run
   fi
@@ -2086,7 +2086,6 @@ alias checkjs='grunt eslint:javascript'
 alias checkts='grunt eslint:typescript'
 # alias clion="open -a $HOME/Applications/JetBrains\ Toolbox/CLion.app"
 alias cppbuild='buildcpponly'
-alias dockerclean='cleandocker'
 alias droptoproduction='mongoDropToProduction'
 alias eclipse='open -a /Applications/Eclipse.app'
 alias eslintfix='grunt eslint:fix'
