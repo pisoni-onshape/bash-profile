@@ -5,6 +5,21 @@
 importutility string
 importutility system
 
+# By default Bash terminal doesn't auto complete
+# function/command names when they're followed by the
+# type command. This is to enable that.
+__type_command_completion() {
+    # Get the current word being typed
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+
+    # Generate a list of all completion types that 'type' accepts
+    # -a: aliases, -k: keywords, -A function: functions, -b: builtins, -c: commands
+    COMPREPLY=( $(compgen -a -k -A function -b -c -- "$cur") )
+}
+
+# Apply the custom completion function to the 'type' command
+complete -F __type_command_completion type
+
 # Usage : 	findbyname <filename to search in current directory>
 # 			Or
 #			findbyname <filename to search> <directory>
