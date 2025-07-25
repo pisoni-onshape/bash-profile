@@ -1,0 +1,94 @@
+#!/bin/bash
+
+# ToDo : Convert to importutility later.
+# shellcheck source=../utils/system
+source "$BASH_PROFILE_PATH/utils/system"
+# shellcheck source=../utils/string
+source "$BASH_PROFILE_PATH/utils/string"
+
+
+function env.create() {
+  local newEnvNumber="$1"
+  if string.isemptyorblank "$newEnvNumber"
+  then
+    print_error "Please give the environment number - 2 / 3 etc."
+    return 1
+  fi
+
+  local newPath
+  newPath=$(string.simplereplace "$REPO_NEWTON" "newton$(getEnvNumber)" "newton$newEnvNumber")
+  if ! general.inputyesorno "Are you sure you want to create a new environment at $newPath?"
+  then
+    return 0
+  fi
+
+  if system.direxists "$newPath"
+  then
+    print_error "Directory $($newPath) already exists. Please give a new environment number"
+    return 1
+  fi
+
+  # Begin creating the environment now.
+  git clone git@github.com:onshape/newton.git "$newPath"
+  if ! system.waslastcommandsuccessful
+  then
+    echo "git clone was not successful. Please fix possible errors and start all over again."
+    return 1
+  fi
+
+  # shellcheck disable=SC2164
+  cd "$newPath"
+  if ! system.waslastcommandsuccessful
+  then
+    echo "Change directory didn't succeed. Please check for possible errors and start again."
+    return 1
+  fi
+
+  # shellcheck disable=SC1091
+  source "buildenv.bash"
+  if ! system.waslastcommandsuccessful
+  then
+    echo "source buildenv.bash didn't succeed. Please check for possible errors and start again."
+    return 1
+  fi
+
+  btSetupEnv
+  if ! system.waslastcommandsuccessful
+  then
+    echo "btSetupEnv didn't succeed. Please check for possible errors and start again."
+    return 1
+  fi
+
+  # shellcheck disable=SC1091
+  source "buildenv.bash"
+  echo "Environment $newEnvNumber created successfully"
+}
+
+function env.start() {
+  echo "env.start"
+}
+
+function env.fix() {
+echo "env.fix"
+}
+
+function env.stopthis() {
+  echo "env.stopthis"
+}
+
+function env.stopall() {
+  echo "env.stopall"
+}
+
+function env.getnumber() {
+  if string.isnotemptyorblank "$(getBuildProp HOST_PROPERTIES_ENVNUM)"
+  then
+    getBuildProp HOST_PROPERTIES_ENVNUM
+  else
+    echo "0"
+  fi
+}
+
+function getEnvNumber() {
+  env.getnumber
+}

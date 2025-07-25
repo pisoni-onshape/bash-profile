@@ -1,0 +1,154 @@
+#!/bin/bash
+
+#utils
+# shellcheck source=../utils/system
+source "$BASH_PROFILE_PATH/utils/system"
+# shellcheck source=../utils/string
+source "$BASH_PROFILE_PATH/utils/string"
+
+
+function isdebuggingdrawings() {
+  local DEBUGGING_DRAWINGS
+  DEBUGGING_DRAWINGS=$(system.readvarfromdisk DEBUGGING_DRAWINGS "$(getEnvNumber)")
+  string.equals "$DEBUGGING_DRAWINGS" "true"
+}
+
+
+function stopallservices() {
+  # shellcheck disable=SC1091
+  . "${TOOLS_BASH}/lib/docker/stopDockerContainer.bash"
+  btEnvDown
+  stopZookeeperIfRunning
+  stopDockerContainer dns-proxy
+  stopDockerContainer "$(getContainerName https)"
+  if isdebuggingdrawings
+  then
+    stopDrawingDocker
+  fi
+}
+
+
+function declareEssentialServices() {
+  # This if else is in this form mostly because I don't know how to dynamically add
+  # just one element in the array :), but it's ok for now.
+  ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod: startMongod" "rabbitmq: startRabbitMQServer")
+  if isdebuggingdrawings
+  then
+    ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod: startMongod" "rabbitmq: startRabbitMQServer" "xenon: startDrawingDocker")
+  fi
+}
+
+
+# Another version of the official 'checkServices'. Tells you if
+# the absolutely essential services required for running Onshape
+# properly are running or not, so that you don't have to
+# look at all of them.
+function checkessentialservices() {
+  local output
+  output=$(checkServices)
+
+  declareEssentialServices
+
+  local allRunning="true"
+  for entry in "${ESSENTIAL_SERVICES_AND_COMMANDS[@]}" ; do
+      service=${entry%%:*}
+      local serviceRunning
+      serviceRunning=$(echo "$output" | grep "$service.. ok docker container")
+
+      if string.isemptyorblank "$serviceRunning"
+      then
+        print_error "Essential service $service is not running"
+        allRunning="false"
+      fi
+  done
+
+  if string.equals $allRunning "true"
+  then
+    print_success "All essential services are running"
+    return 0
+  else
+    return 1
+  fi
+}
+
+
+# Arguments:
+  # 1. "true" / "false" - autoFix services.
+# shellcheck disable=SC2120
+function fastcheckessentialservices() {
+  local envString=""
+  local autoFix="$1"
+  local autoFixString=""
+  local envNumber
+  envNumber=$(getEnvNumber)
+
+  if string.equals "$autoFix" "true"
+  then
+    autoFixString=", starting it"
+  fi
+
+  if ! string.equals "$envNumber" "0"
+  then
+    envString="_myenv$envNumber"
+  fi
+
+  declareEssentialServices
+
+  local runningServicesArray=( $(docker ps --format '{{.Names}}') )
+  local allRunning="true"
+
+  # Zookeeper is shared between all environments, check if it's running
+  # shellcheck disable=SC2199
+  if [[ ! " ${runningServicesArray[@]} " =~ " zookeeper " ]]
+  then
+    print_error "Essential service zookeeper is not running$autoFixString"
+    if string.equals "$autoFix" "true"
+    then
+      startZookeeper
+    fi
+    allRunning="false"
+  fi
+
+  for entry in "${ESSENTIAL_SERVICES_AND_COMMANDS[@]}" ; do
+      service=${entry%%:*}
+      startCommandName=${entry#*: }
+      # shellcheck disable=SC2199
+      # shellcheck disable=SC2076
+      if [[ ! " ${runningServicesArray[@]} " =~ " $service$envString " ]]
+      then
+        print_error "Essential service $service is not running$autoFixString"
+        if string.equals "$autoFix" "true"
+        then
+          $startCommandName # start the service.
+        fi
+
+        allRunning="false"
+      fi
+  done
+
+  if string.equals $allRunning "true"
+  then
+    print_success "All essential services are running"
+    return 0
+  else
+    # All services were not running, but may have been started now.
+    if string.equals "$autoFix" "true"
+    then
+      if fastcheckessentialservices #check if services are running now
+      then
+        print_success "Essential services were not running but have been fixed"
+        return 0
+      else
+        print_error "Essential services could not be fixed"
+        return 1
+      fi
+    else
+      return 1
+    fi
+  fi
+}
+
+
+function fixessentialservices() {
+  fastcheckessentialservices "true" #auto-fix
+}
