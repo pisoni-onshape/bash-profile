@@ -42,9 +42,6 @@ function findbyname() {
 	find "$directory" -name "$filename" 2>/dev/null
 }
 
-# alias sublime='open -a "/Applications/Sublime Text.app"'
-# alias bbedit='open -a /Applications/BBEdit.app'
-# alias z='open -a /Applications/Zed.app/'
 
 # Text editors
 # Write your preferred text editor of choice, in the order of preference
@@ -138,6 +135,22 @@ function calledfromterminal() {
   # Empty if caller was called directly from terminal.
   #echo "${FUNCNAME[*]}"
   (string.isemptyorblank "${FUNCNAME[2]}")
+}
+
+# Assumes pid to kill is a valid one
+# First argument: pid to kill
+# Second argument: Only a name for identification
+function killprocessid() {
+  echo "Killing $2 PID $1"
+  kill -9 "$1"
+
+  # Sleep by default, unless the third argument says "nosleep"
+  if ! string.equals $3 "nosleep"
+  then
+    # Allow the process to be killed (I observed a couple of times that it doesn't immediately get killed
+    # and the next command like system.whoisusingport 8080 still shows that PID)
+    sleep 2
+  fi
 }
 
 alias te='texteditor'

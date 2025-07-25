@@ -1,0 +1,136 @@
+#!/bin/bash
+
+# ToDo : Convert to importutility later.
+# shellcheck source=../utils/system
+source "$BASH_PROFILE_PATH/utils/system"
+
+
+# shellcheck source=./docker
+source "$BASH_PROFILE_PATH/sources/docker"
+# shellcheck source=./services
+source "$BASH_PROFILE_PATH/sources/services"
+
+
+
+function server.exportAfterInitVariables() {
+  export DEFAULT_GRUNT_SERVE_PORT="8000"
+  export DEFAULT_ONSHAPE_PORT="8400"
+
+  # Set GRUNT_SERVE_PORT according to the env number
+  export GRUNT_SERVE_PORT=$(($DEFAULT_GRUNT_SERVE_PORT+$envNum))
+  export ONSHAPE_PORT=$(($DEFAULT_ONSHAPE_PORT+$envNum))
+}
+
+
+# Starts both the Onshape (belcad) server
+# and calls grunt quickServe to start the
+# webpack compiler for incremental Typescript
+# development and debugging
+function startservers() {
+  if ! docker.isrunning
+  then
+    # startServices is supposed to start
+    # Docker as well if not running
+    startServices
+  fi
+
+  startbelcad
+  if ! system.waslastcommandsuccessful
+  then
+    echo "Error: Could not start Onshape server. Not starting quickServer"
+    return
+  fi
+
+  if isdebuggingdrawings
+  then
+    startDrawingDocker skipupdate
+  fi
+
+  # ToDo : This should be quickserve only
+  grunt quickServe &
+}
+
+
+
+function getquickserveport() {
+  echo "$GRUNT_SERVE_PORT"
+}
+
+function getquickservepid() {
+  local port
+  port=$(getquickserveport)
+  local searchString="node.*127\.0\.0\.1:$port.*LISTEN"
+
+  local pid
+  pid=$(lsof -iTCP -n -P | grep "$searchString" | awk '{print $2}')
+  echo "$pid"
+}
+
+function isquickserverunning() {
+  local pid
+  pid=$(getquickservepid)
+
+  if calledfromterminal
+  then
+    if string.isemptyorblank "$pid"
+    then
+      echo "No."
+    else
+      echo "Yes, PID : $pid"
+    fi
+  fi
+
+  string.isnotemptyorblank "$pid"
+}
+
+
+# shellcheck disable=SC2120
+function fstopquickserve() {
+  local pid
+  pid=$(getquickservepid)
+  if ! string.isemptyorblank "$pid"
+  then
+    killprocessid "$pid" "quickserve" "$1" # this optional argument can be "nosleep"
+  else
+    echo "Didn't find quickserve process to kill"
+  fi
+}
+
+# Multi-env aware
+function getbelcadpid() {
+  local jettypid
+  # shellcheck disable=SC2009
+  jettypid=$(ps -ef | grep jetty | grep "$STAGE/" | awk '{print $2}')
+  echo "$jettypid"
+}
+
+function fstopbelcad() {
+  # Consider using this instead, which is multi-env aware: checkServices -s websvc
+  local jettypid
+  jettypid=$(getbelcadpid)
+  if ! string.isemptyorblank "$jettypid"
+  then
+    killprocessid "$jettypid" "jetty" "$1" # this optional argument can be "nosleep"
+    return 0
+  else
+    echo "Didn't find onshape process to kill"
+    return 1
+  fi
+}
+
+
+function stopservers() {
+  fstopbelcad "nosleep"
+  if isdebuggingdrawings
+  then
+    stopDrawingDocker
+  fi
+  # Stop the grunt quickServe started webpack server.
+  fstopquickserve
+}
+
+function restartservers() {
+  stopservers
+  startservers
+}
+

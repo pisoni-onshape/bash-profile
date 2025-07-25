@@ -64,6 +64,7 @@ importutility git
 importutility rbt
 importutility general
 
+
 # Import sources
 # shellcheck source=../sources/env
 source "$BASH_PROFILE_PATH/sources/env"
@@ -71,6 +72,9 @@ source "$BASH_PROFILE_PATH/sources/env"
 source "$BASH_PROFILE_PATH/sources/services"
 # shellcheck source=../sources/docker
 source "$BASH_PROFILE_PATH/sources/docker"
+# shellcheck source=../sources/servers
+source "$BASH_PROFILE_PATH/sources/servers"
+
 
 function setupnewton() {
   ensurenewtondirectory
@@ -132,12 +136,7 @@ function exportAfterInitVariables() {
   export undefinedbtserverwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/btserver.log"
   export undefinedbtservermodpath="$STAGE/ModelingSvc/logsDir_IS_UNDEFINED/btserver.log"
   export undefinedtimerlogwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/timer.log"
-  export DEFAULT_GRUNT_SERVE_PORT="8000"
-  export DEFAULT_ONSHAPE_PORT="8400"
-
-  # Set GRUNT_SERVE_PORT according to the env number
-  export GRUNT_SERVE_PORT=$(($DEFAULT_GRUNT_SERVE_PORT+$envNum))
-  export ONSHAPE_PORT=$(($DEFAULT_ONSHAPE_PORT+$envNum))
+  server.exportAfterInitVariables
 
   export CURRENT_BUILD_TOOLS_PATH="$ROOT_DIR"
   export JETTY_ARGS="jetty.ssl.port=$ONSHAPE_PORT"
@@ -211,24 +210,6 @@ function setdebug() {
   fi
 }
 
-# INCOMPLETE function. Find next onshape version given the input version
-# Or a few versions forward or backward if a second +/- integer is sent
-# to add to it
-function newonshapeversion() {
-  local original=$1
-  local addition=1
-  if ! string.isemptyorblank $2
-  then
-    addition=$2
-  fi
-
-  # Trim everything before "."
-  local prefix=$(string.simplereplace "$original" ".*" "")
-  # Trim everything before "."
-  local version=$(string.simplereplace "$original" "*." "")
-  local newsuffix=$(general.add $version $addition)
-  echo "$prefix.$newsuffix"
-}
 
 function refreshcurrentreleasebranch() {
   ensurenewtondirectory
@@ -290,6 +271,7 @@ function debugdemoc() {
   grunt quickServe
 }
 
+# Does debugging production still work?
 function debugproduction() {
   #Try to debug staging
   export PROXY_TARGET_HOST='https://cad.onshape.com'
@@ -861,11 +843,7 @@ function setupjumpboxcertificates() {
   scp $USERNAME@jumpbox-primary.dev.onshape.com:tls-auth.key /tmp
 }
 
-# Multi-env aware
-function getbelcadpid() {
-  local jettypid=$(ps -ef | grep jetty | grep "$STAGE/" | awk '{print $2}')
-  echo $jettypid
-}
+
 
 # Multi-env aware
 # Prints an output (True/False) only when called
@@ -908,47 +886,7 @@ function isvalidonshapeserver() {
   string.isnotemptyorblank "$output"
 }
 
-# Assumes pid to kill is a valid one
-function killprocessid() {
-  echo "Killing $2 PID $1"
-  kill -9 $1
 
-  if ! string.equals $3 "nosleep"
-  then
-    # Allow the process to be killed (I observed a couple of times that it doesn't immediately get killed
-    # and the next command like system.whoisusingport 8080 still shows that PID)
-    sleep 2
-  fi
-}
-
-
-function getquickserveport() {
-  echo $GRUNT_SERVE_PORT
-}
-
-function getquickservepid() {
-  local port=$(getquickserveport)
-  local searchString="node.*127\.0\.0\.1:$port.*LISTEN"
-
-  local pid=$(lsof -iTCP -n -P | grep "$searchString" | awk '{print $2}')
-  echo $pid
-}
-
-function isquickserverunning() {
-  local pid=$(getquickservepid)
-
-  if calledfromterminal
-  then
-    if string.isemptyorblank $pid
-    then
-      echo "No."
-    else
-      echo "Yes, PID : $pid"
-    fi
-  fi
-
-  string.isnotemptyorblank $pid
-}
 
 function areserversrunning() {
   local hasError="false"
@@ -987,28 +925,6 @@ function areserversrunning() {
     return 1
   fi
 }
-
-function fstopquickserve() {
-  local pid=$(getquickservepid)
-  if ! string.isemptyorblank $pid
-  then
-    killprocessid $pid "quickserve" $1 # this optional argument can be "nosleep"
-  else
-    echo "Didn't find quickserve process to kill"
-  fi
-}
-
-function fstopbelcad() {
-  # Consider using this instead, which is multi-env aware: checkServices -s websvc
-  local jettypid=$(getbelcadpid)
-  if ! string.isemptyorblank $jettypid
-  then
-    killprocessid $jettypid "jetty" $1 # this optional argument can be "nosleep"
-  else
-    echo "Didn't find onshape process to kill"
-  fi
-}
-
 
 
 function checkenv() {
@@ -1624,51 +1540,6 @@ function mergetoreleasethenmaster() {
 }
 
 
-# Start required services for the Onshape server
-# and newton to run (not the server itself, use
-# startservers for that). Also starts Docker
-# is not already running.
-function startServices() {
-  if ! docker.isrunning
-  then
-    echo "Starting Docker process as it was not found to be running"
-    docker.startapp
-  else
-    echo "Docker found to be running"
-  fi
-  # Actually start the services now when Docker is confirmed to be running
-  btEnvUp
-}
-
-function stopServices() {
-  btEnvDown
-}
-
-# Starts both the Onshape (belcad) server
-# and calls grunt quickServe to
-function startservers() {
-  if ! docker.isrunning
-  then
-    # startServices is supposed to start
-    # Docker as well if not running
-    startServices
-  fi
-
-  startbelcad
-  if ! system.waslastcommandsuccessful
-  then
-    echo "Error: Could not start Onshape server. Not starting quickServer"
-    return
-  fi
-
-  if isdebuggingdrawings
-  then
-    startDrawingDocker skipupdate
-  fi
-
-  quickserve&
-}
-
 function quickserve() {
   ensurenewtondirectory
   grunt quickServe
@@ -1708,19 +1579,6 @@ function startserversifnotalready() {
   fi
 }
 
-function stopservers() {
-  fstopbelcad "nosleep"
-  if isdebuggingdrawings
-  then
-    stopDrawingDocker
-  fi
-  fstopquickserve
-}
-
-function restartservers() {
-  stopservers
-  startservers
-}
 
 function buildall() {
   cd $REPO_NEWTON

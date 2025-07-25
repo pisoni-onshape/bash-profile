@@ -1,4 +1,6 @@
 #!/bin/bash
+# An 'env' (which represents an environment in a multi-env setup) is
+# composed of various servers, and their services.
 
 # ToDo : Convert to importutility later.
 # shellcheck source=../utils/system

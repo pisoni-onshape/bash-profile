@@ -8,17 +8,42 @@ source "$BASH_PROFILE_PATH/utils/system"
 source "$BASH_PROFILE_PATH/utils/string"
 
 
+# shellcheck source=./docker
+source "$BASH_PROFILE_PATH/sources/docker"
+
+# Start required services for the Onshape server
+# and newton to run (not the server itself, use
+# the functions defined in ./servers for that).
+# Also starts Docker if it is not already running.
+function startServices() {
+  if ! docker.isrunning
+  then
+    echo "Starting Docker process as it was not found to be running"
+    docker.startapp
+  else
+    echo "Docker found to be running"
+  fi
+  # Actually start the services now when Docker is confirmed to be running
+  btEnvUp
+}
+
+
+function stopServices() {
+  btEnvDown
+}
+
 function isdebuggingdrawings() {
   local DEBUGGING_DRAWINGS
   DEBUGGING_DRAWINGS=$(system.readvarfromdisk DEBUGGING_DRAWINGS "$(getEnvNumber)")
   string.equals "$DEBUGGING_DRAWINGS" "true"
 }
 
-
+# Stop all services for this environment
+# something which stopServices doesn't.
 function stopallservices() {
   # shellcheck disable=SC1091
   source "${TOOLS_BASH}/lib/docker/stopDockerContainer.bash"
-  btEnvDown
+  stopServices
   stopZookeeperIfRunning
   stopDockerContainer dns-proxy
   stopDockerContainer "$(getContainerName https)"
