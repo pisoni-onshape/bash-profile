@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #include guard
 if isFunctionDefined "general.defined" && ! isEnvVariableDefined "FORCE_IMPORT_UTILITY"
 then
