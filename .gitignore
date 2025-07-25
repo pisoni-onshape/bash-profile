@@ -1,3 +1,5 @@
 .personal
 .DS_Store
 variables/*
+.vscode/*
+cspell.json
