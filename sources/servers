@@ -3,14 +3,16 @@
 # ToDo : Convert to importutility later.
 # shellcheck source=../utils/system
 source "$BASH_PROFILE_PATH/utils/system"
+# shellcheck source=../utils/string
+source "$BASH_PROFILE_PATH/utils/string"
 
 
 # shellcheck source=./docker
 source "$BASH_PROFILE_PATH/sources/docker"
 # shellcheck source=./services
 source "$BASH_PROFILE_PATH/sources/services"
-
-
+# shellcheck source=./newton
+source "$BASH_PROFILE_PATH/sources/newton"
 
 
 # Multi-env aware
@@ -255,114 +257,6 @@ function areserversrunning() {
 
 
 
-
-# Check if the current directory is either
-# 'newton' or newton<n> where n is a number
-function dirismultienvnewton() {
-	local regexNewtonLike='^newton$|^newton[1-9][0-9]*$'
-	[[ $1 =~ $regexNewtonLike ]]
-}
-
-
-function enableDrawingsExports() {
-  export ENABLE_THUMBNAIL_SERVICE=1
-  export START_RENDERER_IN_MAIN_THREAD=1
-  # disable if debugging thumbnails.
-  export BTI_BLOCK_THUMBNAIL_CPP_SERVER_POOL=1
-}
-
-
-# Set CPP builder according to the platform
-function platformspecificsettings() {
-  local useclion
-  useclion=$(system.readvarfromdisk REMEMBER_CLION_BUILD "$(getEnvNumber)")
-  if system.ismacos && ! string.equals "$useclion" "true"
-  then
-    echo "Using XCODEBUILD by default"
-    unset CLIONBUILD
-    export XCODEBUILD=1
-  else # Assume Linux for now.
-    echo "Using CLIONBUILD for building C++"
-    unset XCODEBUILD
-    export CLIONBUILD=1
-  fi
-}
-
-
-# Unofficial exports
-# ------------------
-# Now when the environment should be set, some exports used by this script:
-# ToDo : This doesn't look like a good
-# file for placing this function.
-# ToDo : resolve few more lint issues.
-function exportAfterInitVariables() {
-  local envNum
-  envNum=$(getEnvNumber)
-  CURRENT_RELEASE=$(system.readvarfromdisk CURRENT_RELEASE "$envNum")
-  export CURRENT_RELEASE
-  export LSB_MASTER=lsb/master
-  export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
-  export GIT_MERGE_AUTOEDIT=no
-  export RETRIEVAL_REPORT_WRITE_TO_DISK=1
-  export PATH="$HOME/Library/Python/3.8/bin:${PATH}" # Mostly so that 'rbt' works.
-  export btserverwebpath="$STAGE/WebSvc/logs/btserver.log"
-  export btservermodpath="$STAGE/ModelingSvc/logs/btserver.log"
-  export timerlogwebpath="$STAGE/WebSvc/logs/timer.log"
-  export timerlogmodpath="$STAGE/ModelingSvc/logs/timer.log"
-  export upgradelogwebpath="$STAGE/WebSvc/logs/upgrade.log"
-  # Sometimes, for some reason the logs go in the logsDir_IS_UNDEFINED directory
-  # No one seems to know the exact reason at the time of writing this.
-  export undefinedbtserverwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/btserver.log"
-  export undefinedbtservermodpath="$STAGE/ModelingSvc/logsDir_IS_UNDEFINED/btserver.log"
-  export undefinedtimerlogwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/timer.log"
-  export DEFAULT_GRUNT_SERVE_PORT="8000"
-  export DEFAULT_ONSHAPE_PORT="8400"
-
-  # Set GRUNT_SERVE_PORT according to the env number
-  export GRUNT_SERVE_PORT=$(($DEFAULT_GRUNT_SERVE_PORT+$envNum))
-  export ONSHAPE_PORT=$(($DEFAULT_ONSHAPE_PORT+$envNum))
-
-  export CURRENT_BUILD_TOOLS_PATH="$ROOT_DIR"
-  export JETTY_ARGS="jetty.ssl.port=$ONSHAPE_PORT"
-
-  if isdebuggingdrawings
-  then
-    enableDrawingsExports
-  fi
-}
-
-
-# Ensure we're in the newton directory
-# or one of its subdirectories.
-# ToDo : This doesn't look like a good
-# file for placing this function.
-function ensurenewtondirectory() {
-  if string.isemptyorblank "$REPO_NEWTON"
-  then
-    # Should be the case when we've just started the Terminal.
-    local currentdirname
-    currentdirname=$(system.dirnamefrompath "$(pwd)")
-    if ! dirismultienvnewton "$currentdirname"
-    then
-      # $REPO_NEWTON is not set, and we are
-      # also not in a newton/newton<n> like directory
-      # assume newton '1'.
-      cd "$HOME/repos/newton" || exit
-    fi
-
-    # now when a newton like directory is ensured,
-    # call the buildenv.bash script
-    source buildenv.bash
-    exportAfterInitVariables
-    platformspecificsettings
-  elif ! string.contains "$(pwd)" "$REPO_NEWTON"
-  then
-    # $REPO_NEWTON is initialized but we're not in it or one of its subdirectories
-    cd "$REPO_NEWTON" || exit
-  fi
-}
-
-
 function setserveonlan() {
   if string.equals "$1" "false"
   then
@@ -377,4 +271,3 @@ function setserveonlan() {
 function resetserveonlan() {
   setserveonlan "false"
 }
-

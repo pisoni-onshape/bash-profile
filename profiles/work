@@ -74,11 +74,8 @@ source "$BASH_PROFILE_PATH/sources/services"
 source "$BASH_PROFILE_PATH/sources/docker"
 # shellcheck source=../sources/servers
 source "$BASH_PROFILE_PATH/sources/servers"
-
-
-function setupnewton() {
-  ensurenewtondirectory
-}
+# shellcheck source=../sources/newton
+source "$BASH_PROFILE_PATH/sources/newton"
 
 
 function setclionbuild() {
@@ -777,21 +774,6 @@ function monitorenv() {
     echo "Environment check failed."
     return 1
   fi
-}
-
-function setdebuggingdrawings() {
-  local DEBUGGING_DRAWINGS=$1
-  if string.isemptyorblank $DEBUGGING_DRAWINGS
-  then
-    DEBUGGING_DRAWINGS="true"
-  fi
-
-  if string.equals $DEBUGGING_DRAWINGS "true"
-  then
-    enableDrawingsExports
-  fi
-  local extension=$(getEnvNumber)
-  system.writevartodisk DEBUGGING_DRAWINGS $extension
 }
 
 

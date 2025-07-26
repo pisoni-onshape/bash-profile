@@ -43,6 +43,23 @@ function stopServices() {
   btEnvDown
 }
 
+function setdebuggingdrawings() {
+  local DEBUGGING_DRAWINGS=$1
+  if string.isemptyorblank "$DEBUGGING_DRAWINGS"
+  then
+    DEBUGGING_DRAWINGS="true"
+  fi
+
+  if string.equals "$DEBUGGING_DRAWINGS" "true"
+  then
+    enableDrawingsExports
+  fi
+  local extension
+  extension=$(getEnvNumber)
+  system.writevartodisk DEBUGGING_DRAWINGS "$extension"
+}
+
+
 function isdebuggingdrawings() {
   local DEBUGGING_DRAWINGS
   DEBUGGING_DRAWINGS=$(system.readvarfromdisk DEBUGGING_DRAWINGS "$(getEnvNumber)")
