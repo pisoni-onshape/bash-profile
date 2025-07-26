@@ -84,9 +84,9 @@ function setupnewton() {
 function setclionbuild() {
   if string.isemptyorblank "$1" || string.equals "$1" "true"
   then
-    REMEMBER_CLION_BUILD="true"
+    local REMEMBER_CLION_BUILD="true"
     echo "Will choose CLION for building cpp code"
-    system.writevartodisk REMEMBER_CLION_BUILD $(getEnvNumber)
+    system.writevartodisk REMEMBER_CLION_BUILD "$(getEnvNumber)"
     platformspecificsettings
   else
     resetclionbuild
@@ -202,19 +202,6 @@ function fixDiskImagesJS() {
   source buildenv.bash
 }
 
-function setserveonlan() {
-  if string.equals "$1" "false"
-  then
-    unset NEWTON_WEBPACK_SERVE_ON_LAN
-  else
-    export NEWTON_WEBPACK_SERVE_ON_LAN=1
-  fi
-  restartquickserve
-}
-
-function resetserveonlan() {
-  setserveonlan "false"
-}
 
 function importextractedfile() {
   if string.isemptyorblank "$1"

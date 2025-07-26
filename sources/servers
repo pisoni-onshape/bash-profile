@@ -12,11 +12,47 @@ source "$BASH_PROFILE_PATH/sources/services"
 
 
 
+
+# Multi-env aware
+function getbelcadpid() {
+  local jettypid
+  # shellcheck disable=SC2009
+  jettypid=$(ps -ef | grep jetty | grep "$STAGE/" | awk '{print $2}')
+  echo "$jettypid"
+}
+
+
+# Multi-env aware
+# Prints an output (True/False) only when called
+# directly from the Terminal (else returns true/false)
+function isonshapeserverrunning() {
+  local jettypid
+  jettypid=$(getbelcadpid)
+  if calledfromterminal
+  then
+    if string.isemptyorblank "$jettypid"
+    then
+      print_error "No."
+    else
+      if isvalidonshapeserver
+      then
+        print_success "Yes, PID : $jettypid"
+      else
+        print_error "Yes, PID : $jettypid, but it's NOT a valid connection"
+      fi
+    fi
+  fi
+
+  string.isnotemptyorblank "$jettypid"
+}
+
+
 # Starts both the Onshape (belcad) server
 # and calls grunt quickServe to start the
 # webpack compiler for incremental Typescript
 # development and debugging
 function startservers() {
+  ensurenewtondirectory
   if ! docker.isrunning
   then
     # startServices is supposed to start
@@ -24,11 +60,17 @@ function startservers() {
     startServices
   fi
 
-  startbelcad
-  if ! system.waslastcommandsuccessful
+  if isonshapeserverrunning
   then
-    echo "Error: Could not start Onshape server. Not starting quickServer"
-    return
+    echo "Onshape server is already running"
+  else
+    echo "Onshape server not already running, starting it now"
+    startbelcad
+    if ! system.waslastcommandsuccessful
+    then
+      print_error "Error: Could not start Onshape server. Not starting quickServer"
+      return 1
+    fi
   fi
 
   if isdebuggingdrawings
@@ -36,8 +78,14 @@ function startservers() {
     startDrawingDocker skipupdate
   fi
 
-  # ToDo : This should be quickserve only
-  grunt quickServe &
+  if isquickserverunning
+  then
+    echo "quickServe is already running"
+  else
+    echo "quickServe is not already running, starting it now"
+    #nohup grunt quickServe &> /dev/null
+    grunt quickServe &
+  fi
 }
 
 
@@ -84,14 +132,6 @@ function fstopquickserve() {
   else
     echo "Didn't find quickserve process to kill"
   fi
-}
-
-# Multi-env aware
-function getbelcadpid() {
-  local jettypid
-  # shellcheck disable=SC2009
-  jettypid=$(ps -ef | grep jetty | grep "$STAGE/" | awk '{print $2}')
-  echo "$jettypid"
 }
 
 function fstopbelcad() {
@@ -171,31 +211,6 @@ function isvalidonshapeserver() {
   fi
 
   string.isnotemptyorblank "$output"
-}
-
-
-# Multi-env aware
-# Prints an output (True/False) only when called
-# directly from the Terminal (else returns true/false)
-function isonshapeserverrunning() {
-  local jettypid
-  jettypid=$(getbelcadpid)
-  if calledfromterminal
-  then
-    if string.isemptyorblank "$jettypid"
-    then
-      print_error "No."
-    else
-      if isvalidonshapeserver
-      then
-        print_success "Yes, PID : $jettypid"
-      else
-        print_error "Yes, PID : $jettypid, but it's NOT a valid connection"
-      fi
-    fi
-  fi
-
-  string.isnotemptyorblank "$jettypid"
 }
 
 
@@ -348,39 +363,18 @@ function ensurenewtondirectory() {
 }
 
 
-
-
-# Start onshape server and grunt quickServe only if they
-# are not already running.
-#ToDo: support ensurenewtondirectory here.
-function startserversifnotalready() {
-  ensurenewtondirectory
-  if ! docker.isrunning
+function setserveonlan() {
+  if string.equals "$1" "false"
   then
-    # startServices is supposed to start
-    # Docker as well if not running
-    startServices
-  fi
-
-  if isonshapeserverrunning
-  then
-    echo "Onshape server is already running"
+    unset NEWTON_WEBPACK_SERVE_ON_LAN
   else
-    echo "Onshape server not already running, starting it now"
-    startbelcad
-    if ! system.waslastcommandsuccessful
-    then
-      print_error "Error: Could not start Onshape server. Not starting quickServer"
-      return 1
-    fi
+    export NEWTON_WEBPACK_SERVE_ON_LAN=1
   fi
-
-  if isquickserverunning
-  then
-    echo "quickServe is already running"
-  else
-    echo "quickServe is not already running, starting it now"
-    #nohup grunt quickServe &> /dev/null
-    grunt quickServe &
-  fi
+  restartquickserve
 }
+
+
+function resetserveonlan() {
+  setserveonlan "false"
+}
+
