@@ -5,7 +5,8 @@
 source "$BASH_PROFILE_PATH/utils/system"
 # shellcheck source=../utils/string
 source "$BASH_PROFILE_PATH/utils/string"
-
+# shellcheck source=../utils/env
+source "$BASH_PROFILE_PATH/utils/env"
 
 # shellcheck source=./docker
 source "$BASH_PROFILE_PATH/sources/docker"
@@ -201,7 +202,7 @@ function restartquickserve() {
 # ToDo : Sometimes the validation gets stuck. Check it
 function isvalidonshapeserver() {
   local output
-  output=$(curl -s "https://multienv$(getEnvNumber).onshape.io/api/build" | grep Manifest-Version)
+  output=$(curl -s "https://multienv$(env.getnumber).onshape.io/api/build" | grep Manifest-Version)
   if calledfromterminal
   then
     if string.isemptyorblank "$output"

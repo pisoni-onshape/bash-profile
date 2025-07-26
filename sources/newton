@@ -6,11 +6,12 @@
 source "$BASH_PROFILE_PATH/utils/system"
 # shellcheck source=../utils/string
 source "$BASH_PROFILE_PATH/utils/string"
+# shellcheck source=../utils/env
+source "$BASH_PROFILE_PATH/utils/env"
 
 
 # shellcheck source=./services
 source "$BASH_PROFILE_PATH/sources/services"
-
 
 
 
@@ -33,7 +34,7 @@ function enableDrawingsExports() {
 # Set CPP builder according to the platform
 function platformspecificsettings() {
   local useclion
-  useclion=$(system.readvarfromdisk REMEMBER_CLION_BUILD "$(getEnvNumber)")
+  useclion=$(env.readvarfromdisk REMEMBER_CLION_BUILD)
   if system.ismacos && ! string.equals "$useclion" "true"
   then
     echo "Using XCODEBUILD by default"
@@ -52,8 +53,8 @@ function platformspecificsettings() {
 # Now when the environment should be set, some exports used by this script:
 function exportAfterInitVariables() {
   local envNum
-  envNum=$(getEnvNumber)
-  CURRENT_RELEASE=$(system.readvarfromdisk CURRENT_RELEASE "$envNum")
+  envNum=$(env.getnumber)
+  CURRENT_RELEASE=$(env.readvarfromdisk CURRENT_RELEASE)
   export CURRENT_RELEASE
   export LSB_MASTER=lsb/master
   export LSB_CURRENT_RELEASE=lsb/$CURRENT_RELEASE
@@ -115,7 +116,7 @@ function ensurenewtondirectory() {
   fi
 }
 
-
+# Terminal Shell should call this function to setup.
 function setupnewton() {
   ensurenewtondirectory
 }

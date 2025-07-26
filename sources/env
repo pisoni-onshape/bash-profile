@@ -7,7 +7,8 @@
 source "$BASH_PROFILE_PATH/utils/system"
 # shellcheck source=../utils/string
 source "$BASH_PROFILE_PATH/utils/string"
-
+# shellcheck source=../utils/env
+source "$BASH_PROFILE_PATH/utils/env"
 
 # shellcheck source=./docker
 source "$BASH_PROFILE_PATH/sources/docker"
@@ -28,7 +29,7 @@ function env.create() {
   fi
 
   local newPath
-  newPath=$(string.simplereplace "$REPO_NEWTON" "newton$(getEnvNumber)" "newton$newEnvNumber")
+  newPath=$(string.simplereplace "$REPO_NEWTON" "newton$(env.getnumber)" "newton$newEnvNumber")
   if ! general.inputyesorno "Are you sure you want to create a new environment at $newPath?"
   then
     return 0
@@ -172,7 +173,3 @@ function env.fix() {
   fi
 }
 
-
-function env.getnumber() {
-  getEnvNumber
-}

@@ -22,14 +22,6 @@ function general.showtrueorfalse() {
   fi
 }
 
-function general.showvaluetrueorfalse() {
-  if $1
-  then
-    echo "True"
-  else
-    echo "False"
-  fi
-}
 
 # Add two integers
 function general.add() {

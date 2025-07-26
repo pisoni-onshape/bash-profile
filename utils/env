@@ -1,0 +1,58 @@
+#!/bin/bash
+
+#env utilities
+
+#include guard
+if isFunctionDefined "env.defined" && ! isEnvVariableDefined "FORCE_IMPORT_UTILITY"
+then
+  return 0
+fi
+
+function env.defined() {
+  return 0
+}
+
+importutility system
+
+
+function env.getnumber() {
+  if string.isnotemptyorblank "$(getBuildProp HOST_PROPERTIES_ENVNUM)"
+  then
+    getBuildProp HOST_PROPERTIES_ENVNUM
+  else
+    echo "0"
+  fi
+}
+
+# Write a variable specific to this environment.
+# example:
+# myvar="Piyush Soni"
+# env.writevartodisk myvar
+# (Please note to pass the name of the variable only,
+# not its value with the "$" symbol. Its value will
+# be persistently stored on the disk, and can later
+# be read back by using the same 'variable' or key name,
+# see below for the reading example).
+# We use the current environment number as the
+# file extension to avoid variable name conflicts
+function env.writevartodisk() {
+  local varName="$1"
+  local extension
+  extension=$(env.getnumber)
+  system.writevartodisk "$varName" "$extension"
+}
+
+# Write a variable specific to this environment.
+# Pass the *name* of the variable only, not its
+# value with "$".
+# e.g.:
+# myvar=$(env.readvarfromdisk myvar)
+function env.readvarfromdisk() {
+	local varName="$1"
+  local extension
+  extension=$(env.getnumber)
+  system.readvarfromdisk "$varName" "$extension"
+}
+
+
+alias env.number='env.getnumber'

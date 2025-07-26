@@ -1,4 +1,4 @@
-#git utilities
+#!/bin/bash
 
 #include guard
 if isFunctionDefined "git.defined" && ! isEnvVariableDefined "FORCE_IMPORT_UTILITY"
@@ -17,10 +17,6 @@ export GIT_PATCH_DIR=~/patches
 export globalgitignorefile=$HOME/.gitignore
 export globalgitconfigfile=$HOME/.gitconfig
 
-
-# Show your git branches sorted by latest commit
-# Credit to this alias goes to this Slack conversation : https://onshape.slack.com/archives/C18HMGX32/p1495031914762665
-alias gb='cur=$(git rev-parse --abbrev-ref HEAD); prev=$(git rev-parse --abbrev-ref @{-1}); git for-each-ref --sort=committerdate refs/heads/ --format="%(color:reset)  %(refname:short)|%(color:black bold)%(committerdate:relative)%(color:reset)" | column -ts"|" | sed -e "s,  ${cur} ,$(tput setaf 2)$(tput bold)* ${cur} ," | sed -e "s,  ${prev} ,$(tput setaf 3)$(tput bold)  ${prev} ,";tput sgr0;'
 
 # Import utility modules
 importutility string
@@ -346,6 +342,36 @@ function git.makecopy() {
   git checkout -b "$newbranch"
 }
 
+
+# Return the branch name/tag this branch is based off
+# e.g. master, lsb/master etc. For this, the branch must have
+# been created using checkoutfrommaster / checkoutfromlsbmaster etc. commands
+function git.getbasebranchname() {
+  # Check if there was a remote prefix
+  # passed. Only use for branch names, not tag names.
+  local remoteprefix=""
+  if string.isnotemptyorblank $1
+  then
+    remoteprefix="$1/"
+  fi
+
+  if git.branchislsbmasterbased
+  then
+    echo "$LSB_MASTER"
+  elif git.branchislsbreleasebased
+  then
+    echo "$LSB_CURRENT_RELEASE"
+  elif git.branchismasterbased
+  then
+    echo "$remoteprefix""master"
+  elif git.branchisreleasebased
+  then
+    echo "$remoteprefix""$CURRENT_RELEASE"
+  else
+    echo "" # Can't find out.
+  fi
+}
+
 # Create a patch of uncommitted changes with *LOCAL* HEAD
 function git.patchuncommittedchanges() {
   local message="$1"
@@ -353,6 +379,20 @@ function git.patchuncommittedchanges() {
   local path=$(git.getpatchfilepath "$1" "$optionalFlag")
   system.createfileifdoesnotexist $path
   git diff HEAD > "$path"
+  echo "Patch file created at $path"
+}
+
+
+
+# Create a patch of all the committed/uncommitted changes
+# and compare with the remote origin master / lsb/master
+# *** CAUTION ToDo: Doesn't handle new files as of now. ***
+function git.patchallchanges() {
+  echo "Refreshing tags..."
+  git fetch origin --tags --force --prune
+  local path=$(git.getpatchfilepath "$@")
+  system.createfileifdoesnotexist $path
+  git diff "$(git.getbasebranchname origin)" > "$path"
   echo "Patch file created at $path"
 }
 
@@ -470,8 +510,10 @@ function git.copyfilesincommit() {
   echo "Files from commit $commitID have been copied to $rootDirectory"
 }
 
-alias git.findmerge='commit=$0 && branch=${1:-HEAD} && (git rev-list $commit..$branch --ancestry-path | cat -n; git rev-list $commit..$branch --first-parent | cat -n) | sort -k2 -s | uniq -f1 -d | sort -n | tail -1 | cut -f2'
-alias git.showmmerge='merge=$(git find-merge $0 $1) && [ -n \"$merge\" ] && git show $merge'
+# Show your git branches sorted by latest commit
+# Credit to this alias goes to this Slack conversation : https://onshape.slack.com/archives/C18HMGX32/p1495031914762665
+alias gb='cur=$(git rev-parse --abbrev-ref HEAD); prev=$(git rev-parse --abbrev-ref @{-1}); git for-each-ref --sort=committerdate refs/heads/ --format="%(color:reset)  %(refname:short)|%(color:black bold)%(committerdate:relative)%(color:reset)" | column -ts"|" | sed -e "s,  ${cur} ,$(tput setaf 2)$(tput bold)* ${cur} ," | sed -e "s,  ${prev} ,$(tput setaf 3)$(tput bold)  ${prev} ,";tput sgr0;'
+
 alias stoptrackingfile='git.skipworktree'
 alias starttrackingfile='git.unskipworktree'
 alias git.currentbranch='git.getcurrentbranch'
@@ -484,4 +526,7 @@ alias opengitignorefile='opengitglobalignorefile'
 alias openglobalgitconfigfile='edit $globalgitconfigfile'
 alias opengitconfigfile='openglobalgitconfigfile'
 alias git.getparentcommit='git.getmergecommit'
+alias git.findparentcommit='git.getmergecommit'
+alias git.findmergecommit='git.getmergecommit'
 alias git.parentcommit='git.getmergecommit'
+alias git.mergecommit='git.getmergecommit'

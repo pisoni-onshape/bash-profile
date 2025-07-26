@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Make sure to always expand aliases, causes problems otherwise.
+shopt -s expand_aliases
+
 # Function to ensure all profile files are able to
 # include utility modules when required (and is not
 # included twice if already done)

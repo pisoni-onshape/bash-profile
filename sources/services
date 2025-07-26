@@ -1,25 +1,17 @@
 #!/bin/bash
 
-#utils
+# utils
 # ToDo : Convert to importutility later.
 # shellcheck source=../utils/system
 source "$BASH_PROFILE_PATH/utils/system"
 # shellcheck source=../utils/string
 source "$BASH_PROFILE_PATH/utils/string"
+# shellcheck source=../utils/env
+source "$BASH_PROFILE_PATH/utils/env"
 
-
+# sources
 # shellcheck source=./docker
 source "$BASH_PROFILE_PATH/sources/docker"
-
-
-function getEnvNumber() {
-  if string.isnotemptyorblank "$(getBuildProp HOST_PROPERTIES_ENVNUM)"
-  then
-    getBuildProp HOST_PROPERTIES_ENVNUM
-  else
-    echo "0"
-  fi
-}
 
 
 # Start required services for the Onshape server
@@ -54,15 +46,14 @@ function setdebuggingdrawings() {
   then
     enableDrawingsExports
   fi
-  local extension
-  extension=$(getEnvNumber)
-  system.writevartodisk DEBUGGING_DRAWINGS "$extension"
+
+  env.writevartodisk DEBUGGING_DRAWINGS
 }
 
 
 function isdebuggingdrawings() {
   local DEBUGGING_DRAWINGS
-  DEBUGGING_DRAWINGS=$(system.readvarfromdisk DEBUGGING_DRAWINGS "$(getEnvNumber)")
+  DEBUGGING_DRAWINGS=$(env.readvarfromdisk DEBUGGING_DRAWINGS)
   string.equals "$DEBUGGING_DRAWINGS" "true"
 }
 
@@ -136,7 +127,7 @@ function fastcheckessentialservices() {
   local autoFix="$1"
   local autoFixString=""
   local envNumber
-  envNumber=$(getEnvNumber)
+  envNumber=$(env.getnumber)
 
   if string.equals "$autoFix" "true"
   then

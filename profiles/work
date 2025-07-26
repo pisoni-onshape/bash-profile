@@ -1,5 +1,4 @@
 #!/bin/bash
-shopt -s expand_aliases
 
 # Official exports:
 # -----------------
@@ -63,6 +62,7 @@ importutility system
 importutility git
 importutility rbt
 importutility general
+importutility env
 
 
 # Import sources
@@ -83,7 +83,7 @@ function setclionbuild() {
   then
     local REMEMBER_CLION_BUILD="true"
     echo "Will choose CLION for building cpp code"
-    system.writevartodisk REMEMBER_CLION_BUILD "$(getEnvNumber)"
+    env.writevartodisk REMEMBER_CLION_BUILD
     platformspecificsettings
   else
     resetclionbuild
@@ -92,7 +92,7 @@ function setclionbuild() {
 
 function resetclionbuild() {
   echo "Removing clion build override, your platform specific default will be used"
-  system.removevarfromdisk REMEMBER_CLION_BUILD $(getEnvNumber)
+  system.removevarfromdisk REMEMBER_CLION_BUILD $(env.getnumber)
   platformspecificsettings
 }
 
@@ -158,7 +158,7 @@ function refreshcurrentreleasebranch() {
   echo "CURRENT_RELEASE set to $CURRENT_RELEASE"
 
   # Write current release to a file
-  system.writevartodisk CURRENT_RELEASE $(getEnvNumber)
+  env.writevartodisk CURRENT_RELEASE
 }
 
 function debugstaging() {
@@ -352,7 +352,7 @@ function waitforenterkey() {
 }
 
 function openmocks3cache() {
-  local envNum=$(getEnvNumber)
+  local envNum=$(env.getnumber)
   local envString="myenv"
   if ! string.equals $envNum "0"
   then
@@ -578,8 +578,7 @@ function rbtpostfrombranch() {
   fi
 
   # To-Do : Handle --target-people <username,...> (reviewers)
-  local extension=$(getEnvNumber)
-  local reviewers=$(system.readvarfromdisk RBT_REVIEWERS $extension)
+  local reviewers=$(env.readvarfromdisk RBT_REVIEWERS)
   if ! string.isemptyorblank $reviewers
   then
     reviewers="--target-people ""$reviewers"
@@ -594,37 +593,9 @@ function rbtpostfrombranch() {
 function setrbtreviewer() {
   local RBT_REVIEWERS="$1"
 
-  system.writevartodisk RBT_REVIEWERS $(getEnvNumber)
+  env.writevartodisk RBT_REVIEWERS
 }
 
-# Return the branch name/tag this branch is based off
-# e.g. master, lsb/master etc. For this, the branch must have
-# been created using checkoutfrommaster / checkoutfromlsbmaster etc. commands
-function getbasebranchname() {
-  # Check if there was a remote prefix
-  # passed. Only use for branch names, not tag names.
-  local remoteprefix=""
-  if string.isnotemptyorblank $1
-  then
-    remoteprefix="$1/"
-  fi
-
-  if git.branchislsbmasterbased
-  then
-    echo $LSB_MASTER
-  elif git.branchislsbreleasebased
-  then
-    echo $LSB_CURRENT_RELEASE
-  elif git.branchismasterbased
-  then
-    echo "$remoteprefix""master"
-  elif git.branchisreleasebased
-  then
-    echo "$remoteprefix""$CURRENT_RELEASE"
-  else
-    echo "" # Can't find out.
-  fi
-}
 
 # Unless otherwise specified, default branch for rbt is master
 function rbtpost() {
@@ -766,7 +737,7 @@ function monitorenv() {
   if string.equals $wasWorkingBefore "true"
   then
     beep;beep
-    local message="Something has crashed in Environment $(getEnvNumber)"
+    local message="Something has crashed in Environment $(env.getnumber)"
     echo $message
     say $message
     return 1
@@ -1319,17 +1290,6 @@ function grdlbuildjavaandjsonly() {
   fi
 }
 
-# Create a patch of all the committed/uncommitted changes
-# and compare with the remote origin master / lsb/master
-# CAUTION : Doesn't handle new files as of now. ToDo.
-function patchallchanges() {
-  echo "Refreshing tags..."
-  git fetch origin --tags --force --prune
-  local path=$(git.getpatchfilepath "$@")
-  system.createfileifdoesnotexist $path
-  git diff "$(getbasebranchname origin)" > "$path"
-  echo "Patch file created at $path"
-}
 
 # Pass jira number, or leave blank for picking
 # bug number from the branch name.
@@ -1403,11 +1363,11 @@ function getdefaultonshapepath() {
     portString=":$(getquickserveport)"
   fi
 
-  if string.equals "$(getEnvNumber)" "0"
+  if string.equals "$(env.getnumber)" "0"
   then
       echo "https://localhost.onshape.io$portString/"
   else
-      echo "https://multienv$(getEnvNumber).onshape.io$portString/"
+      echo "https://multienv$(env.getnumber).onshape.io$portString/"
   fi
 }
 
