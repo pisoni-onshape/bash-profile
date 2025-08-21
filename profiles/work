@@ -167,7 +167,7 @@ function debugstaging() {
   unset HOST_PROPERTIES_PRIVATEIP
   unset HOST_PROPERTIES_HOSTNAME
   echo "REMEMBER TO CLOSE THE TERMINAL AFTER THIS SESSION, OR CALLING source buildenv.bash AGAIN WHEN YOU'RE DONE"
-  grunt quickServe
+  grunt start
 }
 
 function debugdemoc() {
@@ -176,7 +176,7 @@ function debugdemoc() {
   unset HOST_PROPERTIES_PRIVATEIP
   unset HOST_PROPERTIES_HOSTNAME
   echo "REMEMBER TO CLOSE THE TERMINAL AFTER THIS SESSION, OR CALLING source buildenv.bash AGAIN WHEN YOU'RE DONE"
-  grunt quickServe
+  grunt start
 }
 
 # Does debugging production still work?
@@ -186,7 +186,7 @@ function debugproduction() {
   unset HOST_PROPERTIES_PRIVATEIP
   unset HOST_PROPERTIES_HOSTNAME
   echo "REMEMBER TO CLOSE THE TERMINAL AFTER THIS SESSION, OR CALLING source buildenv.bash AGAIN WHEN YOU'RE DONE"
-  grunt quickServe
+  grunt start
 }
 
 function removeDiskImages() {
@@ -1199,12 +1199,6 @@ function mergetoreleasethenmaster() {
 }
 
 
-function quickserve() {
-  ensurenewtondirectory
-  grunt quickServe
-}
-
-
 function buildall() {
   cd $REPO_NEWTON
   buildgradleparallel $@
@@ -1574,7 +1568,7 @@ alias translationfix='fixlocalization'
 alias generateserializables='grunt generateSerializables'
 alias genser='grunt generateSerializables'
 alias gitlistskipignoredfiles='git ls-files -v . | grep ^S'
-alias gruntQuickServe='grunt quickServe'
+alias gruntQuickServe='grunt start'
 alias gruntserveonlan='setserveonlan'
 alias inteli='intellij'
 alias intellij='idea' #Jetbrains Toolbox generates the script 'idea' for version dependent IntelliJ IDEA
@@ -1622,7 +1616,7 @@ alias staging='cd $STAGE'
 alias starttimerdisplay='runTimerDisplay'
 alias startallservers='startservers'
 alias restartServices='stopallservices;startServices'
-alias startfrontend='grunt quickServe'
+alias startfrontend='quickserve'
 alias timerdisplay='runTimerDisplay'
 alias updaterbt='rbtupdate'
 alias xcode='open -a Xcode.app $STAGE/build/cppServer/DebugXcodeCCache/BTcppServer.xcodeproj/'

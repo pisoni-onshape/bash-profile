@@ -51,7 +51,7 @@ function isonshapeserverrunning() {
 
 
 # Starts both the Onshape (belcad) server
-# and calls grunt quickServe to start the
+# and calls grunt start to start the
 # webpack compiler for incremental Typescript
 # development and debugging
 function startservers() {
@@ -86,8 +86,8 @@ function startservers() {
     echo "quickServe is already running"
   else
     echo "quickServe is not already running, starting it now"
-    #nohup grunt quickServe &> /dev/null
-    grunt quickServe &
+    #nohup quickserve &> /dev/null
+    quickserve &
   fi
 }
 
@@ -103,7 +103,7 @@ function getquickservepid() {
   local searchString="node.*127\.0\.0\.1:$port.*LISTEN"
 
   local pid
-  pid=$(lsof -iTCP -n -P | grep "$searchString" | awk '{print $2}')
+  pid=$(lsof -iTCP -n -P 2> /dev/null | grep "$searchString" | awk '{print $2}')
   echo "$pid"
 }
 
@@ -158,7 +158,7 @@ function stopservers() {
   then
     stopDrawingDocker
   fi
-  # Stop the grunt quickServe started webpack server.
+  # Stop the grunt start started webpack server.
   fstopquickserve
 }
 
@@ -166,7 +166,6 @@ function restartservers() {
   stopservers
   startservers
 }
-
 
 
 function getbsservers() {
@@ -189,11 +188,15 @@ function restartbelcad() {
   startbelcad
 }
 
-function restartquickserve() {
-  fstopquickserve
-  grunt quickServe
+function quickserve() {
+  ensurenewtondirectory
+  grunt start # New normal
 }
 
+function restartquickserve() {
+  fstopquickserve
+  quickserve
+}
 
 
 # Sometimes the process itself is running,
@@ -249,7 +252,7 @@ function areserversrunning() {
 
   if string.equals $hasError "false"
   then
-    # echo "Both Onshape server and grunt quickServe are running."
+    # echo "Both Onshape server and grunt start are running."
     return 0 # success
   else
     return 1
