@@ -95,7 +95,7 @@ function env.check() {
     return 1
   fi
 
-  # 3. Check if Onshape Server and grunt quickServe are running
+  # 3. Check if Onshape Server and grunt start are running
   if ! areserversrunning
   then
     return 1
@@ -111,12 +111,39 @@ function env.stopthis() {
   stopServices
 }
 
+# Pass the name only of the function to call
+# on each newton directory. It will be called
+# once with the path of each newton multienv directory
+# Caution: Must be called from a bashenv'd terminal
+# Assumption: All newton envs are placed in the same directory
+function env.foreachnewton() {
+  local callback="$1"
+  if string.isemptyorblank "$callback"
+  then
+    echo "Expected callback function name"
+    return 1
+  fi
+
+  pushd $REPO_NEWTON/.. > /dev/null || return
+  local currentPath="$(pwd)"
+  echo "parentpath is: $parentPath"
+  for d in newton newton[0-9]*; do
+    [ -d "$d" ] && "$callback" "$currentPath/$d"
+  done
+
+  popd > /dev/null
+}
+
+# ToDo
+env.stopothers() {
+  print_error "Not implemented yet"
+}
 
 # ToDo : This only kills services of all environments
 # and Rancher desktop itself, but 'servers' of
 # other environments keep running.
 function env.stopall() {
-  # Stop Onshape server and grunt quickServe
+  # Stop Onshape server and grunt start
   stopservers
 
   if ! docker.isrunning
@@ -172,4 +199,3 @@ function env.fix() {
     startDrawingDocker skipupdate
   fi
 }
-
