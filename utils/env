@@ -56,3 +56,7 @@ function env.readvarfromdisk() {
 
 
 alias env.number='env.getnumber'
+alias startenv='env.start'
+alias checkenv='env.check'
+alias stopenv='env.stopthis'
+alias fixenv='env.fix'
