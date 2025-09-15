@@ -20,7 +20,7 @@ source "$BASH_PROFILE_PATH/sources/newton"
 function getbelcadpid() {
   local jettypid
   # shellcheck disable=SC2009
-  jettypid=$(ps -ef | grep jetty | grep "$STAGE/" | awk '{print $2}')
+  jettypid=$(ps -ef | grep jetty | grep "$STAGE/" | awk '{print $2}' 2> /dev/null)
   echo "$jettypid"
 }
 
