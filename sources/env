@@ -37,7 +37,7 @@ function env.create() {
 
   if system.direxists "$newPath"
   then
-    print_error "Directory $($newPath) already exists. Please give a new environment number"
+    print_error "Directory $newPath already exists. Please give a new environment number"
     return 1
   fi
 
@@ -195,7 +195,9 @@ function env.fix() {
 
   if isdebuggingdrawings
   then
-    #ToDo: Do it only if xenon is not already running
-    startDrawingDocker skipupdate
+    if ! isdrawingservicerunning
+    then
+      startDrawingDocker skipupdate
+    fi
   fi
 }
