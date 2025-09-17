@@ -95,3 +95,12 @@ function string.prependifnotalready() {
 	fi
 	echo "$sourcestring"
 }
+
+function string.trim() {
+    local var="$*"
+    # remove leading whitespace
+    var="${var#"${var%%[![:space:]]*}"}"
+    # remove trailing whitespace
+    var="${var%"${var##*[![:space:]]}"}"
+    echo "$var"
+}

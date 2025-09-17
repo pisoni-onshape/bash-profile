@@ -4,6 +4,7 @@
 
 importutility string
 importutility system
+importutility general
 
 # By default Bash terminal doesn't auto complete
 # function/command names when they're followed by the
@@ -42,37 +43,43 @@ function findbyname() {
 	find "$directory" -name "$filename" 2>/dev/null
 }
 
+function setuptexteditors() {
+  # Text editors
+  # Write your preferred text editor of choice, in the order of preference
+  # List of their intended aliases and their app path to search. The first preferred editor
+  # to find would be set as the command `texteditor`, and you can also just call `edit`
+  # to use it.
+  local arrPreferredEditorsInDecreasingPreference=(
+      "sublime: /Applications/Sublime Text.app"
+      "bbedit: /Applications/BBEdit.app"
+      "z: /Applications/Zed.app"
+  )
 
-# Text editors
-# Write your preferred text editor of choice, in the order of preference
-# List of their intended aliases and their app path to search. The first preferred editor
-# to find would be set as the command `texteditor`, and you can also just call `edit`
-# to use it.
-PREFERRED_EDITORS_ARR=(
-    "sublime: /Applications/Sublime Text.app"
-    "bbedit: /Applications/BBEdit.app"
-    "z: /Applications/Zed.app"
-)
+  # Try to setup the text editor in the order of preference and availability.
+  general.forEachKeyValue arrPreferredEditorsInDecreasingPreference setupPreferredTextEditor
 
-for editor in "${PREFERRED_EDITORS_ARR[@]}" ; do
-    aliasName=${editor%%:*}
-    path=${editor#*: }
-    if system.direxists "$path"
-    then
-        alias $aliasName="open -a \"$path\""
-        # If the texteditor alias is still not assigned, do it now.
-        if string.isemptyorblank "$(command -v texteditor)"
-        then
-            alias texteditor="$aliasName"
-        fi
-    fi
-done
+  # If none of the preferred editors are found:
+  if string.isemptyorblank "$(command -v texteditor)"
+  then
+      alias texteditor='nano'
+  fi
+}
 
-# If none of the preferred editors are found:
-if string.isemptyorblank "$(command -v texteditor)"
-then
-    alias texteditor='nano'
-fi
+function setupPreferredTextEditor() {
+  local aliasName="$1"
+  local path="$2"
+  if system.direxists "$path"
+  then
+      alias $aliasName="open -a \"$path\""
+      # If the texteditor alias is still not assigned, do it now.
+      if string.isemptyorblank "$(command -v texteditor)"
+      then
+          alias texteditor="$aliasName"
+      fi
+  fi
+}
+
+setuptexteditors
 
 function edit() {
     system.createfileifdoesnotexist "$1"

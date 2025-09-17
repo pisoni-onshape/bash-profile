@@ -77,3 +77,33 @@ function general.duration() {
   # However, if we call it with `echo`, it doesn't call the function.
   echo "Time taken to call $1 is $duration seconds"
 }
+
+# Pass the name of an array variable that contains
+# keys and values in the form ("key1:value1" "key2:value2" .... )
+# and the name of a function (callback) to call for each entry in
+#  the array with the key and the value as its two arguments
+function general.forEachKeyValue() {
+    local arr_name="$1"    # name of array variable (NOT its contents)
+    local callback="$2"    # callback function name
+
+    # basic callback check
+    if ! type "$callback" >/dev/null 2>&1; then
+        echo "general.forEachKeyValue: callback '$callback' not found" >&2
+        return 2
+    fi
+
+    # Copy the named array into a local array
+    eval "local arr=(\"\${${arr_name}[@]}\")"
+
+    # Iterate and split on the first colon
+    for kv in "${arr[@]}"; do
+        if [[ "$kv" == *:* ]]; then
+            local key=$(string.trim "${kv%%:*}")    # before first colon
+            local value=$(string.trim "${kv#*:}")   # after first colon (rest)
+        else
+            local key=$(string.trim "$kv")
+            local value=""
+        fi
+        "$callback" "$key" "$value"
+    done
+}
