@@ -511,10 +511,246 @@ function git.copyfilesincommit() {
   echo "Files from commit $commitID have been copied to $rootDirectory"
 }
 
+# Function to find all branches that have changed a given file
+# Written using LLM Coding agents, seems to work fine,
+# but please be careful.
+git.findbrancheswithfilechanges() {
+    local file_path=""
+    local time_limit=""
+    local branch_pattern=""
+    local remote_only=false
+    local local_only=false
+    local max_branches=""
+    local verbose=false
+    local help=false
+
+    # Parse command line arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -f|--file)
+                file_path="$2"
+                shift 2
+                ;;
+            -t|--time|--since)
+                time_limit="$2"
+                shift 2
+                ;;
+            -p|--pattern)
+                branch_pattern="$2"
+                shift 2
+                ;;
+            -r|--remote-only)
+                remote_only=true
+                shift
+                ;;
+            -l|--local-only)
+                local_only=true
+                shift
+                ;;
+            -m|--max-branches)
+                max_branches="$2"
+                shift 2
+                ;;
+            -v|--verbose)
+                verbose=true
+                shift
+                ;;
+            -h|--help)
+                help=true
+                shift
+                ;;
+            -*)
+                echo "Error: Unknown option $1" >&2
+                return 1
+                ;;
+            *)
+                if [[ -z "$file_path" ]]; then
+                    file_path="$1"
+                else
+                    echo "Error: Multiple file paths specified" >&2
+                    return 1
+                fi
+                shift
+                ;;
+        esac
+    done
+
+    # Show help if requested
+    if [[ "$help" == true ]]; then
+        cat << 'EOF'
+Usage: git.findbrancheswithfilechanges [OPTIONS] <file_path>
+
+Find all branches that have changes to a specific file.
+
+OPTIONS:
+    -f, --file FILE         File path to search for (can also be passed as positional arg)
+    -t, --time, --since TIME    Limit search to commits since TIME (e.g., "2 weeks ago", "2023-01-01")
+    -p, --pattern PATTERN   Only check branches matching PATTERN (shell glob pattern)
+    -r, --remote-only       Only check remote branches
+    -l, --local-only        Only check local branches
+    -m, --max-branches NUM  Stop after checking NUM branches
+    -v, --verbose           Show progress and additional information
+    -h, --help              Show this help message
+
+EXAMPLES:
+    git.findbrancheswithfilechanges src/main.c
+    git.findbrancheswithfilechanges -f src/main.c -t "1 month ago"
+    git.findbrancheswithfilechanges -f README.md -p "feature/*" -v
+    git.findbrancheswithfilechanges -f config.json -r -m 50
+
+TIME FORMAT:
+    Git-compatible time formats like "2 weeks ago", "2023-01-01", "yesterday"
+EOF
+        return 0
+    fi
+
+    # Validate required arguments
+    if [[ -z "$file_path" ]]; then
+        echo "Error: File path is required" >&2
+        echo "Use -h or --help for usage information" >&2
+        return 1
+    fi
+
+    # Check if we're in a git repository
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+        echo "Error: Not in a git repository" >&2
+        return 1
+    fi
+
+    # Validate conflicting options
+    if [[ "$remote_only" == true && "$local_only" == true ]]; then
+        echo "Error: Cannot specify both --remote-only and --local-only" >&2
+        return 1
+    fi
+
+    # Validate max_branches is a number if specified
+    if [[ -n "$max_branches" ]] && ! [[ "$max_branches" =~ ^[0-9]+$ ]]; then
+        echo "Error: --max-branches must be a positive integer" >&2
+        return 1
+    fi
+
+    [[ "$verbose" == true ]] && echo "Searching for branches with changes to: $file_path"
+
+    # Build git branch command based on options
+    local branch_cmd="git branch"
+    if [[ "$remote_only" == true ]]; then
+        branch_cmd="git branch -r"
+    elif [[ "$local_only" == true ]]; then
+        branch_cmd="git branch"
+    else
+        branch_cmd="git branch -a"
+    fi
+
+    # Get list of branches and clean them up
+    local branches
+    branches=$($branch_cmd | sed 's/^[* ] *//' | grep -v '^HEAD ->' | grep -v '(HEAD detached')
+
+    if [[ -z "$branches" ]]; then
+        echo "No branches found" >&2
+        return 1
+    fi
+
+    # Apply branch pattern filter if specified
+    if [[ -n "$branch_pattern" ]]; then
+        # Use bash 3.2 compatible pattern matching
+        local filtered_branches=""
+        while IFS= read -r branch; do
+            # Remove origin/ prefix for pattern matching if it's a remote branch
+            local branch_name="$branch"
+            if [[ "$branch" =~ ^origin/ ]]; then
+                branch_name="${branch#origin/}"
+            fi
+
+            # Use case statement for pattern matching (bash 3.2 compatible)
+            case "$branch_name" in
+                $branch_pattern)
+                    if [[ -n "$filtered_branches" ]]; then
+                        filtered_branches="$filtered_branches"$'\n'"$branch"
+                    else
+                        filtered_branches="$branch"
+                    fi
+                    ;;
+            esac
+        done <<< "$branches"
+        branches="$filtered_branches"
+
+        if [[ -z "$branches" ]]; then
+            echo "No branches match pattern: $branch_pattern" >&2
+            return 1
+        fi
+    fi
+
+    local found_branches=()
+    local checked_count=0
+    local total_branches
+    total_branches=$(echo "$branches" | wc -l | tr -d ' ')
+
+    [[ "$verbose" == true ]] && echo "Checking $total_branches branches..."
+
+    # Check each branch
+    while IFS= read -r branch; do
+        [[ -z "$branch" ]] && continue
+
+        checked_count=$((checked_count + 1))
+
+        # Check max_branches limit
+        if [[ -n "$max_branches" ]] && [[ $checked_count -gt $max_branches ]]; then
+            [[ "$verbose" == true ]] && echo "Reached maximum branch limit ($max_branches)"
+            break
+        fi
+
+        [[ "$verbose" == true ]] && echo "Checking branch $checked_count/$total_branches: $branch"
+
+        # Build git log command with time limit if specified
+        local log_cmd="git log --oneline"
+        if [[ -n "$time_limit" ]]; then
+            log_cmd="$log_cmd --since=\"$time_limit\""
+        fi
+        log_cmd="$log_cmd -- \"$file_path\""
+
+        # Check if branch has commits affecting the file
+        local commits
+        commits=$(git log --oneline ${time_limit:+--since="$time_limit"} "$branch" -- "$file_path" 2>/dev/null)
+        local exit_code=$?
+
+        if [[ $exit_code -eq 0 ]] && [[ -n "$commits" ]]; then
+            found_branches+=("$branch")
+            if [[ "$verbose" == true ]]; then
+                local commit_count
+                commit_count=$(echo "$commits" | wc -l | tr -d ' ')
+                echo "  ✓ Found $commit_count commit(s) in $branch"
+            fi
+        elif [[ $exit_code -ne 0 ]]; then
+            [[ "$verbose" == true ]] && echo "  ! Error checking branch $branch (may not exist)"
+        fi
+    done <<< "$branches"
+
+    # Output results
+    if [[ ${#found_branches[@]} -eq 0 ]]; then
+        echo "No branches found with changes to $file_path"
+        if [[ -n "$time_limit" ]]; then
+            echo "(searched commits since: $time_limit)"
+        fi
+        return 0
+    else
+        echo "Found ${#found_branches[@]} branch(es) with changes to $file_path:"
+        if [[ -n "$time_limit" ]]; then
+            echo "(commits since: $time_limit)"
+        fi
+        echo
+
+        # Sort branches for consistent output
+        printf '%s\n' "${found_branches[@]}" | sort
+        return 0
+    fi
+}
+
+
+
+
 # Show your git branches sorted by latest commit
 # Credit to this alias goes to this Slack conversation : https://onshape.slack.com/archives/C18HMGX32/p1495031914762665
 alias gb='cur=$(git rev-parse --abbrev-ref HEAD); prev=$(git rev-parse --abbrev-ref @{-1}); git for-each-ref --sort=committerdate refs/heads/ --format="%(color:reset)  %(refname:short)|%(color:black bold)%(committerdate:relative)%(color:reset)" | column -ts"|" | sed -e "s,  ${cur} ,$(tput setaf 2)$(tput bold)* ${cur} ," | sed -e "s,  ${prev} ,$(tput setaf 3)$(tput bold)  ${prev} ,";tput sgr0;'
-
 alias stoptrackingfile='git.skipworktree'
 alias starttrackingfile='git.unskipworktree'
 alias git.currentbranch='git.getcurrentbranch'
