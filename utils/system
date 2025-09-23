@@ -326,6 +326,10 @@ function system.listallfilesrecursively() {
   find "$directory" -type f | grep -v .DS_Store
 }
 
+function system.countfilesrecursively() {
+  system.listallfilesrecursively "$@" | wc -l
+}
+
 # returns the latest downloaded file
 # in the $DOWNLOADS_DIR (which defaults to ~/Downloads)
 # Example usecase, you just downloaded a patch file from

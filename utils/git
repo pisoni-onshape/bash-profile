@@ -11,7 +11,8 @@ function git.defined() {
 }
 
 export GIT_SKIP_TREE_FILES_LIST=~/.git-skipped-worktree-files
-export GIT_PATCH_DIR=~/patches
+export GIT_PATCH_DIR="$HOME/patches"
+export GIT_FILES_WITH_FOLDER_STRUCTURE_DIR="$HOME/patches/files_with_folder_structure"
 
 ## Ignore
 export globalgitignorefile=$HOME/.gitignore
@@ -208,8 +209,7 @@ function git.deletemerged() {
 
 # Creates a patch for the latest commit in your branch
 function git.patchlatestcommit() {
-  local message="$1"
-  git.patchcommit "HEAD" "$message"
+  git.patchcommit "HEAD" "$@"
 }
 
 # Creates a patch for the specified commit in your branch
@@ -247,12 +247,21 @@ function git.getpatchfilepath() {
     message=$(string.simplereplace "$message" " " "-")
   fi
 
+  if string.isemptyorblank "$optionalFlag"
+  then
+    if string.equals "$message" "useful" || string.equals "$message" "--useful" || string.equals "$message" "-u" || string.equals "$message" "pending" || string.equals "$message" "--pending" || string.equals "$message" "-p"
+    then
+      optionalFlag="$message"
+      message=""
+    fi
+  fi
+
   local curdate=$(system.getcurrentdate)
   local bugNumber=$(git.getbugnumberfrombranch)
   local outFileName=$(git.getbranchnamehyphened)
   local directoryPath="$dir"
 
-  if string.equals $optionalFlag "useful" || string.equals $optionalFlag "useful_patches" || string.equals $optionalFlag "--useful" || string.equals $optionalFlag "-u"
+  if string.equals $optionalFlag "useful" || string.equals $optionalFlag "--useful" || string.equals $optionalFlag "-u"
   then
     # This is a general useful patch, so we neither want to store
     # it in a Bug number folder nor want to use bug number in the
@@ -260,6 +269,11 @@ function git.getpatchfilepath() {
     bugNumber=""
     outFileName=""
     directoryPath="$directoryPath/useful_patches"
+  elif string.equals "$message" "pending" || string.equals "$message" "--pending" || string.equals "$message" "-p"
+  then
+    bugNumber=""
+    outFileName=""
+    directoryPath="$directoryPath/pending_to_merge"
   fi
 
   if string.isnotemptyorblank $bugNumber
@@ -376,7 +390,7 @@ function git.getbasebranchname() {
 function git.patchuncommittedchanges() {
   local message="$1"
   local optionalFlag="$2"
-  local path=$(git.getpatchfilepath "$1" "$optionalFlag")
+  local path=$(git.getpatchfilepath "$message" "$optionalFlag")
   system.createfileifdoesnotexist $path
   git diff HEAD > "$path"
   echo "Patch file created at $path"
@@ -481,22 +495,61 @@ function git.isvalidcommitid() {
   git cat-file -t $commitId 2>/dev/null | grep -q commit
 }
 
+function git.copyfilesinlatestcommit() {
+  git.copyfilesincommit $(git.getlatestcommitid) "$@"
+}
+
+function __replaceinvalidfilenamecharacters() {
+  local filename="$1"
+  local replacementchar="$2"
+  if string.isemptyorblank "$replacementchar"
+  then
+    replacementchar="-"
+  fi
+
+  filename=$(string.simplereplace "$filename" " " "$replacementchar")
+  filename=$(string.simplereplace "$filename" "/" "$replacementchar")
+  filename=$(string.simplereplace "$filename" "\\" "$replacementchar")
+  filename=$(string.simplereplace "$filename" ":" "$replacementchar")
+  filename=$(string.simplereplace "$filename" "\*" "$replacementchar")
+  filename=$(string.simplereplace "$filename" "\?" "$replacementchar")
+  filename=$(string.simplereplace "$filename" "\"" "$replacementchar")
+  filename=$(string.simplereplace "$filename" "<" "$replacementchar")
+  filename=$(string.simplereplace "$filename" ">" "$replacementchar")
+  filename=$(string.simplereplace "$filename" "|" "$replacementchar")
+  filename=$(string.trim "$filename")
+  echo "$filename"
+}
+
 # Copies all the files in the given commit to the given output directory
 # by maintaining the exact folder structure for copying later
 function git.copyfilesincommit() {
   local commitID="$1"
   local rootDirectory="$2"
 
-  if ! git.isvalidcommitid "$commitID" || string.isemptyorblank "$rootDirectory"
+  if ! git.isvalidcommitid "$commitID"
   then
     echo "Syntax: git.copyfilesincommit <commitId> <rootDirectory>"
     return 1
+  fi
+
+  if string.isemptyorblank "$rootDirectory"
+  then
+    local commitMessageFirstLine=$(git log -1 --pretty=%B $commitID | head -n 1)
+    commitMessageFirstLine=$(__replaceinvalidfilenamecharacters "$commitMessageFirstLine")
+    rootDirectory="$GIT_FILES_WITH_FOLDER_STRUCTURE_DIR/$commitMessageFirstLine-$commitID"
+    echo "No root directory provided, using $rootDirectory for writing files"
   fi
 
   if ! system.direxists "$rootDirectory"
   then
     echo "Provided root directory doesn't exist, creating now."
     mkdir -p "$rootDirectory"
+    if ! system.waslastcommandsuccessful
+    then
+      print_error "Could not create input root directory. Please give a valid directory path."
+      return 1
+    fi
   fi
 
   # Get the list of files changed or added in the commit
@@ -508,7 +561,8 @@ function git.copyfilesincommit() {
       cp "$file" "$rootDirectory/$file"
   done
 
-  echo "Files from commit $commitID have been copied to $rootDirectory"
+  local totalFilesSuccessfullyCreated=$(string.trim $(system.countfilesrecursively "$rootDirectory"))
+  echo "Total $totalFilesSuccessfullyCreated files from commit $commitID have been copied to $rootDirectory"
 }
 
 # Function to find all branches that have changed a given file
@@ -767,3 +821,4 @@ alias git.findparentcommit='git.getmergecommit'
 alias git.findmergecommit='git.getmergecommit'
 alias git.parentcommit='git.getmergecommit'
 alias git.mergecommit='git.getmergecommit'
+alias git.createfolderstructurefromcommit='git.copyfilesincommit'
