@@ -446,10 +446,13 @@ function git.checkoutpreviousbranch() {
 }
 
 function git.deletecurrentbranch() {
+  local noConfirmationArg="$1"
 	local currentbranch=$(git.getcurrentbranch)
-	read -p "Are you sure you want to delete the current branch ($currentbranch)? Press any key to continue. Press Ctrl+C to cancel."
-	git.checkoutpreviousbranch
-	git branch -D $currentbranch
+  if string.equals "$noConfirmationArg" "--no-confirmation" || general.inputyesorno "Are you sure you want to delete the current branch ($currentbranch)"
+  then
+    git.checkoutpreviousbranch
+    git branch -D $currentbranch
+  fi
 }
 
 function git.setglobalignorefile() {
