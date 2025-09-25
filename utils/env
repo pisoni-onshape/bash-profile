@@ -54,6 +54,13 @@ function env.readvarfromdisk() {
   system.readvarfromdisk "$varName" "$extension"
 }
 
+function env.removevarfromdisk() {
+	local varName="$1"
+  local extension
+  extension=$(env.getnumber)
+  system.removevarfromdisk "$varName" "$extension"
+}
+
 
 alias env.number='env.getnumber'
 alias startenv='env.start'

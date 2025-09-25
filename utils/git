@@ -565,6 +565,43 @@ function git.copyfilesincommit() {
   echo "Total $totalFilesSuccessfullyCreated files from commit $commitID have been copied to $rootDirectory"
 }
 
+# Paste files from a source directory to the destination directory
+# maintaining the folder structure. If destination directory is not
+# provided, assumes newton project root directory.
+# The source and target directories are not copied themselves, only
+# their contents are.
+# CAUTION: Overwrites files in the destination directory if they
+# already exist.
+function git.pastefileswithfolderstructure() {
+  local sourceDirectory="$1"
+  local destinationDirectory="$2"
+
+  if string.isemptyorblank "$sourceDirectory" || ! system.direxists "$sourceDirectory"
+  then
+    print_error "Please provide a valid source directory containing files with folder structure."
+    return 1
+  fi
+
+  if string.isemptyorblank "$destinationDirectory" || ! system.direxists "$destinationDirectory"
+  then
+    # Assume newton project root directory
+    echo "Pasting files (overwrite enabled) maintaining file directory structure into $REPO_NEWTON directory"
+    destinationDirectory="$REPO_NEWTON"
+  fi
+
+  if git.hasUncommittedChanges
+  then
+    print_error "You have uncommitted changes in the current repository. Please commit or stash them before pasting files."
+    return 1
+  fi
+
+  # Copy files while preserving the directory structure
+  rsync -av --progress "$sourceDirectory/" "$destinationDirectory/"
+
+  local totalFilesSuccessfullyCopied=$(string.trim $(system.countfilesrecursively "$sourceDirectory"))
+  echo "Total $totalFilesSuccessfullyCopied files from $sourceDirectory have been copied to $destinationDirectory"
+}
+
 # Function to find all branches that have changed a given file
 # Written using LLM Coding agents, seems to work fine,
 # but please be careful.

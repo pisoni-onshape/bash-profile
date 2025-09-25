@@ -92,7 +92,7 @@ function setclionbuild() {
 
 function resetclionbuild() {
   echo "Removing clion build override, your platform specific default will be used"
-  system.removevarfromdisk REMEMBER_CLION_BUILD $(env.getnumber)
+  env.removevarfromdisk REMEMBER_CLION_BUILD
   platformspecificsettings
 }
 
