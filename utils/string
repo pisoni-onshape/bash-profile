@@ -104,3 +104,10 @@ function string.trim() {
     var="${var%"${var##*[![:space:]]}"}"
     echo "$var"
 }
+
+# Truncate a string to n characters
+function string.truncate() {
+    local input="$1"
+    local n="$2"
+    echo "${input:0:$n}"
+}

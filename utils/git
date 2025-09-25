@@ -535,7 +535,8 @@ function git.copyfilesincommit() {
 
   if string.isemptyorblank "$rootDirectory"
   then
-    local commitMessageFirstLine=$(git log -1 --pretty=%B $commitID | head -n 1)
+    local commitMessageFirstLine="$(git log -1 --pretty=%B $commitID | head -n 1)"
+    commitMessageFirstLine=$(string.trim "$commitMessageFirstLine" 30)
     commitMessageFirstLine=$(__replaceinvalidfilenamecharacters "$commitMessageFirstLine")
     rootDirectory="$GIT_FILES_WITH_FOLDER_STRUCTURE_DIR/$commitMessageFirstLine-$commitID"
     echo "No root directory provided, using $rootDirectory for writing files"
@@ -596,7 +597,7 @@ function git.pastefileswithfolderstructure() {
   fi
 
   # Copy files while preserving the directory structure
-  rsync -av --progress "$sourceDirectory/" "$destinationDirectory/"
+  rsync -av --quiet "$sourceDirectory/" "$destinationDirectory/"
 
   local totalFilesSuccessfullyCopied=$(string.trim $(system.countfilesrecursively "$sourceDirectory"))
   echo "Total $totalFilesSuccessfullyCopied files from $sourceDirectory have been copied to $destinationDirectory"
