@@ -87,6 +87,11 @@ function exportAfterInitVariables() {
   fi
 }
 
+function __setupNewtonInternal() {
+  source buildenv.bash
+  exportAfterInitVariables
+  platformspecificsettings
+}
 
 # Ensure we're in the newton directory
 # or one of its subdirectories.
@@ -106,13 +111,20 @@ function ensurenewtondirectory() {
 
     # now when a newton like directory is ensured,
     # call the buildenv.bash script
-    source buildenv.bash
-    exportAfterInitVariables
-    platformspecificsettings
-  elif ! string.contains "$(pwd)" "$REPO_NEWTON"
-  then
-    # $REPO_NEWTON is initialized but we're not in it or one of its subdirectories
-    cd "$REPO_NEWTON" || exit
+    __setupNewtonInternal
+  else
+    if ! string.contains "$(pwd)" "$REPO_NEWTON"
+    then
+      # $REPO_NEWTON is initialized but we're not in it or one of its subdirectories
+      cd "$REPO_NEWTON" || exit
+    fi
+
+    if ! env.isInitialized
+    then
+      # In some cases we can have REPO_NEWTON etc. defined, but the build environment
+      # is still not initialized. We need to call buildenv.bash in this case too.
+      __setupNewtonInternal
+    fi
   fi
 }
 

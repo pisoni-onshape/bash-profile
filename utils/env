@@ -61,6 +61,17 @@ function env.removevarfromdisk() {
   system.removevarfromdisk "$varName" "$extension"
 }
 
+function env.isInitialized() {
+  # Test some random functions that should be
+  # available only if the environment is initialized.
+  if isFunctionDefined "awsconfigure" && isFunctionDefined "_getBuildProp" && isFunctionDefined "repoDir" && isFunctionDefined "btGetBuildTools"
+  then
+    return 0
+  else
+    return 1
+  fi
+}
+
 
 alias env.number='env.getnumber'
 alias startenv='env.start'

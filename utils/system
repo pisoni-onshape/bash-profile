@@ -58,17 +58,17 @@ function system.isNodeRunningOnPort() {
 }
 
 function system.isprocessrunning() {
-  if calledfromterminal
-  then
-    general.showtrueorfalse $(system.isprocessrunning "$@")
-    return
-  fi
-
 	if string.isemptyorblank $1
 	then
 		echo "Please enter the process name"
 		return
 	fi
+
+  if calledfromterminal
+  then
+    general.showtrueorfalse system.isprocessrunning "$@"
+    return $?
+  fi
 
 	if [[ "$2" == "-partial" ]] || [[ "$2" == "--p" ]] || [[ "$2" == "--partial" ]] || [[ "$2" == "-p" ]] || [[ "$2" == "partial" ]]
 	then

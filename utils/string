@@ -55,6 +55,8 @@ function string.contains() {
  	[[ $input == *$testString* ]]
 }
 
+# Tests whether the input string is empty ("")
+# or just whitespace
 function string.isemptyorblank() {
   	[ -z "$1" ]
 }

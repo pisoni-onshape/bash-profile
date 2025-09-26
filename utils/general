@@ -12,16 +12,6 @@ function general.defined() {
 
 importutility string
 
-# Always call with $(), like general.showtrueorfalse $(<true/false values>)
-function general.showtrueorfalse() {
-  if [ $? -eq 0 ]
-  then
-      echo "True"
-  else
-      echo "False"
-  fi
-}
-
 
 # Add two integers
 function general.add() {
@@ -107,3 +97,34 @@ function general.forEachKeyValue() {
         "$callback" "$key" "$value"
     done
 }
+
+# Call by passing the *NAME* of the function
+# and any desired arguments to call the function with.
+# e.g.: `general.showtrueorfalse <funcName> [argument1 argument2 ...]`
+# and this one (mostly)
+function general.showtrueorfalse() {
+  local functionName="$1"
+  if ! isFunctionDefined "$functionName"
+  then
+    print_error "Invalid function name"
+    return 1
+  fi
+
+  # Call the function by invoking it with '$'
+  if "$functionName" ${@:2}
+  then
+    echo 'True'
+    return 0
+  else
+    echo 'False'
+    return 1
+  fi
+}
+
+alias istrue='general.showtrueorfalse'
+
+# Add auto completion to the 'istrue' command
+complete -F __type_command_completion general.showtrueorfalse
+# Some terminals work by just defining it for the original
+# command, but some don't.
+complete -F __type_command_completion istrue

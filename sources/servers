@@ -86,8 +86,7 @@ function startservers() {
     echo "quickServe is already running"
   else
     echo "quickServe is not already running, starting it now"
-    #nohup quickserve &> /dev/null
-    quickserve &
+    quickserve
   fi
 }
 
@@ -190,7 +189,7 @@ function restartbelcad() {
 
 function quickserve() {
   ensurenewtondirectory
-  grunt start # New normal
+  nohup rex start > .newtonwebpacklog 2>&1 &
 }
 
 function restartquickserve() {
