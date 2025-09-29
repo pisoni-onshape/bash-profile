@@ -355,5 +355,41 @@ function system.getlatestdownload() {
   fi
 }
 
+function system.getkeyvaluefromfile() {
+    local file_path="$1"
+    local search_key="$2"
+
+    # Check if both parameters are provided
+    if string.isemptyorblank "$file_path" || string.isemptyorblank "$search_key"
+		then
+        echo "Usage: get_key_value <file_path> <key>" >&2
+        return 1
+    fi
+
+    # Check if file exists and is readable
+    if ! system.fileexists "$file_path"
+		then
+        echo "Error: File '$file_path' does not exist or is not readable" >&2
+        return 2
+    fi
+
+    # Read the file line by line and search for the key
+    while IFS= read -r line; do
+        # Skip empty lines
+        string.isemptyorblank "$line" && continue
+
+        # Check if line contains the key pattern at the beginning
+        if [[ "$line" =~ ^"$search_key"= ]]; then
+            # Extract the value part (everything after the first =)
+            local value="${line#*=}"
+            echo "$value"
+            return 0
+        fi
+    done < "$file_path"
+
+    # Key not found
+    return 3
+}
+
 alias system.dirfrompath='system.getdirectoryfrompath'
 alias system.latestdownload='system.getlatestdownload'

@@ -78,7 +78,17 @@ function startservers() {
 
   if isdebuggingdrawings
   then
-    startDrawingDocker skipupdate
+    if isdrawingservicerunning
+    then
+      echo "Drawings server is already running"
+    else
+      startDrawingDocker skipupdate
+      if ! system.waslastcommandsuccessful
+      then
+        print_error "Error: Could not start Drawings server."
+        return 1
+      fi
+    fi
   fi
 
   if isquickserverunning
@@ -249,9 +259,21 @@ function areserversrunning() {
     print_success "running"
   fi
 
+  if isdebuggingdrawings
+  then
+    echo -n "Drawings server is "
+    if ! isdrawingservicerunning
+    then
+      hasError="true"
+      print_error "NOT running"
+    else
+      print_success "running"
+    fi
+  fi
+
   if string.equals $hasError "false"
   then
-    # echo "Both Onshape server and grunt start are running."
+    # echo "All selected servers are running."
     return 0 # success
   else
     return 1

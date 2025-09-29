@@ -72,6 +72,25 @@ function env.isInitialized() {
   fi
 }
 
+function env.getbuildproperty() {
+  local propertyname="$1"
+  local filePath="$REPO_NEWTON/buildSrc/tools/config/versions.bash"
+  if string.isemptyorblank "$propertyname"
+  then
+    echo ""
+    return 1
+  fi
+
+  if ! system.fileexists $filePath
+  then
+    echo ""
+    return 1
+  fi
+
+  system.getkeyvaluefromfile "$filePath" "$propertyname"
+}
+
+
 
 alias env.number='env.getnumber'
 alias startenv='env.start'

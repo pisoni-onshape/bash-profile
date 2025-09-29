@@ -712,8 +712,8 @@ function setupjumpboxcertificates() {
 
 
 function getNewtonVersion() {
-  local newtonVersion=$(getBuildProp NEWTON_VERSION)
-  if string.isnotemptyorblank $newtonVersion
+  local newtonVersion=$(env.getbuildproperty "NEWTON_VERSION")
+  if string.isnotemptyorblank "$newtonVersion"
   then
     echo "rel-$newtonVersion"
   else

@@ -446,13 +446,10 @@ function git.checkoutpreviousbranch() {
 }
 
 function git.deletecurrentbranch() {
-  local noConfirmationArg="$1"
 	local currentbranch=$(git.getcurrentbranch)
-  if string.equals "$noConfirmationArg" "--no-confirmation" || general.inputyesorno "Are you sure you want to delete the current branch ($currentbranch)"
-  then
-    git.checkoutpreviousbranch
-    git branch -D $currentbranch
-  fi
+	read -p "Are you sure you want to delete the current branch ($currentbranch)? Press any key to continue. Press Ctrl+C to cancel."
+	git.checkoutpreviousbranch
+	git branch -D $currentbranch
 }
 
 function git.setglobalignorefile() {
@@ -498,51 +495,16 @@ function git.isvalidcommitid() {
   git cat-file -t $commitId 2>/dev/null | grep -q commit
 }
 
-function git.copyfilesinlatestcommit() {
-  git.copyfilesincommit $(git.getlatestcommitid) "$@"
-}
-
-function __replaceinvalidfilenamecharacters() {
-  local filename="$1"
-  local replacementchar="$2"
-  if string.isemptyorblank "$replacementchar"
-  then
-    replacementchar="-"
-  fi
-
-  filename=$(string.simplereplace "$filename" " " "$replacementchar")
-  filename=$(string.simplereplace "$filename" "/" "$replacementchar")
-  filename=$(string.simplereplace "$filename" "\\" "$replacementchar")
-  filename=$(string.simplereplace "$filename" ":" "$replacementchar")
-  filename=$(string.simplereplace "$filename" "\*" "$replacementchar")
-  filename=$(string.simplereplace "$filename" "\?" "$replacementchar")
-  filename=$(string.simplereplace "$filename" "\"" "$replacementchar")
-  filename=$(string.simplereplace "$filename" "<" "$replacementchar")
-  filename=$(string.simplereplace "$filename" ">" "$replacementchar")
-  filename=$(string.simplereplace "$filename" "|" "$replacementchar")
-  filename=$(string.trim "$filename")
-  echo "$filename"
-}
-
 # Copies all the files in the given commit to the given output directory
 # by maintaining the exact folder structure for copying later
 function git.copyfilesincommit() {
   local commitID="$1"
   local rootDirectory="$2"
 
-  if ! git.isvalidcommitid "$commitID"
+  if ! git.isvalidcommitid "$commitID" || string.isemptyorblank "$rootDirectory"
   then
     echo "Syntax: git.copyfilesincommit <commitId> <rootDirectory>"
     return 1
-  fi
-
-  if string.isemptyorblank "$rootDirectory"
-  then
-    local commitMessageFirstLine="$(git log -1 --pretty=%B $commitID | head -n 1)"
-    commitMessageFirstLine=$(string.trim "$commitMessageFirstLine" 30)
-    commitMessageFirstLine=$(__replaceinvalidfilenamecharacters "$commitMessageFirstLine")
-    rootDirectory="$GIT_FILES_WITH_FOLDER_STRUCTURE_DIR/$commitMessageFirstLine-$commitID"
-    echo "No root directory provided, using $rootDirectory for writing files"
   fi
 
   if ! system.direxists "$rootDirectory"
@@ -569,43 +531,6 @@ function git.copyfilesincommit() {
   echo "Total $totalFilesSuccessfullyCreated files from commit $commitID have been copied to $rootDirectory"
 }
 
-# Paste files from a source directory to the destination directory
-# maintaining the folder structure. If destination directory is not
-# provided, assumes newton project root directory.
-# The source and target directories are not copied themselves, only
-# their contents are.
-# CAUTION: Overwrites files in the destination directory if they
-# already exist.
-function git.pastefileswithfolderstructure() {
-  local sourceDirectory="$1"
-  local destinationDirectory="$2"
-
-  if string.isemptyorblank "$sourceDirectory" || ! system.direxists "$sourceDirectory"
-  then
-    print_error "Please provide a valid source directory containing files with folder structure."
-    return 1
-  fi
-
-  if string.isemptyorblank "$destinationDirectory" || ! system.direxists "$destinationDirectory"
-  then
-    # Assume newton project root directory
-    echo "Pasting files (overwrite enabled) maintaining file directory structure into $REPO_NEWTON directory"
-    destinationDirectory="$REPO_NEWTON"
-  fi
-
-  if git.hasUncommittedChanges
-  then
-    print_error "You have uncommitted changes in the current repository. Please commit or stash them before pasting files."
-    return 1
-  fi
-
-  # Copy files while preserving the directory structure
-  rsync -av --quiet "$sourceDirectory/" "$destinationDirectory/"
-
-  local totalFilesSuccessfullyCopied=$(string.trim $(system.countfilesrecursively "$sourceDirectory"))
-  echo "Total $totalFilesSuccessfullyCopied files from $sourceDirectory have been copied to $destinationDirectory"
-}
-
 # Function to find all branches that have changed a given file
 # Written using LLM Coding agents, seems to work fine,
 # but please be careful.
@@ -613,8 +538,8 @@ git.findbrancheswithfilechanges() {
     local file_path=""
     local time_limit=""
     local branch_pattern=""
-    local remote_only=false
-    local local_only=false
+    local include_remote=false
+    local include_local=true
     local max_branches=""
     local verbose=false
     local help=false
@@ -635,11 +560,18 @@ git.findbrancheswithfilechanges() {
                 shift 2
                 ;;
             -r|--remote-only)
-                remote_only=true
+                include_remote=true
+                include_local=false
                 shift
                 ;;
             -l|--local-only)
-                local_only=true
+                include_remote=false
+                include_local=true
+                shift
+                ;;
+            -a|--all)
+                include_local=true
+                include_remote=true
                 shift
                 ;;
             -m|--max-branches)
@@ -682,7 +614,8 @@ OPTIONS:
     -t, --time, --since TIME    Limit search to commits since TIME (e.g., "2 weeks ago", "2023-01-01")
     -p, --pattern PATTERN   Only check branches matching PATTERN (shell glob pattern)
     -r, --remote-only       Only check remote branches
-    -l, --local-only        Only check local branches
+    -l, --local-only        Only check local branches (default)
+    -a, --all               Check both local and remote branches
     -m, --max-branches NUM  Stop after checking NUM branches
     -v, --verbose           Show progress and additional information
     -h, --help              Show this help message
@@ -712,12 +645,6 @@ EOF
         return 1
     fi
 
-    # Validate conflicting options
-    if [[ "$remote_only" == true && "$local_only" == true ]]; then
-        echo "Error: Cannot specify both --remote-only and --local-only" >&2
-        return 1
-    fi
-
     # Validate max_branches is a number if specified
     if [[ -n "$max_branches" ]] && ! [[ "$max_branches" =~ ^[0-9]+$ ]]; then
         echo "Error: --max-branches must be a positive integer" >&2
@@ -728,9 +655,9 @@ EOF
 
     # Build git branch command based on options
     local branch_cmd="git branch"
-    if [[ "$remote_only" == true ]]; then
+    if [[ "$include_remote" == true ]] && [[ "$include_local" == false ]]; then
         branch_cmd="git branch -r"
-    elif [[ "$local_only" == true ]]; then
+    elif [[ "$include_local" == true ]] && [[ "$include_remote" == false ]]; then
         branch_cmd="git branch"
     else
         branch_cmd="git branch -a"
