@@ -44,6 +44,20 @@ function docker.startapp() {
   fi
 }
 
+# If docker is running correctly,
+# returns the name of *all* running
+# services from all envs
+function docker.runningServices() {
+  if docker.isrunning
+  then
+    docker ps --format "{{.Names}}"
+    return 0
+  else
+    echo ""
+    return 1
+  fi
+}
+
 function docker.clean() {
   dockerKillAll
   #docker rmi $(docker images -qf "dangling=true"    #Cleans dangligng images

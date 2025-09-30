@@ -98,6 +98,25 @@ function general.forEachKeyValue() {
     done
 }
 
+function general.forEachArrayItem() {
+    local arr_name="$1"    # name of array variable (NOT its contents)
+    local callback="$2"    # callback function name
+
+    # basic callback check
+    if ! type "$callback" >/dev/null 2>&1; then
+        echo "general.forEachArrayItem: callback '$callback' not found" >&2
+        return 2
+    fi
+
+    # Copy the named array into a local array
+    eval "local arr=(\"\${${arr_name}[@]}\")"
+
+    # Iterate and split on the first colon
+    for item in "${arr[@]}"; do
+        "$callback" "$item"
+    done
+}
+
 # Call by passing the *NAME* of the function
 # and any desired arguments to call the function with.
 # e.g.: `general.showtrueorfalse <funcName> [argument1 argument2 ...]`
