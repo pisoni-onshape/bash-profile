@@ -102,10 +102,10 @@ function general.forEachArrayItem() {
     local arr_name="$1"    # name of array variable (NOT its contents)
     local callback="$2"    # callback function name
 
-    # basic callback check
-    if ! type "$callback" >/dev/null 2>&1; then
-        echo "general.forEachArrayItem: callback '$callback' not found" >&2
-        return 2
+    if ! isFunctionDefined "$callback"
+    then
+      print_error "Invalid function name"
+      return 1
     fi
 
     # Copy the named array into a local array
@@ -115,6 +115,67 @@ function general.forEachArrayItem() {
     for item in "${arr[@]}"; do
         "$callback" "$item"
     done
+}
+
+function general.forEachDelimitedItem() {
+    local string="$1"
+    local delimiter="$2"
+    local callback="$3"
+    local temp="$string"
+    local item
+
+    if [ -z "$string" ]; then
+        return
+    fi
+
+  if ! isFunctionDefined "$callback"
+  then
+    print_error "Invalid function name"
+    return 1
+  fi
+
+    while [[ "$temp" == *"$delimiter"* ]]; do
+        item="${temp%%"$delimiter"*}"
+        "$callback" "$item"
+        temp="${temp#*"$delimiter"}"
+    done
+    "$callback" "$temp"
+}
+
+# Pass newline separated string as the first argument
+# and the function *name* to call on each of its newline
+# delimited item
+function general.forEachLine() {
+    local string="$1"
+    local callback="$2"
+    general.forEachDelimitedItem "$string" $'\n' "$callback"
+}
+
+# Pass the function name that prints newline separated
+# result as the first argument, and the name of the callback
+# as the second, and any arguments to pass to the original
+# function as the rest of arguments
+function general.forEachOutputLine() {
+    local func_name="$1"
+    local callback="$2"
+
+    if ! isFunctionDefined "$func_name"
+    then
+      print_error "Invalid function name for the base function to call"
+      return 1
+    fi
+
+    if ! isFunctionDefined "$callback"
+    then
+      print_error "Invalid function name for the callback"
+      return 1
+    fi
+
+    shift 2
+    local result
+    result=$("$func_name" "$@")
+
+    general.forEachLine "$result" "$callback"
 }
 
 # Call by passing the *NAME* of the function

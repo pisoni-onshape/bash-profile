@@ -55,6 +55,16 @@ function string.contains() {
  	[[ $input == *$testString* ]]
 }
 
+# Returns 0 (true) if the string matches the given regex, 1 (false) otherwise
+# NOTE: Perl style escapes like \d, \w etc. are not supported.
+# It only supports extended regular expressions (ERE) -
+# so use [0-9]+ instead of \d+ for example.
+function string.matchesRegex() {
+    local input="$1"
+    local regex="$2"
+    [[ "$input" =~ $regex ]]
+}
+
 # Tests whether the input string is empty ("")
 # or just whitespace
 function string.isemptyorblank() {
