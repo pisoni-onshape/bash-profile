@@ -201,3 +201,36 @@ function env.fix() {
     fi
   fi
 }
+
+function __filterAndShow() {
+  local serviceName="$1"
+  # Does it belong to the set of 'shared' services (among all envs)
+  if string.equals "$serviceName" "zookeeper" || string.equals "$serviceName" "https"
+  then
+    echo "$serviceName"
+  else
+    local envNum=$(env.getnumber)
+    if string.equals "$envNum" "0"
+    then
+      if ! string.contains "$serviceName" "_myenv"
+      then
+        echo "$serviceName"
+      fi
+    else
+      if string.endswith "$serviceName" "_myenv$envNum"
+      then
+        echo "$serviceName"
+      fi
+    fi
+    local suffix="myenv$(env.getnumber)"
+  fi
+}
+
+# Returns the names of services
+# that are applicable only for this
+# env, unlike docker.runningServices
+function env.runningServices() {
+  #docker.runningServices
+
+  general.forEachOutputLine docker.runningServices __filterAndShow
+}

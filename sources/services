@@ -74,6 +74,21 @@ function stopallservices() {
   fi
 }
 
+function declareAllServices() {
+  # In a rough order of core to non-core services
+  ALL_SERVICES_AND_COMMANDS=(
+    "memcached<envsuffix>: startMemcache"
+    "mongod<envsuffix>: startMongod"
+    "rabbitmq<envsuffix>: startRabbitMQServer"
+    "xenon<envsuffix>: startDrawingDocker"
+    "zookeeper: startZookeeper"
+    "https: startHTTPS"
+    "kibana<envsuffix>: startKibana"
+    "fgs<envsuffix>: startFgs"
+    "cache-ng<envsuffix>: startCacheNg"
+    "elasticsearch<envsuffix>: startElasticsearch"
+  )
+}
 
 function declareEssentialServices() {
   # This if else is in this form mostly because I don't know how to dynamically add
