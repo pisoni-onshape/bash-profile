@@ -74,20 +74,42 @@ function stopallservices() {
   fi
 }
 
+function isASharedService() {
+  local serviceName="$1"
+  string.equals "$serviceName" "zookeeper" || string.equals "$serviceName" "https" || string.equals "$serviceName" "mock-services"
+}
+
+function getEnvServiceSuffix() {
+  local serviceName="$1"
+  local envNum=$(env.getnumber)
+  if isASharedService "$serviceName" || string.equals "$envNum" "0"
+  then
+    echo ""
+  else
+    echo "$serviceName_myenv$envNum"
+  fi
+}
+
 function declareAllServices() {
   # In a rough order of core to non-core services
   ALL_SERVICES_AND_COMMANDS=(
-    "memcached<envsuffix>: startMemcache"
-    "mongod<envsuffix>: startMongod"
-    "rabbitmq<envsuffix>: startRabbitMQServer"
-    "xenon<envsuffix>: startDrawingDocker"
-    "zookeeper: startZookeeper"
-    "https: startHTTPS"
-    "kibana<envsuffix>: startKibana"
-    "fgs<envsuffix>: startFgs"
-    "cache-ng<envsuffix>: startCacheNg"
-    "elasticsearch<envsuffix>: startElasticsearch"
+    "memcached<envsuffix>: startMemcache, "
+    "mongod<envsuffix>: startMongod, "
+    "rabbitmq<envsuffix>: startRabbitMQServer, "
+    "xenon<envsuffix>: startDrawingDocker, stopDrawingDocker"
+    "zookeeper: startZookeeper, stopZookeeperIfRunning"
+    "https: startHTTPS, "
+    "mock-services: startMockServices, stopMockServices"
+    "kibana<envsuffix>: startKibana, stopKibana"
+    "fgs<envsuffix>: startFgs, stopFgs"
+    "cache-ng<envsuffix>: startCacheNg, stopCacheNg"
+    "app-qa<envsuffix>: startAppQA, stopAppQA"
+    "elasticsearch<envsuffix>: startElasticsearch, stopElasticsearch"
   )
+}
+
+function findServicesStatus() {
+  const env.runningServices
 }
 
 function declareEssentialServices() {

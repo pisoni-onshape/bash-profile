@@ -205,7 +205,7 @@ function env.fix() {
 function __filterAndShow() {
   local serviceName="$1"
   # Does it belong to the set of 'shared' services (among all envs)
-  if string.equals "$serviceName" "zookeeper" || string.equals "$serviceName" "https"
+  if isASharedService "$serviceName"
   then
     echo "$serviceName"
   else
@@ -231,6 +231,5 @@ function __filterAndShow() {
 # env, unlike docker.runningServices
 function env.runningServices() {
   #docker.runningServices
-
   general.forEachOutputLine docker.runningServices __filterAndShow
 }
