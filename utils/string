@@ -12,47 +12,49 @@ function string.defined() {
   return 0
 }
 
+
+# Main code starts here
 function string.equals() {
-	[[ "$1" == "$2" ]]
+  [[ "$1" == "$2" ]]
 }
 
 # basic wild card characters seems to work
 function string.simplereplace() {
-	local input="$1"
-	local searchstring="$2"
-	local replacestring="$3"
-	echo "${input//$searchstring/$replacestring}"
+  local input="$1"
+  local searchstring="$2"
+  local replacestring="$3"
+  echo "${input//$searchstring/$replacestring}"
 }
 
 function string.replacefirstoccurrence() {
-	local input="$1"
-	local searchstring="$2"
-	local replacestring="$3"
-	echo "${input/$searchstring/$replacestring}"
+  local input="$1"
+  local searchstring="$2"
+  local replacestring="$3"
+  echo "${input/$searchstring/$replacestring}"
 }
 
 function string.beginswith() {
-	local input="$1"
-	local testString="$2"
-	# Directly return true or false so that
-	# it can be used with if
- 	[[ $input == $testString* ]]
+  local input="$1"
+  local testString="$2"
+  # Directly return true or false so that
+  # it can be used with if
+   [[ $input == $testString* ]]
 }
 
 function string.endswith() {
-	local input="$1"
-	local testString="$2"
-	# Directly return true or false so that
-	# it can be used with if
- 	[[ $input == *$testString ]]
+  local input="$1"
+  local testString="$2"
+  # Directly return true or false so that
+  # it can be used with if
+   [[ $input == *$testString ]]
 }
 
 function string.contains() {
-	local input="$1"
-	local testString="$2"
-	# Directly return true or false so that
-	# it can be used with if
- 	[[ $input == *$testString* ]]
+  local input="$1"
+  local testString="$2"
+  # Directly return true or false so that
+  # it can be used with if
+   [[ $input == *$testString* ]]
 }
 
 # Returns 0 (true) if the string matches the given regex, 1 (false) otherwise
@@ -68,44 +70,44 @@ function string.matchesRegex() {
 # Tests whether the input string is empty ("")
 # or just whitespace
 function string.isemptyorblank() {
-  	[ -z "$1" ]
+    [ -z "$1" ]
 }
 
 function string.isnotemptyorblank() {
-  	[ ! -z "$1" ]
+    [ ! -z "$1" ]
 }
 
 function string.length() {
-	echo ${#1}
+  echo ${#1}
 }
 
 function string.tolower() {
-	echo "$1" | tr '[:upper:]' '[:lower:]'
+  echo "$1" | tr '[:upper:]' '[:lower:]'
 }
 
 function string.toupper() {
-	echo "$1" | tr '[:lower:]' '[:upper:]'
+  echo "$1" | tr '[:lower:]' '[:upper:]'
 }
 
 function string.isnumber() {
-	local regexNumber='^[0-9]+$'
-	[[ "$1" =~ $regexNumber ]]
+  local regexNumber='^[0-9]+$'
+  [[ "$1" =~ $regexNumber ]]
 }
 
 # ToDo: Implement for multiple strings.
 function string.concatenate() {
-	echo "$1$2"
+  echo "$1$2"
 }
 
 # Prepend a string if it's not already prepended
 function string.prependifnotalready() {
-	local sourcestring="$1"
-	local stringtoprepend="$2"
-	if ! string.beginswith "$sourcestring" "$stringtoprepend"
-	then
-		sourcestring="$stringtoprepend""$sourcestring"
-	fi
-	echo "$sourcestring"
+  local sourcestring="$1"
+  local stringtoprepend="$2"
+  if ! string.beginswith "$sourcestring" "$stringtoprepend"
+  then
+    sourcestring="$stringtoprepend""$sourcestring"
+  fi
+  echo "$sourcestring"
 }
 
 function string.trim() {

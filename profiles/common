@@ -21,26 +21,26 @@ __type_command_completion() {
 # Apply the custom completion function to the 'type' command
 complete -F __type_command_completion type
 
-# Usage : 	findbyname <filename to search in current directory>
-# 			Or
-#			findbyname <filename to search> <directory>
+# Usage :   findbyname <filename to search in current directory>
+#       Or
+#      findbyname <filename to search> <directory>
 function findbyname() {
-	if [ -z "$1" ]
-	then
-		echo "Usage: \nfindbyname <filename to search in current directory>\n or\nfindbyname <filename to search> <directory>"
-		return
-	fi
+  if [ -z "$1" ]
+  then
+    echo "Usage: \nfindbyname <filename to search in current directory>\n or\nfindbyname <filename to search> <directory>"
+    return
+  fi
 
-	local filename="$1"
-	local directory="$2"
+  local filename="$1"
+  local directory="$2"
 
-	if [ -z "$directory" ]
-	then
-	 	# Assume only filename specified, search in current directory
-		directory="."
-	fi
+  if [ -z "$directory" ]
+  then
+     # Assume only filename specified, search in current directory
+    directory="."
+  fi
 
-	find "$directory" -name "$filename" 2>/dev/null
+  find "$directory" -name "$filename" 2>/dev/null
 }
 
 function setuptexteditors() {

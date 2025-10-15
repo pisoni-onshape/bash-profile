@@ -48,14 +48,14 @@ function env.writevartodisk() {
 # e.g.:
 # myvar=$(env.readvarfromdisk myvar)
 function env.readvarfromdisk() {
-	local varName="$1"
+  local varName="$1"
   local extension
   extension=$(env.getnumber)
   system.readvarfromdisk "$varName" "$extension"
 }
 
 function env.removevarfromdisk() {
-	local varName="$1"
+  local varName="$1"
   local extension
   extension=$(env.getnumber)
   system.removevarfromdisk "$varName" "$extension"

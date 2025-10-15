@@ -18,8 +18,8 @@ source "$BASH_PROFILE_PATH/sources/services"
 # Check if the current directory is either
 # 'newton' or newton<n> where n is a number
 function dirismultienvnewton() {
-	local regexNewtonLike='^newton$|^newton[1-9][0-9]*$'
-	[[ $1 =~ $regexNewtonLike ]]
+  local regexNewtonLike='^newton$|^newton[1-9][0-9]*$'
+  [[ $1 =~ $regexNewtonLike ]]
 }
 
 

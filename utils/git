@@ -32,11 +32,11 @@ function __ensurepatchdirexists() {
 }
 
 function git.renamebranch() {
-	git branch -m $1 $2
+  git branch -m $1 $2
 }
 
 function git.renamecurrentbranch() {
-	git branch -m $1
+  git branch -m $1
 }
 
 function git.getcurrentbranch() {
@@ -45,12 +45,12 @@ function git.getcurrentbranch() {
 }
 
 function git.hasUncommittedChanges() {
-	[ -n "$(git status --porcelain)" ]
+  [ -n "$(git status --porcelain)" ]
 }
 
 function git.getlatestcommitid() {
-	local latestSHAId=$(git rev-parse HEAD | cut -c 1-8)
-	echo $latestSHAId
+  local latestSHAId=$(git rev-parse HEAD | cut -c 1-8)
+  echo $latestSHAId
 }
 
 function git.isoneoftheofficialbranches() {
@@ -59,25 +59,25 @@ function git.isoneoftheofficialbranches() {
 }
 
 function git.branchislsbreleasebased() {
-	local currentbranch=$(git.getcurrentbranch)
-	string.endswith $currentbranch "-lsb-rel-[0-9].[0-9]*"
+  local currentbranch=$(git.getcurrentbranch)
+  string.endswith $currentbranch "-lsb-rel-[0-9].[0-9]*"
 }
 
 function git.branchislsbmasterbased() {
-	local currentbranch=$(git.getcurrentbranch)
-	#echo $currentbranch
-	string.endswith $currentbranch "-lsb-master"
+  local currentbranch=$(git.getcurrentbranch)
+  #echo $currentbranch
+  string.endswith $currentbranch "-lsb-master"
 }
 
 
 function git.branchisreleasebased() {
-	local currentbranch=$(git.getcurrentbranch)
-	! git.branchislsbreleasebased && string.endswith $currentbranch "-rel-[0-9].[0-9]*"
+  local currentbranch=$(git.getcurrentbranch)
+  ! git.branchislsbreleasebased && string.endswith $currentbranch "-rel-[0-9].[0-9]*"
 }
 
 function git.branchismasterbased() {
-	local currentbranch=$(git.getcurrentbranch)
-	! git.branchislsbmasterbased && string.endswith $currentbranch "-master"
+  local currentbranch=$(git.getcurrentbranch)
+  ! git.branchislsbmasterbased && string.endswith $currentbranch "-master"
 }
 
 # Give the full file path for the _tracked_ file you want to ignore
@@ -446,19 +446,19 @@ function git.checkoutpreviousbranch() {
 }
 
 function git.deletecurrentbranch() {
-	local currentbranch=$(git.getcurrentbranch)
-	read -p "Are you sure you want to delete the current branch ($currentbranch)? Press any key to continue. Press Ctrl+C to cancel."
-	git.checkoutpreviousbranch
-	git branch -D $currentbranch
+  local currentbranch=$(git.getcurrentbranch)
+  read -p "Are you sure you want to delete the current branch ($currentbranch)? Press any key to continue. Press Ctrl+C to cancel."
+  git.checkoutpreviousbranch
+  git branch -D $currentbranch
 }
 
 function git.setglobalignorefile() {
-	if string.isemptyorblank $1
-	then
-		git config --global core.excludesfile $globalgitignorefile
-	else
-		git config --global core.excludesfile $1
-	fi
+  if string.isemptyorblank $1
+  then
+    git config --global core.excludesfile $globalgitignorefile
+  else
+    git config --global core.excludesfile $1
+  fi
 }
 
 # Given a commit SHA1 id, finds out the

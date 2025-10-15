@@ -7,12 +7,12 @@ shopt -s expand_aliases
 # include utility modules when required (and is not
 # included twice if already done)
 function importutility() {
-	if [[ "$2" == "force" ]] || [[ "$2" == "-f" ]] || [[ "$2" == "--force" ]]
-	then
-		export FORCE_IMPORT_UTILITY=1
-	fi
-	source $BASH_PROFILE_PATH/utils/$1
-	unset FORCE_IMPORT_UTILITY
+  if [[ "$2" == "force" ]] || [[ "$2" == "-f" ]] || [[ "$2" == "--force" ]]
+  then
+    export FORCE_IMPORT_UTILITY=1
+  fi
+  source $BASH_PROFILE_PATH/utils/$1
+  unset FORCE_IMPORT_UTILITY
 }
 
 function isFunctionDefined() {
@@ -41,17 +41,17 @@ alias openpersonal="texteditor $USER_LOCAL_PROFILE"
 
 # Load all the other files in the profiles folder.
 for filepath in $BASH_PROFILE_PATH/profiles/*; do
-	source "$filepath"
-	filename=$(basename $filepath)
+  source "$filepath"
+  filename=$(basename $filepath)
     # Also set aliases for opening them and refreshing them quickly from the terminal
     # once you edit them.
-	alias refresh$filename="source $filepath"
-	alias open$filename="texteditor $filepath"
+  alias refresh$filename="source $filepath"
+  alias open$filename="texteditor $filepath"
 done
 
 # Set aliases for reloading utils
 for filepath in $BASH_PROFILE_PATH/utils/*; do
-	filename=$(basename $filepath)
-	alias refresh$filename="importutility $filename -f"
-	alias open$filename="texteditor $filepath"
+  filename=$(basename $filepath)
+  alias refresh$filename="importutility $filename -f"
+  alias open$filename="texteditor $filepath"
 done
