@@ -86,7 +86,7 @@ function getEnvServiceSuffix() {
   then
     echo ""
   else
-    echo "$serviceName_myenv$envNum"
+    echo "${serviceName}_myenv${envNum}"
   fi
 }
 

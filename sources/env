@@ -233,3 +233,76 @@ function env.runningServices() {
   #docker.runningServices
   general.forEachOutputLine docker.runningServices __filterAndShow
 }
+
+# Callback used by general.forEachKeyValue to print status lines
+# Receives two args: key (service name before colon) and value (after colon)
+function env.__statusall_kv() {
+  local key="$1"
+  local _value="$2" # unused but accepted for compatibility
+
+  local envNum
+  envNum=$(env.getnumber)
+
+  local suffix=""
+  if [ "${envNum}" != "0" ]; then
+    suffix="_myenv${envNum}"
+  fi
+
+  local svcName="$key"
+  if string.contains "$svcName" "<envsuffix>"; then
+    if [ -n "$suffix" ]; then
+      svcName=$(string.simplereplace "$svcName" "<envsuffix>" "$suffix")
+    else
+      svcName=$(string.simplereplace "$svcName" "<envsuffix>" "")
+    fi
+  fi
+
+  # runningList is expected to be set in the caller
+  local running=0
+  if [ -n "${runningList-}" ] && echo "$runningList" | grep -Fxq "$svcName"; then
+    running=1
+  fi
+
+  echo "${svcName}:${running}"
+}
+
+
+# Print status for all services declared in ALL_SERVICES_AND_COMMANDS.
+# Uses general.forEachKeyValue to split key/value on ':' automatically.
+function env.statusall() {
+  # Ensure services list is populated
+  declareAllServices
+
+  local envNum
+  envNum=$(env.getnumber)
+
+  # Print core items first
+  if docker.isrunning; then
+    echo "docker:1"
+  else
+    echo "docker:0"
+  fi
+
+  if isonshapeserverrunning; then
+    echo "onshape_server:1"
+  else
+    echo "onshape_server:0"
+  fi
+
+  if isquickserverunning; then
+    echo "quickserve:1"
+  else
+    echo "quickserve:0"
+  fi
+
+  if isdrawingservicerunning; then
+    echo "drawing_server:1"
+  else
+    echo "drawing_server:0"
+  fi
+
+  # Capture running services (env-aware) for callback use
+  runningList=$(env.runningServices)
+
+  general.forEachKeyValue ALL_SERVICES_AND_COMMANDS env.__statusall_kv
+}
