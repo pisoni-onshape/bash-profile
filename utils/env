@@ -14,11 +14,13 @@ function env.defined() {
 
 importutility system
 
+export ENV_CONFIG_ROOT_PATH="$BASH_PROFILE_PATH/config"
 
 function env.getnumber() {
-  if string.isnotemptyorblank "$(getBuildProp HOST_PROPERTIES_ENVNUM)"
+  local hostNum=$(env.getproperty HOST_PROPERTIES_ENVNUM)
+  if string.isnotemptyorblank "$hostNum"
   then
-    getBuildProp HOST_PROPERTIES_ENVNUM
+    echo "$hostNum"
   else
     echo "0"
   fi
@@ -72,24 +74,59 @@ function env.isInitialized() {
   fi
 }
 
-function env.getbuildproperty() {
+function env.getconfigpath() {
+  echo "$ENV_CONFIG_ROOT_PATH/env$(env.getnumber)"
+}
+
+function env.getproperty() {
   local propertyname="$1"
-  local filePath="$REPO_NEWTON/buildSrc/tools/config/versions.bash"
+
   if string.isemptyorblank "$propertyname"
   then
     echo ""
     return 1
   fi
 
-  if ! system.fileexists $filePath
+  # 1. First, check in env variables if it's set
+  if string.isnotemptyorblank "${!propertyname}"
+  then
+    echo "${!propertyname}"
+    return 0
+  fi
+
+  local newtonPath="$REPO_NEWTON"
+  if string.isemptyorblank "$newtonPath"
+  then
+    newtonPath=$(string.extractByRegex "$(pwd)" "/.*/newton[0-9]*")
+  fi
+
+  # If we still can't figure out the newtonPath, exit
+  if string.isemptyorblank "$newtonPath"
   then
     echo ""
     return 1
   fi
 
-  system.getkeyvaluefromfile "$filePath" "$propertyname"
-}
+  local pathsToCheck=(
+    "$newtonPath/.build_config"
+    "$newtonPath/buildSrc/tools/config/versions.bash"
+  )
 
+  local value=""
+  for filePath in "${pathsToCheck[@]}"
+  do
+    value=$(system.getkeyvaluefromfile "$filePath" "$propertyname" --silent)
+    if ! string.isemptyorblank "$value"
+    then
+      echo "$value"
+      return 0
+    fi
+  done
+
+  # Didn't find the key anywhere.
+  echo ""
+  return 1
+}
 
 
 alias env.number='env.getnumber'

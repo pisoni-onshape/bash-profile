@@ -355,6 +355,10 @@ function system.getlatestdownload() {
   fi
 }
 
+# Call like system.getkeyvaluefromfile "<file-path>" "<key>"
+# Pass a third argument "--silent" or "-s" to echo an empty
+# string when a file or key is not found without echoing
+# error message
 function system.getkeyvaluefromfile() {
     local file_path="$1"
     local search_key="$2"
@@ -370,8 +374,13 @@ function system.getkeyvaluefromfile() {
     # Check if file exists and is readable
     if ! system.fileexists "$file_path"
     then
+      if string.equals $silent "--silent" || string.equals $silent "-s"
+      then
+        echo ""
+      else
         echo "Error: File '$file_path' does not exist or is not readable" >&2
-        return 2
+      fi
+      return 2
     fi
 
     # Read the file line by line and search for the key
@@ -389,8 +398,60 @@ function system.getkeyvaluefromfile() {
     done < "$file_path"
 
     # Key not found
+    echo ""
     return 3
 }
+
+# Call like system.setkeyvalueinfile "<file-path>" "<key>" "<value>"
+# - Updates existing KEY=VALUE if key exists (match at line start)
+# - Appends new KEY=VALUE if key not found
+# - Creates file if it doesn’t exist
+function system.setkeyvalueinfile() {
+    local file_path="$1"
+    local key="$2"
+    local value="$3"
+
+    if [ $# -lt 3 ] || string.isemptyorblank "$file_path" || string.isemptyorblank "$key"
+    then
+        echo "Usage: system.setkeyvalueinfile <file_path> <key> <value>" >&2
+        return 1
+    fi
+
+    if ! system.fileexists "$file_path"
+    then
+        touch "$file_path" || {
+            echo "Error: Cannot create file '$file_path'" >&2
+            return 2
+        }
+    fi
+
+    local temp_file="${file_path}.tmp.$$"
+    local key_found=0
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        if [[ "$line" =~ ^"$key"= ]]; then
+            echo "${key}=${value}" >> "$temp_file"
+            key_found=1
+        else
+            echo "$line" >> "$temp_file"
+        fi
+    done < "$file_path"
+
+    # If key not found, append it
+    if [ $key_found -eq 0 ]; then
+        echo "${key}=${value}" >> "$temp_file"
+    fi
+
+    # Replace original file with new version
+    mv "$temp_file" "$file_path" || {
+        echo "Error: Failed to update file '$file_path'" >&2
+        rm -f "$temp_file"
+        return 3
+    }
+
+    return 0
+}
+
 
 alias system.dirfrompath='system.getdirectoryfrompath'
 alias system.latestdownload='system.getlatestdownload'

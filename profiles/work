@@ -712,7 +712,7 @@ function setupjumpboxcertificates() {
 
 
 function getNewtonVersion() {
-  local newtonVersion=$(env.getbuildproperty "NEWTON_VERSION")
+  local newtonVersion=$(env.getproperty "NEWTON_VERSION")
   if string.isnotemptyorblank "$newtonVersion"
   then
     echo "rel-$newtonVersion"
@@ -1241,7 +1241,7 @@ function buildcpponly() {
     export SKIP_JSLIB=1
     export SKIP_JAVA=1
     export SKIP_SERIALIZABLES=1
-    buildgradleparallel $@
+    buildgradleparallel -x runBtUpgrade $@
     local returnvalue=$?
     unset SKIP_JSLIB
     unset SKIP_JAVA
@@ -1624,3 +1624,5 @@ alias openbtserver='openbtserverweblog'
 alias isbelcadrunning='isonshapeserverrunning'
 alias opentimerlog='opentimerlogweb'
 alias setnobuildfarm='setignorebuildfarmforrbcommons'
+alias doctor='$REPO_NEWTON/newton doctor'
+alias fixlogstimezone='changelogstimezonetoist'

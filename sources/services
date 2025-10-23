@@ -108,10 +108,6 @@ function declareAllServices() {
   )
 }
 
-function findServicesStatus() {
-  const env.runningServices
-}
-
 function declareEssentialServices() {
   # This if else is in this form mostly because I don't know how to dynamically add
   # just one element in the array :), but it's ok for now.

@@ -67,6 +67,21 @@ function string.matchesRegex() {
     [[ "$input" =~ $regex ]]
 }
 
+function string.extractByRegex() {
+  local source="$1"
+  local regex="$2"
+
+  local match
+  match=$(echo "$source" | grep -Eo "$regex" | head -n 1)
+
+  if [ -n "$match" ]; then
+    echo "$match"
+    return 0
+  else
+    return 1
+  fi
+}
+
 # Tests whether the input string is empty ("")
 # or just whitespace
 function string.isemptyorblank() {
