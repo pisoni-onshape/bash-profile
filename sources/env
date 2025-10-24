@@ -245,34 +245,28 @@ function env.runningServices() {
 
 # Callback used by general.forEachKeyValue to print status lines
 # Receives two args: key (service name before colon) and value (after colon)
-function env.__statusall_kv() {
+function __printservicestatus() {
   local key="$1"
-  local _value="$2" # unused but accepted for compatibility
+  local _value="$2" # unused
 
   local envNum
   envNum=$(env.getnumber)
-
   local suffix=""
-  if [ "${envNum}" != "0" ]; then
-    suffix="_myenv${envNum}"
-  fi
+  suffix=$(getEnvServiceSuffix)
 
-  local svcName="$key"
-  if string.contains "$svcName" "<envsuffix>"; then
-    if [ -n "$suffix" ]; then
-      svcName=$(string.simplereplace "$svcName" "<envsuffix>" "$suffix")
-    else
-      svcName=$(string.simplereplace "$svcName" "<envsuffix>" "")
-    fi
+  local serviceName="$key"
+  if string.contains "$serviceName" "<envsuffix>"
+  then
+    serviceName=$(string.simplereplace "$serviceName" "<envsuffix>" "$suffix")
   fi
 
   # runningList is expected to be set in the caller
   local running=0
-  if [ -n "${runningList-}" ] && echo "$runningList" | grep -Fxq "$svcName"; then
+  if [ -n "${runningList-}" ] && echo "$runningList" | grep -Fxq "$serviceName"; then
     running=1
   fi
 
-  echo "${svcName}:${running}"
+  echo "${serviceName}:${running}"
 }
 
 
@@ -313,5 +307,5 @@ function env.statusall() {
   # Capture running services (env-aware) for callback use
   runningList=$(env.runningServices)
 
-  general.forEachKeyValue ALL_SERVICES_AND_COMMANDS env.__statusall_kv
+  general.forEachKeyValue ALL_SERVICES_AND_COMMANDS __printservicestatus
 }
