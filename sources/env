@@ -29,9 +29,18 @@ function env.create() {
   fi
 
   local newPath
-  newPath=$(string.simplereplace "$REPO_NEWTON" "newton$(env.getnumber)" "newton$newEnvNumber")
-  if ! general.inputyesorno "Are you sure you want to create a new environment at $newPath?"
+
+  if string.isemptyorblank "$REPO_NEWTON"
   then
+    echo "REPO_NEWTON is not set, assuming base repository path to be $HOME/repos"
+    newPath="$HOME/repos/newton${newEnvNumber}"
+  else
+    newPath=$(string.simplereplace "$REPO_NEWTON" "newton$(env.getnumber)" "newton$newEnvNumber")
+  fi
+
+  if ! general.inputyesorno "Are you sure you want to create a new environment at $newPath"
+  then
+    echo "No changes were made to the system."
     return 0
   fi
 
@@ -75,7 +84,7 @@ function env.create() {
 
   # shellcheck disable=SC1091
   source "buildenv.bash"
-  echo "Environment $newEnvNumber created successfully"
+  echo "Environment $newEnvNumber created successfully. It's strongly recommended to open a new terminal window to start working in this env (cd $newPath, source buildenv.bash etc.)"
 }
 
 
