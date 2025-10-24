@@ -446,10 +446,13 @@ function git.checkoutpreviousbranch() {
 }
 
 function git.deletecurrentbranch() {
+  local noConfirmationArg="$1"
   local currentbranch=$(git.getcurrentbranch)
-  read -p "Are you sure you want to delete the current branch ($currentbranch)? Press any key to continue. Press Ctrl+C to cancel."
-  git.checkoutpreviousbranch
-  git branch -D $currentbranch
+  if string.equals "$noConfirmationArg" "--no-confirmation" || general.inputyesorno "Are you sure you want to delete the current branch ($currentbranch)"
+  then
+    git.checkoutpreviousbranch
+    git branch -D $currentbranch
+  fi
 }
 
 function git.setglobalignorefile() {
@@ -495,16 +498,51 @@ function git.isvalidcommitid() {
   git cat-file -t $commitId 2>/dev/null | grep -q commit
 }
 
+function git.copyfilesinlatestcommit() {
+  git.copyfilesincommit $(git.getlatestcommitid) "$@"
+}
+
+function __replaceinvalidfilenamecharacters() {
+  local filename="$1"
+  local replacementchar="$2"
+  if string.isemptyorblank "$replacementchar"
+  then
+    replacementchar="-"
+  fi
+
+  filename=$(string.simplereplace "$filename" " " "$replacementchar")
+  filename=$(string.simplereplace "$filename" "/" "$replacementchar")
+  filename=$(string.simplereplace "$filename" "\\" "$replacementchar")
+  filename=$(string.simplereplace "$filename" ":" "$replacementchar")
+  filename=$(string.simplereplace "$filename" "\*" "$replacementchar")
+  filename=$(string.simplereplace "$filename" "\?" "$replacementchar")
+  filename=$(string.simplereplace "$filename" "\"" "$replacementchar")
+  filename=$(string.simplereplace "$filename" "<" "$replacementchar")
+  filename=$(string.simplereplace "$filename" ">" "$replacementchar")
+  filename=$(string.simplereplace "$filename" "|" "$replacementchar")
+  filename=$(string.trim "$filename")
+  echo "$filename"
+}
+
 # Copies all the files in the given commit to the given output directory
 # by maintaining the exact folder structure for copying later
 function git.copyfilesincommit() {
   local commitID="$1"
   local rootDirectory="$2"
 
-  if ! git.isvalidcommitid "$commitID" || string.isemptyorblank "$rootDirectory"
+  if ! git.isvalidcommitid "$commitID"
   then
     echo "Syntax: git.copyfilesincommit <commitId> <rootDirectory>"
     return 1
+  fi
+
+  if string.isemptyorblank "$rootDirectory"
+  then
+    local commitMessageFirstLine="$(git log -1 --pretty=%B $commitID | head -n 1)"
+    commitMessageFirstLine=$(string.trim "$commitMessageFirstLine" 30)
+    commitMessageFirstLine=$(__replaceinvalidfilenamecharacters "$commitMessageFirstLine")
+    rootDirectory="$GIT_FILES_WITH_FOLDER_STRUCTURE_DIR/$commitMessageFirstLine-$commitID"
+    echo "No root directory provided, using $rootDirectory for writing files"
   fi
 
   if ! system.direxists "$rootDirectory"
@@ -529,6 +567,43 @@ function git.copyfilesincommit() {
 
   local totalFilesSuccessfullyCreated=$(string.trim $(system.countfilesrecursively "$rootDirectory"))
   echo "Total $totalFilesSuccessfullyCreated files from commit $commitID have been copied to $rootDirectory"
+}
+
+# Paste files from a source directory to the destination directory
+# maintaining the folder structure. If destination directory is not
+# provided, assumes newton project root directory.
+# The source and target directories are not copied themselves, only
+# their contents are.
+# CAUTION: Overwrites files in the destination directory if they
+# already exist.
+function git.pastefileswithfolderstructure() {
+  local sourceDirectory="$1"
+  local destinationDirectory="$2"
+
+  if string.isemptyorblank "$sourceDirectory" || ! system.direxists "$sourceDirectory"
+  then
+    print_error "Please provide a valid source directory containing files with folder structure."
+    return 1
+  fi
+
+  if string.isemptyorblank "$destinationDirectory" || ! system.direxists "$destinationDirectory"
+  then
+    # Assume newton project root directory
+    echo "Pasting files (overwrite enabled) maintaining file directory structure into $REPO_NEWTON directory"
+    destinationDirectory="$REPO_NEWTON"
+  fi
+
+  if git.hasUncommittedChanges
+  then
+    print_error "You have uncommitted changes in the current repository. Please commit or stash them before pasting files."
+    return 1
+  fi
+
+  # Copy files while preserving the directory structure
+  rsync -av --quiet "$sourceDirectory/" "$destinationDirectory/"
+
+  local totalFilesSuccessfullyCopied=$(string.trim $(system.countfilesrecursively "$sourceDirectory"))
+  echo "Total $totalFilesSuccessfullyCopied files from $sourceDirectory have been copied to $destinationDirectory"
 }
 
 # Function to find all branches that have changed a given file
