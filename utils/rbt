@@ -90,3 +90,16 @@ function rbt.applypatchfromreviewrequest() {
     rbt patch $reviewrequestid
   fi
 }
+
+# If a single or comma separated reviewer id is set (what you put in rbcommons reviewers list)
+# it will be auto populated in the created review requests.
+function rbt.setreviewers() {
+  local RBT_REVIEWERS="$1"
+
+  env.writevartodisk RBT_REVIEWERS
+}
+
+function rbt.getreviewers() {
+  local reviewers=$(env.readvarfromdisk RBT_REVIEWERS)
+  echo "$reviewers"
+}

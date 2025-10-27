@@ -577,8 +577,7 @@ function rbtpostfrombranch() {
     branchStr="--branch $CURRENT_RELEASE"
   fi
 
-  # To-Do : Handle --target-people <username,...> (reviewers)
-  local reviewers=$(env.readvarfromdisk RBT_REVIEWERS)
+  local reviewers=$(rbt.getreviewers)
   if ! string.isemptyorblank $reviewers
   then
     reviewers="--target-people ""$reviewers"
@@ -586,14 +585,6 @@ function rbtpostfrombranch() {
 
   echo "Calling rbt post --markdown -o $branchStr $bugNumberStr $reviewers $sourcebranch...HEAD"
   rbt post --markdown -o $branchStr $bugNumberStr $reviewers $sourcebranch...HEAD
-}
-
-# If a single or comma separated reviewer id is set (what you put in rbcommons reviewers list)
-# it will be auto populated in the created review requests.
-function setrbtreviewer() {
-  local RBT_REVIEWERS="$1"
-
-  env.writevartodisk RBT_REVIEWERS
 }
 
 
@@ -846,9 +837,15 @@ function createlsbreleasebranchfromlsbmastertopchange() {
     return
   fi
 
+  local newBranchName="$1"
+  if string.isemptyorblank $newBranchName
+  then
+    newBranchName="$(getnewbranchname $currentbranch $LSB_CURRENT_RELEASE)"
+  fi
+
   local topSHAId=$(git.getlatestcommitid)
   local currentbranch=$(git.getcurrentbranch)
-  checkoutfromlsbrelease $(getnewbranchname $currentbranch $LSB_CURRENT_RELEASE)
+  checkoutfromlsbrelease $newBranchName
   git cherry-pick $topSHAId
 }
 
@@ -1080,9 +1077,9 @@ function unsetignorebuildfarmforrbcommons() {
 }
 
 function mergetoreleasethenmaster() {
-  ensurenewtondirectory
   local reviewrequestid=$1
 
+  ensurenewtondirectory
   if git.hasUncommittedChanges
   then
     echo "There are uncommitted changes. Please fix before merging to release"
@@ -1092,23 +1089,32 @@ function mergetoreleasethenmaster() {
   # Check if accidentally calling this script on (lsb/) master/rel-* itself
   if git.isoneoftheofficialbranches
   then
-    echo "Wrong branch. You should call it on your feature branch and not on one of the official branches"
+    echo "Wrong branch. You should call it on your feature branch and not on one of the official branches like lsb/master, lsb/release, master or rel-*"
     return 1
   fi
 
   local currentbranch=$(git.getcurrentbranch)
 
-  if ! (string.endswith $currentbranch "-rel-[0-9].[0-9]*")
+  if ! string.endswith $currentbranch "-rel-[0-9].[0-9]*"
   then
     if git.branchislsbmasterbased
     then
-      # Try automatically creating lsb/release based branch of it with the top commit.
-      git log -n 3
-      waitforenterkey "lsb/master based branch found. Press enter if all of your changes are in one top commit, and ready to create lsb/release branch off it (Otherwise press Ctrl+C and try again later)."
-      createlsbreleasebranchfromlsbmastertopchange
-      waitforenterkey "Press enter if the lsb/release branch creation and cherry picking from source branch commit was successful, otherwise either resolve merge issues in another tab before pressing enter here, or press Ctrl+C to terminate operation and do it all manually."
-      currentbranch=$(git.getcurrentbranch)
-      echo "Created branch $currentbranch from the lsb/master based branch with the same commit"
+      local newBranchName="$(getnewbranchname $currentbranch $LSB_CURRENT_RELEASE)"
+      if git.localbranchexists "$newBranchName"
+      then
+        echo "You are on an lsb/master based branch, but the release based branch $newBranchName already exists. Please check out that and run this function again"
+        return 1
+      else
+        # Try automatically creating lsb/release based branch of it with the top commit.
+        echo "The three latest commits for your reference:"
+        git log -n 3 --pretty=format:"%h | %an | %ad | %s"
+        waitforenterkey "lsb/master based branch found. Press Enter if all of your changes (shown above) are in one top commit, and ready to create lsb/release branch off it (Otherwise press Ctrl+C and try again later)."
+        echo "Creating lsb/release based branch $newBranchName from lsb/master based branch $currentbranch"
+        createlsbreleasebranchfromlsbmastertopchange "$newBranchName"
+        waitforenterkey "Press enter if the lsb/release branch creation and cherry picking from source branch commit was successful, otherwise either resolve merge issues in another tab before pressing enter here, or press Ctrl+C to terminate operation and do it all manually."
+        currentbranch=$(git.getcurrentbranch)
+        echo "Created branch $currentbranch from the lsb/master based branch with the same commit"
+      fi
     else
       echo "Branch does not end with a -rel-x.y* pattern. Please check and run manually"
       return 1
@@ -1120,7 +1126,7 @@ function mergetoreleasethenmaster() {
     reviewrequestid=$(rbt.getcurrentid $rbt_REVIEW_STATUS_APPROVED)
     if string.isemptyorblank $reviewrequestid || ! string.isnumber $reviewrequestid
     then
-      echo "Didn't find an approved review request for the branch, enter manually."
+      echo "Didn't find an approved review request for the branch, pass the review request number as an argument. Syntax: mergetoreleasethenmaster <review-request-id>"
       return 1
     else
       echo "Automatically found approved review request id: $reviewrequestid for current branch, merging with the same"
