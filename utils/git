@@ -216,6 +216,13 @@ function git.patchlatestcommit() {
 function git.patchcommit() {
   # Commit SHA1 id sent as argument. -1 tells git to patch only the last 1 commit.
   local commitId=$1
+
+  if ! git.isvalidcommitid "$commitId"
+  then
+    echo "Syntax: git.patchcommit <commitId> [message] [optionalFlag]"
+    return 1
+  fi
+
   local message="$2"
   local optionalFlag="$3"
   local path=$(git.getpatchfilepath "$message" "$optionalFlag")
@@ -496,6 +503,10 @@ function git.deletebranch() {
 function git.isvalidcommitid() {
   local commitId="$1"
   git cat-file -t $commitId 2>/dev/null | grep -q commit
+}
+
+function git.isinagitrepo() {
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1
 }
 
 function git.copyfilesinlatestcommit() {
