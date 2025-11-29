@@ -200,6 +200,28 @@ function restartbelcad() {
 function quickserve() {
   ensurenewtondirectory
   nohup rex start > .newtonwebpacklog 2>&1 &
+
+  local quickserveport=$(getquickserveport)
+  echo "quickserve started, waiting for it to be ready to serve the page on $quickserveport"
+
+  # while ! nc -z "127.0.0.1" $quickserveport; do
+  #   sleep 1
+  # done
+
+  while [ ! -f .newtonwebpacklog ]
+  do
+    sleep 1
+  done
+
+  echo "Waiting for webpack to compile successfully..."
+  tail -n 0 -F .newtonwebpacklog | while read line
+  do
+    echo "$line"
+    if echo "$line" | grep -q "compiled successfully in"; then
+      echo "Webpack compiled successfully."
+      break
+    fi
+  done
 }
 
 function restartquickserve() {

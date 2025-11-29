@@ -246,15 +246,14 @@ function env.runningServices() {
 # Callback used by general.forEachKeyValue to print status lines
 # Receives two args: key (service name before colon) and value (after colon)
 function __printservicestatus() {
-  local key="$1"
-  local _value="$2" # unused
+  local serviceName="$1" #Key
+  local _value="$2" # Value, unused
 
   local envNum
   envNum=$(env.getnumber)
   local suffix=""
   suffix=$(getEnvServiceSuffix)
 
-  local serviceName="$key"
   if string.contains "$serviceName" "<envsuffix>"
   then
     serviceName=$(string.simplereplace "$serviceName" "<envsuffix>" "$suffix")
@@ -267,6 +266,20 @@ function __printservicestatus() {
   fi
 
   echo "${serviceName}:${running}"
+}
+
+function __printNonSharedServiceStatus() {
+  local serviceName="$1" #Key
+  local _value="$2" # Value, unused
+  if ! isASharedService "$serviceName"
+  then
+    __printservicestatus "$serviceName"
+  fi
+}
+
+function env.statusNonSharedServices() {
+  runningList=$(env.runningServices)
+  general.forEachKeyValue ALL_SERVICES_AND_COMMANDS __printNonSharedServiceStatus
 }
 
 

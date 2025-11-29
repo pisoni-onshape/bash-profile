@@ -41,6 +41,22 @@ function system.getcurrentdate() {
   fi
 }
 
+function system.getfilenamenoextensionfrompath() {
+  local filepath="$1"
+  local filename=""
+  filename=$(system.filenamefrompath "$filepath")
+  local nameonly="${filename%.*}"
+  echo "$nameonly"
+}
+
+function system.getfileextensiononlyfrompath() {
+  local filepath="$1"
+  local filename=""
+  filename=$(system.filenamefrompath "$filepath")
+  local ext="${filename##*.}"
+  echo "$ext"
+}
+
 function system.findfolder() {
   mdfind kind:folder "$1"
 }
@@ -169,9 +185,10 @@ function system.cleanfilecontents() {
 # Returns only the filename (with extension) contained
 # in the current path if it's a valid file path.
 function system.filenamefrompath() {
-  if system.fileexists "$1"
+  local filepath="$1"
+  if system.fileexists "$filepath"
   then
-    echo "$(basename $1)"
+    echo $(basename "$filepath")
   else
     echo ""
   fi
@@ -181,11 +198,12 @@ function system.filenamefrompath() {
 # if it's a path of the file, or
 # itself if it's already a directory
 function system.getdirectoryfrompath() {
-  if system.direxists "$1"
+  local path="$1"
+  if system.direxists "$path"
   then
-    echo "$1"
+    echo "$path"
   else
-    echo "$(dirname $1)"
+    echo $(dirname "$path")
   fi
 }
 

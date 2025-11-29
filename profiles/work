@@ -215,7 +215,7 @@ function importextractedfile() {
   local duration=$(($time2-$time1))
   echo "Time taken in restore: $duration seconds"
   say "Document import complete"
-  if general.inputyesorno "Do you want to open the document now?"
+  if general.inputyesorno "Do you want to open the document now"
   then
     local documentId=$(echo "$filePath" | sed 's/.*new-\([^-]*\)-.*/\1/')
     if string.isemptyorblank "$documentId"
