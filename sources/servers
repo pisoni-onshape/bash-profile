@@ -311,7 +311,20 @@ function setserveonlan() {
   else
     export NEWTON_WEBPACK_SERVE_ON_LAN=1
   fi
-  restartquickserve
+
+  if general.inputyesorno "Webpack will now serve on LAN. Do you want to start quickserve now/restart it if already running"
+  then
+    if isquickserverunning
+    then
+      echo "Restarting quickserve to apply the new setting"
+      restartquickserve
+    else
+      echo "Starting quickserve to apply the new setting"
+      quickserve
+    fi
+  else
+    echo "Webpack will serve on LAN when you start quickserve next time."
+  fi
 }
 
 
