@@ -322,3 +322,10 @@ function env.statusall() {
 
   general.forEachKeyValue ALL_SERVICES_AND_COMMANDS __printservicestatus
 }
+
+
+alias startenv='env.start'
+alias checkenv='env.check'
+alias stopenv='env.stopthis'
+alias restartenv='env.restart'
+alias fixenv='env.fix'
