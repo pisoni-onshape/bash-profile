@@ -82,6 +82,8 @@ function general.forEachKeyValue() {
         return 2
     fi
 
+    shift 2                # remove first two arguments, rest are passed to callback
+
     # Copy the named array into a local array
     eval "local arr=(\"\${${arr_name}[@]}\")"
 
@@ -94,7 +96,7 @@ function general.forEachKeyValue() {
             local key=$(string.trim "$kv")
             local value=""
         fi
-        "$callback" "$key" "$value"
+        "$callback" "$key" "$value" "$@"
     done
 }
 
@@ -108,12 +110,14 @@ function general.forEachArrayItem() {
       return 1
     fi
 
+    shift 2                # remove first two arguments, rest are passed to callback
+
     # Copy the named array into a local array
     eval "local arr=(\"\${${arr_name}[@]}\")"
 
     # Iterate and split on the first colon
     for item in "${arr[@]}"; do
-        "$callback" "$item"
+        "$callback" "$item" "$@"
     done
 }
 

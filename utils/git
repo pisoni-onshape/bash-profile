@@ -423,18 +423,20 @@ function git.applypatch() {
   git apply --reject --whitespace=fix "$1" # patch file path
 }
 
-# Pass the remote name : e.g. "origin" / others.
+# Pass the upstream branch name, followed by remoteName if
+# other than "origin"
 function git.setupstream() {
-  local remoteName="$1"
-  local branchNameToPush="$2"
-  if string.isemptyorblank $remoteName
-  then
-    remoteName="origin"
-  fi
+  local branchNameToPush="$1"
+  local remoteName="$2"
 
   if string.isemptyorblank $branchNameToPush
   then
     branchNameToPush="$(git.getcurrentbranch)"
+  fi
+
+  if string.isemptyorblank $remoteName
+  then
+    remoteName="origin"
   fi
 
   local newUpstream="$remoteName"/"$branchNameToPush"

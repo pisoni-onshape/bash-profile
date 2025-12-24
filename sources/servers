@@ -109,6 +109,12 @@ function getquickserveport() {
 function getquickservepid() {
   local port
   port=$(getquickserveport)
+  if string.isemptyorblank $port
+  then
+    echo ""
+    return 1
+  fi
+
   local searchString="node.*127\.0\.0\.1:$port.*LISTEN"
 
   local pid
