@@ -108,6 +108,62 @@ function declareAllServices() {
   )
 }
 
+function getStartFunctionNameForService() {
+  local inputServiceName="$1"
+  
+  # Ensure the array is declared
+  declareAllServices
+  
+  # Loop over all entries in ALL_SERVICES_AND_COMMANDS
+  for entry in "${ALL_SERVICES_AND_COMMANDS[@]}"; do
+    # Extract key (before colon) and value (after colon)
+    local key="${entry%%:*}"
+    local value="${entry#*:}"
+    
+    # Determine the full service name
+    local fullServiceName
+    if string.contains "$key" "<envsuffix>"; then
+      # Extract base service name (before <envsuffix>)
+      local baseServiceName="${key%%<envsuffix>}"
+      # getEnvServiceSuffix returns the full service name with suffix
+      fullServiceName=$(getEnvServiceSuffix "$baseServiceName")
+    else
+      # For shared services, the key itself is the full service name
+      fullServiceName="$key"
+    fi
+    
+    # If the full service name matches the input, extract and return the start function
+    if string.equals "$fullServiceName" "$inputServiceName"; then
+      # Split value on comma and get the first part (start function)
+      local startFunction="${value%%,*}"
+      # Trim spaces and return
+      echo "$(string.trim "$startFunction")"
+      return 0
+    fi
+  done
+  
+  # Service not found
+  return 1
+}
+
+function callStartFunctionForService() {
+  local inputServiceName="$1"
+  
+  # Get the start function name for the service
+  local startFunctionName
+  startFunctionName=$(getStartFunctionNameForService "$inputServiceName")
+  
+  # Check if the function is defined
+  if ! isFunctionDefined "$startFunctionName"
+  then
+    echo "Error: Could not find start function for service '$inputServiceName'" >&2
+    return 1
+  fi
+  
+  # Call the start function
+  "$startFunctionName"
+}
+
 function declareEssentialServices() {
   # This if else is in this form mostly because I don't know how to dynamically add
   # just one element in the array :), but it's ok for now.
