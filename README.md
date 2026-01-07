@@ -17,7 +17,7 @@ Next, in the macOS Terminal, go to Settings -> Profiles tab, and create a new pr
 2. Go to the 'Shell' tab and check 'Run command' under **Startup**
 3. Write the following in the textbox for the command to run at startup:
 ```
-cd ~/repos/newton && ensurenewtondirectory
+cd ~/repos/newton && initializenewton
 ```
 This is what it might look like:
 
@@ -26,9 +26,9 @@ This is what it might look like:
 4. Check 'Run inside shell' if it's not
 5. That's all. If you want to use multi-environment (newton2, newton3 etc.), just create more Terminal Profiles like above, name them accordingly and put the correct directory at startup. For example, for newton2:
 ```
-cd ~/repos/newton2 && ensurenewtondirectory
+cd ~/repos/newton2 && initializenewton
 ```
-(The command `ensurenewtondirectory` remains the same, it figures out which environment it is and initializes that)
+(The command `initializenewton` remains the same, it figures out which environment it is and initializes that)
 
 ## How to use
 When you do the setup as given above, as soon as you open your 'Newton' Terminal it automatically sets the current directory to your newton directory and does `source buildenv.bash` for you, and you should be ready to go. There are many utility functions to use in these scripts. e.g.,

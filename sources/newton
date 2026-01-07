@@ -61,16 +61,21 @@ function exportAfterInitVariables() {
   export GIT_MERGE_AUTOEDIT=no
   export RETRIEVAL_REPORT_WRITE_TO_DISK=1
   export PATH="$HOME/Library/Python/3.8/bin:${PATH}" # Mostly so that 'rbt' works.
-  export btserverwebpath="$STAGE/WebSvc/logs/btserver.log"
-  export btservermodpath="$STAGE/ModelingSvc/logs/btserver.log"
-  export timerlogwebpath="$STAGE/WebSvc/logs/timer.log"
-  export timerlogmodpath="$STAGE/ModelingSvc/logs/timer.log"
-  export upgradelogwebpath="$STAGE/WebSvc/logs/upgrade.log"
-  # Sometimes, for some reason the logs go in the logsDir_IS_UNDEFINED directory
-  # No one seems to know the exact reason at the time of writing this.
-  export undefinedbtserverwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/btserver.log"
-  export undefinedbtservermodpath="$STAGE/ModelingSvc/logsDir_IS_UNDEFINED/btserver.log"
-  export undefinedtimerlogwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/timer.log"
+
+  if string.isnotemptyorblank "$STAGE"
+  then
+    export btserverwebpath="$STAGE/WebSvc/logs/btserver.log"
+    export btservermodpath="$STAGE/ModelingSvc/logs/btserver.log"
+    export timerlogwebpath="$STAGE/WebSvc/logs/timer.log"
+    export timerlogmodpath="$STAGE/ModelingSvc/logs/timer.log"
+    export upgradelogwebpath="$STAGE/WebSvc/logs/upgrade.log"
+    # Sometimes, for some reason the logs go in the logsDir_IS_UNDEFINED directory
+    # No one seems to know the exact reason at the time of writing this.
+    export undefinedbtserverwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/btserver.log"
+    export undefinedbtservermodpath="$STAGE/ModelingSvc/logsDir_IS_UNDEFINED/btserver.log"
+    export undefinedtimerlogwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/timer.log"
+  fi
+
   export DEFAULT_GRUNT_SERVE_PORT="8000"
   export DEFAULT_ONSHAPE_PORT="8400"
 
@@ -87,8 +92,14 @@ function exportAfterInitVariables() {
   fi
 }
 
-function __setupNewtonInternal() {
-  source buildenv.bash
+function __initializeNewtonInternal() {
+  local mode="$1"
+  # Do not source buildenv.bash in 'light' mode.
+  if string.isemptyorblank "$mode" || ! string.equals "$mode" "light"
+  then
+    source buildenv.bash
+  fi
+
   exportAfterInitVariables
   platformspecificsettings
 }
@@ -96,6 +107,8 @@ function __setupNewtonInternal() {
 # Ensure we're in the newton directory
 # or one of its subdirectories.
 function ensurenewtondirectory() {
+  local mode="$1"
+
   if string.isemptyorblank "$REPO_NEWTON"
   then
     # Should be the case when we've just started the Terminal.
@@ -111,7 +124,7 @@ function ensurenewtondirectory() {
 
     # now when a newton like directory is ensured,
     # call the buildenv.bash script
-    __setupNewtonInternal
+    __initializeNewtonInternal "$mode"
   else
     if ! string.contains "$(pwd)" "$REPO_NEWTON"
     then
@@ -123,12 +136,16 @@ function ensurenewtondirectory() {
     then
       # In some cases we can have REPO_NEWTON etc. defined, but the build environment
       # is still not initialized. We need to call buildenv.bash in this case too.
-      __setupNewtonInternal
+      __initializeNewtonInternal "$mode"
     fi
   fi
 }
 
 # Terminal Shell should call this function to setup.
-function setupnewton() {
+function initializenewton() {
   ensurenewtondirectory
+}
+
+function initializenewtonlight() {
+  ensurenewtondirectory "light"
 }
