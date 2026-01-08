@@ -24,9 +24,13 @@ function system.appbundleid() {
 }
 
 function system.private.getcurrentdatehyphenated() {
-  local curdate=$(date +'%Y-%m-%d-%T')
+  # Use explicit format compatible with both BSD (macOS) and GNU date
+  # Use %H:%M:%S instead of %T for better compatibility
+  local curdate
+  curdate=$(date '+%Y-%m-%d-%H:%M:%S' 2>/dev/null)
+  # Replace colons with hyphens for filename compatibility
   curdate="${curdate//:/-}"
-  echo $curdate
+  echo "$curdate"
 }
 
 # Pass the character you want as the separator. If not given

@@ -33,6 +33,10 @@ export USER_LOCAL_PROFILE=$BASH_PROFILE_PATH/profiles/.personal
 system.createfileifdoesnotexist "$USER_LOCAL_PROFILE"
 source $USER_LOCAL_PROFILE
 
+# Global newton settings file (all envs)
+export BASH_PROFILE_SETTINGS_PATH="$BASH_PROFILE_PATH/settings"
+system.createfileifdoesnotexist "$BASH_PROFILE_SETTINGS_PATH"
+
 alias refreshprofile="source $BASH_PROFILE_PATH/.profile"
 alias refreshall='refreshprofile'
 alias refreshpersonal="source $USER_LOCAL_PROFILE"

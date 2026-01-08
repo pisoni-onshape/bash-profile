@@ -14,7 +14,8 @@ function env.defined() {
 
 importutility system
 
-export ENV_CONFIG_ROOT_PATH="$BASH_PROFILE_PATH/config"
+# Will be kept in the root directory of the environment.
+export ENV_CONFIG_FILENAME=".newton-env-config"
 
 function env.getnumber() {
   local hostNum=$(env.getproperty HOST_PROPERTIES_ENVNUM)
