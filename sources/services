@@ -79,15 +79,18 @@ function isASharedService() {
   string.equals "$serviceName" "zookeeper" || string.equals "$serviceName" "https" || string.equals "$serviceName" "mock-services"
 }
 
-function getEnvServiceSuffix() {
+# Get only the suffix if an argument is not provided
+# otherwise return the full service name with suffix
+function getEnvServiceSuffixOrFullServiceName() {
   local serviceName="$1"
   local envNum=$(env.getnumber)
   if isASharedService "$serviceName" || string.equals "$envNum" "0"
   then
-    echo ""
+    echo "$serviceName"
   else
     echo "${serviceName}_myenv${envNum}"
   fi
+  return 0
 }
 
 function declareAllServices() {
@@ -125,8 +128,9 @@ function getStartFunctionNameForService() {
     if string.contains "$key" "<envsuffix>"; then
       # Extract base service name (before <envsuffix>)
       local baseServiceName="${key%%<envsuffix>}"
-      # getEnvServiceSuffix returns the full service name with suffix
-      fullServiceName=$(getEnvServiceSuffix "$baseServiceName")
+      # getEnvServiceSuffixOrFullServiceName returns the full service name with suffix
+      # when the base service name is provided.
+      fullServiceName=$(getEnvServiceSuffixOrFullServiceName "$baseServiceName")
     else
       # For shared services, the key itself is the full service name
       fullServiceName="$key"

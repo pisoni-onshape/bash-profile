@@ -252,7 +252,7 @@ function __printservicestatus() {
   local envNum
   envNum=$(env.getnumber)
   local suffix=""
-  suffix=$(getEnvServiceSuffix)
+  suffix=$(getEnvServiceSuffixOrFullServiceName "") #Empty argument to only get suffix
 
   if string.contains "$serviceName" "<envsuffix>"
   then
