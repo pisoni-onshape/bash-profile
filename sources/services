@@ -8,10 +8,8 @@ source "$BASH_PROFILE_PATH/utils/system"
 source "$BASH_PROFILE_PATH/utils/string"
 # shellcheck source=../utils/env
 source "$BASH_PROFILE_PATH/utils/env"
-
-# sources
-# shellcheck source=./docker
-source "$BASH_PROFILE_PATH/sources/docker"
+# shellcheck source=../utils/docker
+source "$BASH_PROFILE_PATH/utils/docker"
 
 
 # Start required services for the Onshape server
@@ -35,27 +33,6 @@ function stopServices() {
   btEnvDown
 }
 
-function setdebuggingdrawings() {
-  local DEBUGGING_DRAWINGS=$1
-  if string.isemptyorblank "$DEBUGGING_DRAWINGS"
-  then
-    DEBUGGING_DRAWINGS="true"
-  fi
-
-  if string.equals "$DEBUGGING_DRAWINGS" "true"
-  then
-    enableDrawingsExports
-  fi
-
-  env.writevartodisk DEBUGGING_DRAWINGS
-}
-
-
-function isdebuggingdrawings() {
-  local DEBUGGING_DRAWINGS
-  DEBUGGING_DRAWINGS=$(env.readvarfromdisk DEBUGGING_DRAWINGS)
-  string.equals "$DEBUGGING_DRAWINGS" "true"
-}
 
 # Stop all services for 'this' environment
 # something which stopServices doesn't.
@@ -68,7 +45,7 @@ function stopallservices() {
   stopZookeeperIfRunning
   stopDockerContainer dns-proxy
   stopDockerContainer "$(getContainerName https)"
-  if isdebuggingdrawings
+  if settings.isdebuggingdrawings
   then
     stopDrawingDocker
   fi
@@ -113,16 +90,16 @@ function declareAllServices() {
 
 function getStartFunctionNameForService() {
   local inputServiceName="$1"
-  
+
   # Ensure the array is declared
   declareAllServices
-  
+
   # Loop over all entries in ALL_SERVICES_AND_COMMANDS
   for entry in "${ALL_SERVICES_AND_COMMANDS[@]}"; do
     # Extract key (before colon) and value (after colon)
     local key="${entry%%:*}"
     local value="${entry#*:}"
-    
+
     # Determine the full service name
     local fullServiceName
     if string.contains "$key" "<envsuffix>"; then
@@ -135,7 +112,7 @@ function getStartFunctionNameForService() {
       # For shared services, the key itself is the full service name
       fullServiceName="$key"
     fi
-    
+
     # If the full service name matches the input, extract and return the start function
     if string.equals "$fullServiceName" "$inputServiceName"; then
       # Split value on comma and get the first part (start function)
@@ -145,25 +122,25 @@ function getStartFunctionNameForService() {
       return 0
     fi
   done
-  
+
   # Service not found
   return 1
 }
 
 function callStartFunctionForService() {
   local inputServiceName="$1"
-  
+
   # Get the start function name for the service
   local startFunctionName
   startFunctionName=$(getStartFunctionNameForService "$inputServiceName")
-  
+
   # Check if the function is defined
   if ! isFunctionDefined "$startFunctionName"
   then
     echo "Error: Could not find start function for service '$inputServiceName'" >&2
     return 1
   fi
-  
+
   # Call the start function
   "$startFunctionName"
 }
@@ -172,7 +149,7 @@ function declareEssentialServices() {
   # This if else is in this form mostly because I don't know how to dynamically add
   # just one element in the array :), but it's ok for now.
   ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod: startMongod" "rabbitmq: startRabbitMQServer")
-  if isdebuggingdrawings
+  if settings.isdebuggingdrawings
   then
     ESSENTIAL_SERVICES_AND_COMMANDS=("memcached: startMemcache" "mongod: startMongod" "rabbitmq: startRabbitMQServer" "xenon: startDrawingDocker")
   fi
@@ -296,6 +273,11 @@ function fixessentialservices() {
 
 
 function isdrawingservicerunning() {
+  if string.isemptyorblank "${TOOLS_BASH}"
+  then
+    return 1
+  fi
+
   source "${TOOLS_BASH}/lib/docker/isDrawingDockerRunning.bash"
   isDrawingDockerRunning
 }

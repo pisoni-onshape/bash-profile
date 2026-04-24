@@ -63,6 +63,7 @@ importutility git
 importutility rbt
 importutility general
 importutility env
+importutility docker
 
 
 # Import sources
@@ -70,8 +71,6 @@ importutility env
 source "$BASH_PROFILE_PATH/sources/env"
 # shellcheck source=../sources/services
 source "$BASH_PROFILE_PATH/sources/services"
-# shellcheck source=../sources/docker
-source "$BASH_PROFILE_PATH/sources/docker"
 # shellcheck source=../sources/servers
 source "$BASH_PROFILE_PATH/sources/servers"
 # shellcheck source=../sources/newton
@@ -81,9 +80,9 @@ source "$BASH_PROFILE_PATH/sources/newton"
 function setclionbuild() {
   if string.isemptyorblank "$1" || string.equals "$1" "true"
   then
-    local REMEMBER_CLION_BUILD="true"
+    local USE_CLION_INSTEAD_OF_XCODE="true"
     echo "Will choose CLION for building cpp code"
-    env.writevartodisk REMEMBER_CLION_BUILD
+    env.writevartodisk USE_CLION_INSTEAD_OF_XCODE
     platformspecificsettings
   else
     resetclionbuild
@@ -92,7 +91,7 @@ function setclionbuild() {
 
 function resetclionbuild() {
   echo "Removing clion build override, your platform specific default will be used"
-  env.removevarfromdisk REMEMBER_CLION_BUILD
+  env.removevarfromdisk USE_CLION_INSTEAD_OF_XCODE
   platformspecificsettings
 }
 
@@ -583,8 +582,8 @@ function rbtpostfrombranch() {
     reviewers="--target-people ""$reviewers"
   fi
 
-  echo "Calling rbt post --markdown -o $branchStr $bugNumberStr $reviewers $sourcebranch...HEAD"
-  rbt post --markdown -o $branchStr $bugNumberStr $reviewers $sourcebranch...HEAD
+  echo "Calling rbt post --markdown -S -o $branchStr $bugNumberStr $reviewers $sourcebranch...HEAD"
+  rbt post --markdown -S -o $branchStr $bugNumberStr $reviewers $sourcebranch...HEAD
 }
 
 
@@ -754,15 +753,45 @@ function playfinishsound() {
   fi
 }
 
-function isJSBuildActive() {
-  ! string.equals $(getBuildProp "SKIP_JSLIB") "1"
+function onsuccessfulbuild() {
+  if system.functionexists personal.onsuccessfulbuild_beforeserversstart
+  then
+    personal.onsuccessfulbuild_beforeserversstart
+  fi
+
+  if settings.isrunselectedserversonsuccessfulbuild
+  then
+    startservers
+  else
+    # Still allow a developer to define their own behavior.
+    if system.functionexists personal.onsuccessfulbuild
+    then
+      personal.onsuccessfulbuild
+    fi
+  fi
+
+  if system.functionexists personal.onsuccessfulbuild_aftereserversstart
+  then
+    personal.onsuccessfulbuild_aftereserversstart
+  fi
+
+  #ToDo: Change to getcurrentonshapepath.
+  if settings.isautolaunchingonsuccessfulbuild
+  then
+    launchonshape
+  fi
 }
+
+function launchonshape() {
+    settings.openwithdefaultbrowser "$(getcurrentonshapepath)"
+}
+
 
 function buildgradleparallel() {
   # Not being in newton directory has caused problems too many times while building
   ensurenewtondirectory
 
-  if isJSBuildActive && isquickserverunning
+  if settings.isbuildingjs && isquickserverunning
   then
     # Stop webpack server if already running
     # because the build process would start a few
@@ -776,24 +805,51 @@ function buildgradleparallel() {
     startServices # Will ensure docker and services run
   fi
 
-  echo "Calling gradle --parallel $@"
+  local runBtUpgradeString=""
+  if ! settings.isrunningbtupgrade
+  then
+    runBtUpgradeString="-x runBtUpgrade"
+  fi
+
+  # Skip string only shown for message.
+  local skipString=""
+  if ! settings.isbuildingcpp
+  then
+    skipString="$skipString skipping cpp"
+  fi
+
+  if ! settings.isbuildingjava
+  then
+    skipString="$skipString skipping java"
+  fi
+
+  if ! settings.isbuildingjs
+  then
+    skipString="$skipString skipping js"
+  fi
+
+  if string.isnotemptyorblank "$skipString"
+  then
+    skipString=" ($(string.trim "$skipString"))"
+  fi
+
+  local args=$(string.trim "$runBtUpgradeString --parallel $@")
+
+  echo "Calling gradle $args$skipString"
   # Start the actual build now.
-  gradle --parallel "$@"
+  gradle $args
 
   if system.waslastcommandsuccessful
   then
     playfinishsound "Build successful"
-    # If the build was successful, and a handler is defined, call it now.
-    if system.functionexists onsuccessfulbuild
-    then
-      onsuccessfulbuild & >/dev/null # Fire the onsuccessfulbuild function async.
-    fi
+    onsuccessfulbuild
     return 0
   else
     playfinishsound "Build failed"
     return 1
   fi
 }
+
 
 # There's no reason to keep merged branches
 # but we can keep for a few days just for reference purposes
@@ -1124,9 +1180,15 @@ function mergetoreleasethenmaster() {
   if string.isemptyorblank $reviewrequestid
   then
     reviewrequestid=$(rbt.getcurrentid $rbt_REVIEW_STATUS_APPROVED)
-    if string.isemptyorblank $reviewrequestid || ! string.isnumber $reviewrequestid
+    if ! system.waslastcommandsuccessful
     then
-      echo "Didn't find an approved review request for the branch, pass the review request number as an argument. Syntax: mergetoreleasethenmaster <review-request-id>"
+      print_error "Failed to fetch review request id. Please check if rbt is installed and configured correctly."
+      return 1
+    fi
+
+    if string.isemptyorblank "$reviewrequestid" || ! string.isnumber "$reviewrequestid"
+    then
+      print_error "Didn't find an approved review request for the branch, ensure the review request is in approved state (not a draft), or pass the review request number as an argument. Syntax: mergetoreleasethenmaster <review-request-id>"
       return 1
     else
       echo "Automatically found approved review request id: $reviewrequestid for current branch, merging with the same"
@@ -1233,7 +1295,8 @@ function buildjsonly() {
     #  that for that you'd either buildjava, OR generate serializables separately
     # using the `genser` command
     export SKIP_SERIALIZABLES=1
-    buildgradleparallel -x runBtUpgrade $@
+    settings.setrunningbtupgrade "false"
+    buildgradleparallel $@
     local returnvalue=$?
     unset SKIP_CPP
     unset SKIP_JAVA
@@ -1247,7 +1310,8 @@ function buildcpponly() {
     export SKIP_JSLIB=1
     export SKIP_JAVA=1
     export SKIP_SERIALIZABLES=1
-    buildgradleparallel -x runBtUpgrade $@
+    settings.setrunningbtupgrade "false"
+    buildgradleparallel $@
     local returnvalue=$?
     unset SKIP_JSLIB
     unset SKIP_JAVA
@@ -1259,7 +1323,7 @@ function buildcpponly() {
 function buildjavaandjsonly() {
     export SKIP_DRAWING=1
     export SKIP_CPP=1
-    buildgradleparallel $@
+    buildgradleparallel "$@"
     local returnvalue=$?
     unset SKIP_CPP
     unset SKIP_DRAWING
@@ -1278,11 +1342,7 @@ function grdlbuildjavaandjsonly() {
   if system.waslastcommandsuccessful
   then
     playfinishsound "Build successful"
-    # If the build was successful, and a handler is defined, call it now.
-    if system.functionexists onsuccessfulbuild
-    then
-      onsuccessfulbuild & >/dev/null # Fire the onsuccessfulbuild function async.
-    fi
+    onsuccessfulbuild
     return 0
   else
     playfinishsound "Build failed"
@@ -1375,6 +1435,27 @@ function playtest() {
   # other flags:
   play $1 --verbose --flags=fastFail --target="$(getdefaultonshapepath)"
 }
+
+export PLAYTEST_SEARCH_DIRS="$REPO_NEWTON/project/web/woolsthorpe/test $REPO_NEWTON/test"
+
+# Tab completion function for playtest
+# Searches for files matching *Spec.js pattern and suggests basename without .js extension
+_playtest_completion() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  local search_dirs="${PLAYTEST_SEARCH_DIRS:-.}"  # Default to current dir, customizable via env var
+  
+  # Find all *Spec.js files (case-insensitive), get basename, remove .js extension
+  local specs=$(find $search_dirs -type f -iname "*Spec.js" 2>/dev/null | \
+    xargs -n1 basename 2>/dev/null | \
+    sed 's/\.js$//' | \
+    sort -u)
+  
+  # Filter matches based on current input (case-insensitive)
+  COMPREPLY=($(compgen -W "${specs}" -- "${cur}"))
+}
+
+# Register the completion function for playtest
+complete -F _playtest_completion playtest
 
 function pushtos3() {
   # Put a timestamp to the branch name and remove hyphen after bel from branch name
@@ -1575,7 +1656,7 @@ alias generateserializables='grunt generateSerializables'
 alias genser='grunt generateSerializables'
 alias gitlistskipignoredfiles='git ls-files -v . | grep ^S'
 alias gruntQuickServe='grunt start'
-alias gruntserveonlan='setserveonlan'
+alias gruntserveonlan='settings.setserveonlan'
 alias inteli='intellij'
 alias intellij='idea' #Jetbrains Toolbox generates the script 'idea' for version dependent IntelliJ IDEA
 alias jira='openbug'
@@ -1610,9 +1691,9 @@ alias ptortest='playtest'
 # alias rebasemaster='pullmerge master --rebase'
 alias serial='grunt generateSerializables'
 alias serialize='grunt generateSerializables'
-alias serveonlan='setserveonlan'
+alias serveonlan='gruntserveonlan'
 alias setisreverting='setreverting'
-alias setdebugdrawings='setdebuggingdrawings'
+alias setdebugdrawings='settings.setdebuggingdrawings'
 alias sshjumpbox="ssh -X $USER@jumpbox-primary.dev.onshape.com"
 alias startquickserve='quickserve'
 alias starttimerdisplay='runTimerDisplay'

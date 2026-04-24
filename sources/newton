@@ -12,29 +12,54 @@ source "$BASH_PROFILE_PATH/utils/env"
 
 # shellcheck source=./services
 source "$BASH_PROFILE_PATH/sources/services"
+# shellcheck source=./settings-provider
+source "$BASH_PROFILE_PATH/sources/settings-provider"
 
 
+# Test if the given directory is a valid newton directory
+# (e.g. of the format $HOME/repos/newton[0-9]*)
+function isavalidnewtondirectory() {
+  local directorypath="$1"
+  if string.isemptyorblank "$directorypath"
+  then
+    directorypath="$(pwd)"
+  fi
 
-# Check if the current directory is either
-# 'newton' or newton<n> where n is a number
-function dirismultienvnewton() {
-  local regexNewtonLike='^newton$|^newton[1-9][0-9]*$'
-  [[ $1 =~ $regexNewtonLike ]]
-}
+  local directoryCanonicalPath=""
+  directoryCanonicalPath="$(system.getcanonicalpath "$directorypath")"
 
-
-function enableDrawingsExports() {
-  export ENABLE_THUMBNAIL_SERVICE=1
-  export START_RENDERER_IN_MAIN_THREAD=1
-  # disable if debugging thumbnails.
-  export BTI_BLOCK_THUMBNAIL_CPP_SERVER_POOL=1
+  if string.contains "$directoryCanonicalPath" "$(settings.getbaserepopath)"
+  then
+    local dirname=""
+    dirname="$(system.dirnamefrompath "$directorypath")"
+    if string.matchesRegex "$dirname" "^newton$|^newton[1-9][0-9]*$"
+    then
+      if calledfromterminal
+      then
+        print_success "Yes"
+      fi
+      return 0
+    else
+      if calledfromterminal
+      then
+        print_error "No"
+      fi
+      return 1
+    fi
+  else
+    if calledfromterminal
+    then
+      print_error "No"
+    fi
+    return 1
+  fi
 }
 
 
 # Set CPP builder according to the platform
 function platformspecificsettings() {
   local useclion
-  useclion=$(env.readvarfromdisk REMEMBER_CLION_BUILD)
+  useclion=$(env.readvarfromdisk USE_CLION_INSTEAD_OF_XCODE)
   if system.ismacos && ! string.equals "$useclion" "true"
   then
     echo "Using XCODEBUILD by default"
@@ -76,19 +101,27 @@ function exportAfterInitVariables() {
     export undefinedtimerlogwebpath="$STAGE/WebSvc/logsDir_IS_UNDEFINED/timer.log"
   fi
 
-  export DEFAULT_GRUNT_SERVE_PORT="8000"
-  export DEFAULT_ONSHAPE_PORT="8400"
+  local defaultGruntServePort=$(env.getproperty DEFAULT_GRUNT_SERVE_PORT "8000")
+  local defaultOnshapePort=$(env.getproperty DEFAULT_ONSHAPE_PORT "8400")
 
   # Set GRUNT_SERVE_PORT according to the env number
-  export GRUNT_SERVE_PORT=$((DEFAULT_GRUNT_SERVE_PORT+envNum))
-  export ONSHAPE_PORT=$((DEFAULT_ONSHAPE_PORT+envNum))
+  export GRUNT_SERVE_PORT=$((defaultGruntServePort+envNum))
+  export ONSHAPE_PORT=$((defaultOnshapePort+envNum))
 
   export CURRENT_BUILD_TOOLS_PATH="$ROOT_DIR"
   export JETTY_ARGS="jetty.ssl.port=$ONSHAPE_PORT"
 
-  if isdebuggingdrawings
+  if settings.isservingonlan
   then
-    enableDrawingsExports
+    echo "Serving webpack on LAN (call resetserveonlan to unset this persistent setting)"
+    export NEWTON_WEBPACK_SERVE_ON_LAN=1
+  else
+    unset NEWTON_WEBPACK_SERVE_ON_LAN
+  fi
+
+  if settings.isdebuggingdrawings
+  then
+    __setdrawingsexports "true"
   fi
 }
 
@@ -112,14 +145,12 @@ function ensurenewtondirectory() {
   if string.isemptyorblank "$REPO_NEWTON"
   then
     # Should be the case when we've just started the Terminal.
-    local currentdirname
-    currentdirname=$(system.dirnamefrompath "$(pwd)")
-    if ! dirismultienvnewton "$currentdirname"
+    if ! isavalidnewtondirectory "$(pwd)"
     then
       # $REPO_NEWTON is not set, and we are
       # also not in a newton/newton<n> like directory
       # assume newton '1'.
-      cd "$HOME/repos/newton" || exit
+      cd "$(system.getkeyvaluefromfile "$BASH_PROFILE_PATH/settings" "BASE_REPO_PATH")/newton" || exit
     fi
 
     # now when a newton like directory is ensured,

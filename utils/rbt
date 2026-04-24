@@ -28,26 +28,38 @@ function rbt.getcurrentid() {
 
   # convert multiline rbt status output to single line
   local rbtstatus=$(rbt status | tr '\n' ' ')
+  if ! system.waslastcommandsuccessful
+  then
+    print_error "Cannot fetch Review Request Id. rbt status command failed. Please check if rbt is installed and configured correctly. Output: $rbtstatus"
+    return 1
+  fi
+
+  if string.isemptyorblank "$rbtstatus" || string.contains "$rbtstatus" "An expected SSL error occurred" || ! string.contains "$rbtstatus" "Status"
+  then
+    print_error "Cannot fetch Review Request Id. rbt status command returned unexpected output. Output: $rbtstatus"
+    return 1
+  fi
+
   currentbranch=$(git.getcurrentbranch)
 
-case $statusString in
+  case $statusString in
 
-  $rbt_REVIEW_STATUS_APPROVED)
-    statusString='Ship It\!'
-    ;;
+    $rbt_REVIEW_STATUS_APPROVED)
+      statusString='Ship It\!'
+      ;;
 
-  $rbt_REVIEW_STATUS_PENDING)
-    statusString='Pending'
-    ;;
+    $rbt_REVIEW_STATUS_PENDING)
+      statusString='Pending'
+      ;;
 
-  $rbt_REVIEW_STATUS_ANY)
-    statusString=''
-    ;;
+    $rbt_REVIEW_STATUS_ANY)
+      statusString=''
+      ;;
 
-  *)
-    statusString=''
-    ;;
-esac
+    *)
+      statusString=''
+      ;;
+  esac
 
 
   # sed syntax : "s,search_string,replace_string,regex_flags" (most other characters allowed as separator instead of ,)
@@ -63,7 +75,8 @@ esac
     reviewrequestid=$(echo "$rbtstatus" | sed -En "s,.*$statusString[^|]+\| r\/([[:digit:]]+) [^|]+ \| $testbranch.*,\1,p")
   fi
 
-  echo $reviewrequestid
+  echo "$reviewrequestid"
+  return 0
 }
 
 # Open the last created review request associated with the branch (if any)

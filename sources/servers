@@ -7,17 +7,29 @@ source "$BASH_PROFILE_PATH/utils/system"
 source "$BASH_PROFILE_PATH/utils/string"
 # shellcheck source=../utils/env
 source "$BASH_PROFILE_PATH/utils/env"
+# shellcheck source=../utils/docker
+source "$BASH_PROFILE_PATH/utils/docker"
 
-# shellcheck source=./docker
-source "$BASH_PROFILE_PATH/sources/docker"
 # shellcheck source=./services
 source "$BASH_PROFILE_PATH/sources/services"
 # shellcheck source=./newton
 source "$BASH_PROFILE_PATH/sources/newton"
+# shellcheck source=./settings-provider
+source "$BASH_PROFILE_PATH/sources/settings-provider"
 
 
 # Multi-env aware
 function getbelcadpid() {
+  # PS ToDo: This might be 'wrong'
+  # if it solely depends on
+  # the $STAGE env variable, unless
+  # the env.isInitialized function returns true.
+  if string.isemptyorblank "$STAGE"
+  then
+    echo ""
+    return 1
+  fi
+
   local jettypid
   # shellcheck disable=SC2009
   jettypid=$(ps -ef | grep jetty | grep "$STAGE/" | awk '{print $2}')
@@ -76,7 +88,7 @@ function startservers() {
     fi
   fi
 
-  if isdebuggingdrawings
+  if settings.isdebuggingdrawings
   then
     if isdrawingservicerunning
     then
@@ -91,18 +103,23 @@ function startservers() {
     fi
   fi
 
-  if isquickserverunning
+  if settings.isusingquickserve
   then
-    echo "quickServe is already running"
-  else
-    echo "quickServe is not already running, starting it now"
-    quickserve
+    if isquickserverunning
+    then
+      echo "quickServe is already running"
+    else
+      echo "quickServe is not already running, starting it now"
+      quickserve
+    fi
   fi
 }
 
 
 
 function getquickserveport() {
+  # Do not remove the env variable,
+  # it's used by official build tools scripts
   echo "$GRUNT_SERVE_PORT"
 }
 
@@ -115,10 +132,13 @@ function getquickservepid() {
     return 1
   fi
 
-  local searchString="node.*127\.0\.0\.1:$port.*LISTEN"
-
+  # Find node processes listening on the port
+  # This handles all IP binding patterns: *:port, 127.0.0.1:port, 0.0.0.0:port, etc.
+  # lsof output format: COMMAND PID USER ... TCP *:8005 (LISTEN)
+  # We filter for node processes in the COMMAND column and LISTEN state
   local pid
-  pid=$(lsof -iTCP -n -P 2> /dev/null | grep "$searchString" | awk '{print $2}')
+  pid=$(lsof -iTCP:$port -n -P 2> /dev/null | awk '/^node/ && /LISTEN/ {print $2}' | head -n 1)
+
   echo "$pid"
 }
 
@@ -169,12 +189,16 @@ function fstopbelcad() {
 
 function stopservers() {
   fstopbelcad "nosleep"
-  if isdebuggingdrawings
+  if settings.isdebuggingdrawings
   then
     stopDrawingDocker
   fi
-  # Stop the grunt start started webpack server.
-  fstopquickserve
+
+  if settings.isusingquickserve
+  then
+    # Stop the grunt start started webpack server.
+    fstopquickserve
+  fi
 }
 
 function restartservers() {
@@ -205,7 +229,10 @@ function restartbelcad() {
 
 function quickserve() {
   ensurenewtondirectory
+
+  # Start actual 'quick' serve (webpack) process
   nohup rex start > .newtonwebpacklog 2>&1 &
+  disown  # Detach the background job from shell job control
 
   local quickserveport=$(getquickserveport)
   echo "quickserve started, waiting for it to be ready to serve the page on $quickserveport"
@@ -278,16 +305,19 @@ function areserversrunning() {
     fi
   fi
 
-  echo -n "quickServe is "
-  if ! isquickserverunning
+  if settings.isusingquickserve
   then
-    hasError="true"
-    print_error "NOT running"
-  else
-    print_success "running"
+    echo -n "quickServe is "
+    if ! isquickserverunning
+    then
+      hasError="true"
+      print_error "NOT running"
+    else
+      print_success "running"
+    fi
   fi
 
-  if isdebuggingdrawings
+  if settings.isdebuggingdrawings
   then
     echo -n "Drawings server is "
     if ! isdrawingservicerunning
@@ -306,34 +336,4 @@ function areserversrunning() {
   else
     return 1
   fi
-}
-
-
-
-function setserveonlan() {
-  if string.equals "$1" "false"
-  then
-    unset NEWTON_WEBPACK_SERVE_ON_LAN
-  else
-    export NEWTON_WEBPACK_SERVE_ON_LAN=1
-  fi
-
-  if general.inputyesorno "Webpack will now serve on LAN. Do you want to start quickserve now/restart it if already running"
-  then
-    if isquickserverunning
-    then
-      echo "Restarting quickserve to apply the new setting"
-      restartquickserve
-    else
-      echo "Starting quickserve to apply the new setting"
-      quickserve
-    fi
-  else
-    echo "Webpack will serve on LAN when you start quickserve next time."
-  fi
-}
-
-
-function resetserveonlan() {
-  setserveonlan "false"
 }

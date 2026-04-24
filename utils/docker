@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# ToDo : Convert to importutility later.
+# shellcheck source=../utils/system
+source "$BASH_PROFILE_PATH/utils/system"
+# shellcheck source=../utils/string
+source "$BASH_PROFILE_PATH/utils/string"
+
+function docker.isrunning() {
+  if calledfromterminal
+  then
+    if string.isnotemptyorblank "$(command -v docker)" && string.isnotemptyorblank "$( (docker ps 2> /dev/null) | grep -i "container")"
+    then
+      echo "Yes"
+    else
+      echo "No"
+    fi
+  else
+    string.isnotemptyorblank "$(command -v docker)" && string.isnotemptyorblank "$( (docker ps 2> /dev/null) | grep -i "container")"
+  fi
+}
+
+function docker.startapp() {
+  if docker.isrunning
+  then
+    echo "Docker is already running"
+    return 0
+  fi
+
+  # [2023/11/01] : We use Rancher Desktop now instead of Docker Desktop
+  if system.commandsucceeds "$(open -a /Applications/Rancher\ Desktop.app)"
+  then
+    # Give Docker some time to get initialized, otherwise
+    # starting services fails.
+    echo -n "Docker started, waiting for it to be ready"
+    while (! docker stats --no-stream > /dev/null 2>&1 ); do
+      echo -n "."
+      sleep 1
+    done
+    echo "" # print a newline character
+  else
+    echo "Can't open Docker app"
+    return
+  fi
+}
+
+# If docker is running correctly,
+# returns the name of *all* running
+# services from all envs
+function docker.runningServices() {
+  if docker.isrunning
+  then
+    docker ps --format "{{.Names}}"
+    return 0
+  else
+    echo ""
+    return 1
+  fi
+}
+
+function docker.clean() {
+  dockerKillAll
+  #docker rmi $(docker images -qf "dangling=true"    #Cleans dangligng images
+  #docker-compose rm -f   #Clean old images
+  docker system prune -f
+  docker volume prune -f
+}

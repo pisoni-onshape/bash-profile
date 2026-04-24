@@ -310,6 +310,17 @@ function system.killallwithname() {
   pkill -9 -f -i "$1"
 }
 
+function system.killbypid() {
+  local pid="$1"
+  if ! string.isnumber "$pid"
+  then
+    echo "Please provide a valid PID (process ID) to kill."
+    return 1
+  fi
+
+  kill -9 "$pid"
+}
+
 function system.enablelocate() {
   system.buildlocatedb
 }
@@ -377,14 +388,14 @@ function system.getlatestdownload() {
   fi
 }
 
-# Call like system.getkeyvaluefromfile "<file-path>" "<key>"
-# Pass a third argument "--silent" or "-s" to echo an empty
-# string when a file or key is not found without echoing
-# error message
+# Call like system.getkeyvaluefromfile "<file-path>" "<key>" "[<default-value>]"
+# Pass a third optional argument as the default value to echo when the
+# file or key is not found.
+# When the default value is not provided, the return value will be 1, or FALSE
 function system.getkeyvaluefromfile() {
     local file_path="$1"
     local search_key="$2"
-    local silent="$3"
+    local default_value="${3:-}"
 
     # Check if both parameters are provided
     if string.isemptyorblank "$file_path" || string.isemptyorblank "$search_key"
@@ -396,13 +407,8 @@ function system.getkeyvaluefromfile() {
     # Check if file exists and is readable
     if ! system.fileexists "$file_path"
     then
-      if string.equals $silent "--silent" || string.equals $silent "-s"
-      then
-        echo ""
-      else
-        echo "Error: File '$file_path' does not exist or is not readable" >&2
-      fi
-      return 2
+      echo "$default_value"
+      return 1
     fi
 
     # Read the file line by line and search for the key
@@ -419,9 +425,9 @@ function system.getkeyvaluefromfile() {
         fi
     done < "$file_path"
 
-    # Key not found
-    echo ""
-    return 3
+    # Key not found. Return the default value.
+    echo "$default_value"
+    return 1
 }
 
 # Call like system.setkeyvalueinfile "<file-path>" "<key>" "<value>"
@@ -472,6 +478,157 @@ function system.setkeyvalueinfile() {
     }
 
     return 0
+}
+
+# Call like system.deletekeyvaluefromfile "<file-path>" "<key>"
+# - Removes the line matching KEY=* if key exists (match at line start)
+# - Does nothing if key not found
+# - Returns error if file doesn't exist (unless --silent flag is passed)
+function system.deletekeyvaluefromfile() {
+    local file_path="$1"
+    local key="$2"
+    local silent="$3"
+
+    if [ $# -lt 2 ] || string.isemptyorblank "$file_path" || string.isemptyorblank "$key"
+    then
+        echo "Usage: system.deletekeyvaluefromfile <file_path> <key> [--silent]" >&2
+        return 1
+    fi
+
+    if ! system.fileexists "$file_path"
+    then
+        if string.equals "$silent" "--silent" || string.equals "$silent" "-s"
+        then
+            return 0
+        else
+            echo "Error: File '$file_path' does not exist" >&2
+            return 2
+        fi
+    fi
+
+    local temp_file="${file_path}.tmp.$$"
+    local key_found=0
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        if [[ "$line" =~ ^"$key"= ]]; then
+            # Skip this line (don't write it to temp file)
+            key_found=1
+        else
+            echo "$line" >> "$temp_file"
+        fi
+    done < "$file_path"
+
+    # Replace original file with new version
+    mv "$temp_file" "$file_path" || {
+        echo "Error: Failed to update file '$file_path'" >&2
+        rm -f "$temp_file"
+        return 3
+    }
+
+    if [ $key_found -eq 0 ]
+    then
+        return 4  # Key not found
+    fi
+
+    return 0
+}
+
+# Get the canonical (absolute, resolved) path of a file or directory
+# Resolves symlinks and returns an absolute path
+# Expands ~ and environment variables (e.g., $HOME) in the path
+# Works cross-platform (macOS, Linux)
+function system.getcanonicalpath() {
+    local path="$1"
+    
+    if string.isemptyorblank "$path"
+    then
+        echo "" >&2
+        return 1
+    fi
+    
+    # Expand ~ and $HOME in the path
+    # This handles cases where paths are read from files with $HOME or ~
+    # Replace ~ with $HOME first
+    if [[ "$path" == ~/* ]]
+    then
+        path="${path/#~\//$HOME/}"
+    elif [[ "$path" == ~ ]]
+    then
+        path="$HOME"
+    elif [[ "$path" == ~* ]]
+    then
+        # ~username case (less common)
+        path="${path/#~/$HOME}"
+    fi
+    
+    # Expand $HOME variable using simple string replacement (no eval needed!)
+    path="${path//\$HOME/$HOME}"
+    
+    # Try realpath first (available on most modern systems, including macOS with coreutils)
+    if command -v realpath >/dev/null 2>&1
+    then
+        local result
+        result=$(realpath "$path" 2>/dev/null)
+        if [ -n "$result" ]
+        then
+            echo "$result"
+            return 0
+        fi
+    fi
+    
+    # Try readlink -f on Linux (GNU readlink)
+    if readlink -f "$path" >/dev/null 2>&1
+    then
+        local result
+        result=$(readlink -f "$path" 2>/dev/null)
+        if [ -n "$result" ]
+        then
+            echo "$result"
+            return 0
+        fi
+    fi
+    
+    # Fallback: cd + pwd -P approach (works everywhere, including macOS)
+    # pwd -P resolves symlinks (physical path)
+    # This is a standard and reliable cross-platform method
+    local dir_part
+    dir_part=$(dirname "$path")
+    local file_part
+    file_part=$(basename "$path")
+    
+    # Resolve the directory part using cd + pwd -P
+    if [ -d "$dir_part" ] || [ -L "$dir_part" ] || [ -e "$path" ] || [ -L "$path" ]
+    then
+        local resolved_dir
+        resolved_dir=$(cd "$dir_part" 2>/dev/null && pwd -P) || return 1
+        local full_path="$resolved_dir/$file_part"
+        
+        # If the final component is a symlink, try to resolve it
+        if [ -L "$full_path" ]
+        then
+            local link_target
+            link_target=$(readlink "$full_path")
+            if [ "${link_target#/}" != "$link_target" ]
+            then
+                # Absolute symlink - recursively resolve it
+                system.getcanonicalpath "$link_target" && return 0
+            else
+                # Relative symlink - resolve relative to the directory
+                system.getcanonicalpath "$resolved_dir/$link_target" && return 0
+            fi
+        fi
+        
+        echo "$full_path"
+        return 0
+    fi
+    
+    # Last resort: return the path as-is if we can't resolve it
+    echo "$path"
+    return 1
+}
+
+function system.resumeallsuspendedprocesses() {
+  kill -CONT -1
 }
 
 

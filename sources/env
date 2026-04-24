@@ -9,13 +9,15 @@ source "$BASH_PROFILE_PATH/utils/system"
 source "$BASH_PROFILE_PATH/utils/string"
 # shellcheck source=../utils/env
 source "$BASH_PROFILE_PATH/utils/env"
+# shellcheck source=../utils/docker
+source "$BASH_PROFILE_PATH/utils/docker"
 
-# shellcheck source=./docker
-source "$BASH_PROFILE_PATH/sources/docker"
 # shellcheck source=./services
 source "$BASH_PROFILE_PATH/sources/services"
 # shellcheck source=./servers
 source "$BASH_PROFILE_PATH/sources/servers"
+# shellcheck source=./settings-provider
+source "$BASH_PROFILE_PATH/sources/settings-provider"
 
 
 # Create a new multi-environment clone for newton
@@ -202,7 +204,7 @@ function env.fix() {
     fi
   fi
 
-  if isdebuggingdrawings
+  if settings.isdebuggingdrawings
   then
     if ! isdrawingservicerunning
     then
@@ -317,10 +319,53 @@ function env.statusall() {
     echo "drawing_server:0"
   fi
 
+  # Get Newton version
+  local newtonVersion=$(getNewtonVersion)
+  if string.isnotemptyorblank "$newtonVersion"; then
+    echo "newtonversion:$newtonVersion"
+  else
+    echo "newtonversion:"
+  fi
+
   # Capture running services (env-aware) for callback use
   runningList=$(env.runningServices)
 
   general.forEachKeyValue ALL_SERVICES_AND_COMMANDS __printservicestatus
+
+  # Consolidated status - overall environment status (green/orange/grey)
+  local consolidatedStatus
+  consolidatedStatus=$(env.consolidatedStatus)
+  echo "consolidated-status:$consolidatedStatus"
+}
+
+# This just tells whether the Environment is in
+# 1. Fully functional: all *essential* services, and *selected* servers are running - returns `green`
+# 2. Partially functional: at least one *essential* service is not running, OR at least one *selected* server is not running - returns `orange`
+# 3. Not functional: no *essential* services, AND no *selected* servers are running - returns `grey`
+# PS ToDo: This is still not right, especially when called from uninitialized terminal?
+# (Check with selecting drawings and not)
+function env.consolidatedStatus() {
+  local essentialServicesAreRunning="true"
+  if ! fastcheckessentialservices "false" &> /dev/null
+  then
+    essentialServicesAreRunning="false"
+  fi
+
+  local selectedServersAreRunning="true"
+  if ! areserversrunning &> /dev/null
+  then
+    selectedServersAreRunning="false"
+  fi
+
+  if string.equals "$essentialServicesAreRunning" "true" && string.equals "$selectedServersAreRunning" "true"
+  then
+    echo "green"
+  elif string.equals "$essentialServicesAreRunning" "false" && string.equals "$selectedServersAreRunning" "false"
+  then
+    echo "grey"
+  else
+    echo "orange"
+  fi
 }
 
 

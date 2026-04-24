@@ -121,6 +121,16 @@ function general.forEachArrayItem() {
     done
 }
 
+function __printitem() {
+  local item="$1"
+  echo "$item"
+}
+
+function general.showarray() {
+  local arr_name="$1"
+  general.forEachArrayItem "$arr_name" __printitem
+}
+
 function general.forEachDelimitedItem() {
     local string="$1"
     local delimiter="$2"
@@ -195,7 +205,7 @@ function general.showtrueorfalse() {
   fi
 
   # Call the function by invoking it with '$'
-  if "$functionName" ${@:2}
+  if "$functionName" "${@:2}"
   then
     echo 'True'
     return 0

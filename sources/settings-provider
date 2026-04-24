@@ -1,0 +1,320 @@
+#!/bin/bash
+
+# ToDo : Convert to importutility later.
+# shellcheck source=../utils/string
+source "$BASH_PROFILE_PATH/utils/string"
+# shellcheck source=../utils/env
+source "$BASH_PROFILE_PATH/utils/env"
+# shellcheck source=../utils/system
+source "$BASH_PROFILE_PATH/utils/system"
+
+function settings.getglobalsettingsvalue() {
+  local settingname="$1"
+  local defaultvalue="${2:-}"
+  local value=$(system.getkeyvaluefromfile "$BASH_PROFILE_SETTINGS_PATH" "$settingname" "$defaultvalue")
+  if string.contains "$value" '$ENVNUM'
+  then
+    value=$(string.simplereplace "$value" '$ENVNUM' "$(env.getnumber)")
+  fi
+
+  if string.contains "$value" '$HOME'
+  then
+    value="$(string.simplereplace "$value" '$HOME' "$HOME")"
+  fi
+
+  if string.contains "$value" '~'
+  then
+    value="$(string.simplereplace "$value" '~' "$HOME")"
+  fi
+
+  echo "$value"
+}
+
+function settings.setglobalsettingsvalue() {
+  local settingname="$1"
+  local value="$2"
+  system.setkeyvalueinfile "$BASH_PROFILE_SETTINGS_PATH" "$settingname" "$value"
+}
+
+function settings.deleteglobalsettingsvalue() {
+  local settingname="$1"
+  system.deletekeyvaluefromfile "$BASH_PROFILE_SETTINGS_PATH" "$settingname"
+}
+
+function __getenabledvalue() {
+  local enabled="$1"
+  if string.equals "$enabled" "false"
+  then
+    enabled="false"
+  else
+    enabled="true"
+  fi
+  echo "$enabled"
+}
+
+
+# Default Browser. Pass the URL to open in the browser.
+function settings.openwithdefaultbrowser() {
+    local browserPath="$(settings.getglobalsettingsvalue "DEFAULT_BROWSER_PATH" "/Applications/Google Chrome.app")"
+    local browserArgs="$(settings.getglobalsettingsvalue "DEFAULT_BROWSER_ARGUMENTS" "--inspect --remote-debugging-port=9222")"
+    local userDataDir="$(settings.getglobalsettingsvalue "DEFAULT_BROWSER_USER_DATA_DIRECTORY" "")"
+    if ! string.isemptyorblank "$userDataDir"
+    then
+      userDataDir="$(system.getcanonicalpath "$userDataDir")"
+      if string.contains "$browserPath" "firefox" -i || string.contains "$browserPath" "zen" -i
+      then
+        # Firefox and the Zen browser (fork of Firefox) use the profile directory format.
+        open -n -a "$browserPath" --args $browserArgs -profile "$userDataDir" "$@"
+      else
+        # Most other browsers these days are forks of Chromium
+        # so use the same user data directory format.
+        open -n -a "$browserPath" --args $browserArgs --user-data-dir="$userDataDir" "$@"
+      fi
+    else
+      open -n -a "$browserPath" --args $browserArgs "$@"
+    fi
+}
+
+# USING_QUICKSERVE
+function settings.setusingquickserve() {
+  local enabled=$(__getenabledvalue "$1")
+  env.setproperty "USING_QUICKSERVE" "$enabled"
+}
+
+function settings.isusingquickserve() {
+  local usingQuickserve="false"
+  usingQuickserve=$(env.getproperty "USING_QUICKSERVE" "true")
+  string.equals "$usingQuickserve" "true"
+}
+
+function settings.resetusingquickserve() {
+  settings.setusingquickserve "false"
+}
+
+
+function __setdrawingsexports() {
+  local enabled=$(__getenabledvalue "$1")
+
+  if string.equals "$enabled" "true"
+  then
+    export ENABLE_THUMBNAIL_SERVICE=1
+    export START_RENDERER_IN_MAIN_THREAD=1
+    # disable if debugging thumbnails.
+    export BTI_BLOCK_THUMBNAIL_CPP_SERVER_POOL=1
+  else
+    unset ENABLE_THUMBNAIL_SERVICE
+    unset START_RENDERER_IN_MAIN_THREAD
+    unset BTI_BLOCK_THUMBNAIL_CPP_SERVER_POOL
+  fi
+}
+
+# DEBUGGING_DRAWINGS
+function settings.setdebuggingdrawings() {
+  local enabled=$(__getenabledvalue "$1")
+  env.setproperty "DEBUGGING_DRAWINGS" "$enabled"
+  __setdrawingsexports "$enabled"
+}
+
+
+function settings.isdebuggingdrawings() {
+  local debuggingDrawings="false"
+  debuggingDrawings=$(env.getproperty "DEBUGGING_DRAWINGS" "false")
+  string.equals "$debuggingDrawings" "true"
+}
+
+function settings.resetdebuggingdrawings() {
+  settings.setdebuggingdrawings "false"
+}
+
+
+# NEWTON_WEBPACK_SERVE_ON_LAN
+# Would be fine with just the config property
+# but the webpack process needs this env variable.
+function settings.setserveonlan() {
+  if string.equals "$1" "false"
+  then
+    unset NEWTON_WEBPACK_SERVE_ON_LAN
+      env.setproperty "NEWTON_WEBPACK_SERVE_ON_LAN" "false"
+  else
+    export NEWTON_WEBPACK_SERVE_ON_LAN=1
+    env.setproperty "NEWTON_WEBPACK_SERVE_ON_LAN" "true"
+  fi
+
+  if general.inputyesorno "Webpack will now serve on LAN. Do you want to start quickserve now/restart it if already running"
+  then
+    if isquickserverunning
+    then
+      echo "Restarting quickserve to apply the new setting"
+      restartquickserve
+    else
+      echo "Starting quickserve to apply the new setting"
+      quickserve
+    fi
+  else
+    echo "Webpack will serve on LAN when you start quickserve next time."
+  fi
+}
+
+function settings.isservingonlan() {
+  local servingOnLan="false"
+  servingOnLan=$(env.getproperty "NEWTON_WEBPACK_SERVE_ON_LAN" "false")
+  string.equals "$servingOnLan" "true" || string.equals "$servingOnLan" "1"
+}
+
+function settings.resetserveonlan() {
+  settings.setserveonlan "false"
+}
+
+
+# BUILDING_JAVA
+function settings.setbuildingjava() {
+  local enabled=$(__getenabledvalue "$1")
+  env.setproperty "BUILDING_JAVA" "$enabled"
+
+  if string.equals "$enabled" "true"
+  then
+    unset SKIP_JAVA
+  else
+    export SKIP_JAVA=1
+  fi
+}
+
+function settings.isbuildingjava() {
+  local buildingJava="true"
+  buildingJava=$(env.getproperty "BUILDING_JAVA" "true")
+  string.equals "$buildingJava" "true"
+}
+
+function settings.resetbuildingjava() {
+  settings.setbuildingjava "true"
+}
+
+
+# BUILDING_JS
+function settings.setbuildingjs() {
+  local enabled=$(__getenabledvalue "$1")
+  env.setproperty "BUILDING_JS" "$enabled"
+
+  if string.equals "$enabled" "true"
+  then
+    unset SKIP_JSLIB
+  else
+    export SKIP_JSLIB=1
+  fi
+}
+
+function settings.isbuildingjs() {
+  local buildingJs="true"
+  buildingJs=$(env.getproperty "BUILDING_JS" "true")
+  string.equals "$buildingJs" "true"
+}
+
+function settings.resetbuildingjs() {
+  settings.setbuildingjs "true"
+}
+
+
+# BUILDING_CPP
+function settings.setbuildingcpp() {
+  local enabled=$(__getenabledvalue "$1")
+  env.setproperty "BUILDING_CPP" "$enabled"
+
+  if string.equals "$enabled" "true"
+  then
+    unset SKIP_CPP
+  else
+    export SKIP_CPP=1
+  fi
+}
+
+function settings.isbuildingcpp() {
+  local buildingCpp="true"
+  buildingCpp=$(env.getproperty "BUILDING_CPP" "true")
+  string.equals "$buildingCpp" "true"
+}
+
+function settings.resetbuildingcpp() {
+  settings.setbuildingcpp "true"
+}
+
+
+# RUNNING_BTUPGRADE
+function settings.setrunningbtupgrade() {
+  local enabled=$(__getenabledvalue "$1")
+  env.setproperty "RUNNING_BTUPGRADE" "$enabled"
+
+  if string.equals "$enabled" "true"
+  then
+    unset SKIP_BTUPGRADE
+  else
+    export SKIP_BTUPGRADE=1
+  fi
+}
+
+function settings.isrunningbtupgrade() {
+  local runningBtUpgrade="true"
+  runningBtUpgrade=$(env.getproperty "RUNNING_BTUPGRADE" "true")
+  string.equals "$runningBtUpgrade" "true"
+}
+
+function settings.resetrunningbtupgrade() {
+  settings.setrunningbtupgrade "true"
+}
+
+
+# RUN_SELECTED_SERVERS_ON_SUCCESSFUL_BUILD
+function settings.setrunselectedserversonsuccessfulbuild() {
+  local enabled=$(__getenabledvalue "$1")
+  env.setproperty "RUN_SELECTED_SERVERS_ON_SUCCESSFUL_BUILD" "$enabled"
+}
+
+function settings.isrunselectedserversonsuccessfulbuild() {
+  local runServers="true"
+  runServers=$(env.getproperty "RUN_SELECTED_SERVERS_ON_SUCCESSFUL_BUILD" "true")
+  string.equals "$runServers" "true"
+}
+
+function settings.resetrunselectedserversonsuccessfulbuild() {
+  settings.setrunselectedserversonsuccessfulbuild "true"
+}
+
+
+# AUTO_LAUNCH_ON_SUCCESSFUL_BUILD
+function settings.setautolaunchonsuccessfulbuild() {
+  local enabled=$(__getenabledvalue "$1")
+  env.setproperty "AUTO_LAUNCH_ON_SUCCESSFUL_BUILD" "$enabled"
+}
+
+function settings.isautolaunchingonsuccessfulbuild() {
+  local autoLaunchOnSuccessfulBuild="true"
+  autoLaunchOnSuccessfulBuild=$(env.getproperty "AUTO_LAUNCH_ON_SUCCESSFUL_BUILD" "true")
+  string.equals "$autoLaunchOnSuccessfulBuild" "true"
+}
+
+function settings.resetautolaunchonsuccessfulbuild() {
+  settings.setautolaunchonsuccessfulbuild "true"
+}
+
+
+
+function settings.getbaserepopath() {
+  system.getcanonicalpath "$(system.getkeyvaluefromfile "$BASH_PROFILE_PATH/settings" "BASE_REPO_PATH" "$HOME/repos")"
+}
+
+
+# Combined getter for all build and server properties
+# Returns: JAVA,JS,CPP,BTUPGRADE,RUNSERVERS,QUICKSERVE,DRAWINGS,AUTOLAUNCH (1=true, 0=false)
+function __settings.getbuildandserverproperties() {
+  local java js cpp btupgrade runservers quickserve drawings autolaunch
+
+  if settings.isbuildingjava; then java=1; else java=0; fi
+  if settings.isbuildingjs; then js=1; else js=0; fi
+  if settings.isbuildingcpp; then cpp=1; else cpp=0; fi
+  if settings.isrunningbtupgrade; then btupgrade=1; else btupgrade=0; fi
+  if settings.isrunselectedserversonsuccessfulbuild; then runservers=1; else runservers=0; fi
+  if settings.isusingquickserve; then quickserve=1; else quickserve=0; fi
+  if settings.isdebuggingdrawings; then drawings=1; else drawings=0; fi
+  if settings.isautolaunchingonsuccessfulbuild; then autolaunch=1; else autolaunch=0; fi
+
+  echo "${java},${js},${cpp},${btupgrade},${runservers},${quickserve},${drawings},${autolaunch}"
+}

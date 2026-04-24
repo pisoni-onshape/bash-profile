@@ -18,13 +18,8 @@ importutility system
 export ENV_CONFIG_FILENAME=".newton-env-config"
 
 function env.getnumber() {
-  local hostNum=$(env.getproperty HOST_PROPERTIES_ENVNUM)
-  if string.isnotemptyorblank "$hostNum"
-  then
-    echo "$hostNum"
-  else
-    echo "0"
-  fi
+  local envNum=$(env.getproperty HOST_PROPERTIES_ENVNUM "0")
+  echo "$envNum"
 }
 
 # Write a variable specific to this environment.
@@ -40,28 +35,35 @@ function env.getnumber() {
 # file extension to avoid variable name conflicts
 function env.writevartodisk() {
   local varName="$1"
-  local extension
-  extension=$(env.getnumber)
-  system.writevartodisk "$varName" "$extension"
+  local value="${!varName}"
+  env.setproperty "$varName" "$value"
 }
 
 # Write a variable specific to this environment.
 # Pass the *name* of the variable only, not its
 # value with "$".
+# Pass a default value as the second argument.
 # e.g.:
-# myvar=$(env.readvarfromdisk myvar)
+# myvar=$(env.readvarfromdisk myvar defaultValue)
 function env.readvarfromdisk() {
   local varName="$1"
-  local extension
-  extension=$(env.getnumber)
-  system.readvarfromdisk "$varName" "$extension"
+  local defaultValue="$2"
+  local value=$(env.getproperty "$varName")
+  if string.isemptyorblank "$value"
+  then
+    echo "$defaultValue"
+    return 1
+  else
+    echo "$value"
+    return 0
+  fi
 }
 
+# Pass the *name* of the variable only, not its
+# value with "$".
 function env.removevarfromdisk() {
-  local varName="$1"
-  local extension
-  extension=$(env.getnumber)
-  system.removevarfromdisk "$varName" "$extension"
+  env.deleteproperty "$1"
+  return $?
 }
 
 function env.isInitialized() {
@@ -75,16 +77,17 @@ function env.isInitialized() {
   fi
 }
 
-function env.getconfigpath() {
-  echo "$ENV_CONFIG_ROOT_PATH/env$(env.getnumber)"
-}
 
+# Call like env.getproperty "<propertyname>" "[<default-value>]"
+# Pass a second optional argument as the default value to echo when the
+# property is not found (but return value will be 1, or FALSE)
 function env.getproperty() {
   local propertyname="$1"
+  local defaultvalue="${2:-}"
 
   if string.isemptyorblank "$propertyname"
   then
-    echo ""
+    echo "$defaultvalue"
     return 1
   fi
 
@@ -104,19 +107,20 @@ function env.getproperty() {
   # If we still can't figure out the newtonPath, exit
   if string.isemptyorblank "$newtonPath"
   then
-    echo ""
+    echo "$defaultvalue"
     return 1
   fi
 
   local pathsToCheck=(
     "$newtonPath/.build_config"
     "$newtonPath/buildSrc/tools/config/versions.bash"
+    "$newtonPath/$ENV_CONFIG_FILENAME"
   )
 
   local value=""
   for filePath in "${pathsToCheck[@]}"
   do
-    value=$(system.getkeyvaluefromfile "$filePath" "$propertyname" --silent)
+    value="$(system.getkeyvaluefromfile "$filePath" "$propertyname")"
     if ! string.isemptyorblank "$value"
     then
       echo "$value"
@@ -125,8 +129,67 @@ function env.getproperty() {
   done
 
   # Didn't find the key anywhere.
-  echo ""
+  echo "$defaultvalue"
   return 1
+}
+
+function env.setproperty() {
+  local propertyname="$1"
+  local propertyvalue="$2"
+
+  if string.isemptyorblank "$propertyname"
+  then
+    echo "Usage: env.setproperty <propertyname> <propertyvalue>" >&2
+    return 1
+  fi
+
+  local newtonPath="$REPO_NEWTON"
+  if string.isemptyorblank "$newtonPath"
+  then
+    newtonPath=$(string.extractByRegex "$(pwd)" "/.*/newton[0-9]*")
+  fi
+
+  # If we still can't figure out the newtonPath, exit
+  if string.isemptyorblank "$newtonPath"
+  then
+    echo "Error: Cannot determine newton path" >&2
+    return 1
+  fi
+
+  local configFilePath="$newtonPath/$ENV_CONFIG_FILENAME"
+  system.setkeyvalueinfile "$configFilePath" "$propertyname" "$propertyvalue"
+  return $?
+}
+
+function env.deleteproperty() {
+  local propertyname="$1"
+
+  if string.isemptyorblank "$propertyname"
+  then
+    echo "Usage: env.deleteproperty <propertyname>" >&2
+    return 1
+  fi
+
+  local newtonPath="$REPO_NEWTON"
+  if string.isemptyorblank "$newtonPath"
+  then
+    newtonPath=$(string.extractByRegex "$(pwd)" "/.*/newton[0-9]*")
+  fi
+
+  # If we still can't figure out the newtonPath, exit
+  if string.isemptyorblank "$newtonPath"
+  then
+    echo "Error: Cannot determine newton path" >&2
+    return 1
+  fi
+
+  local configFilePath="$newtonPath/$ENV_CONFIG_FILENAME"
+  system.deletekeyvaluefromfile "$configFilePath" "$propertyname" --silent
+  return $?
+}
+
+function env.refresh() {
+  mongoDropAll; mongoDropToProduction; cleanMost; buildall
 }
 
 

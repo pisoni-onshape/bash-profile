@@ -214,6 +214,12 @@ function git.patchlatestcommit() {
 
 # Creates a patch for the specified commit in your branch
 function git.patchcommit() {
+  if ! git.isinagitrepo
+  then
+    print_error "Not in a git repository"
+    return 1
+  fi
+
   # Commit SHA1 id sent as argument. -1 tells git to patch only the last 1 commit.
   local commitId=$1
 
@@ -395,6 +401,12 @@ function git.getbasebranchname() {
 
 # Create a patch of uncommitted changes with *LOCAL* HEAD
 function git.patchuncommittedchanges() {
+  if ! git.isinagitrepo
+  then
+    print_error "Not in a git repository"
+    return 1
+  fi
+
   local message="$1"
   local optionalFlag="$2"
   local path=$(git.getpatchfilepath "$message" "$optionalFlag")
@@ -409,6 +421,12 @@ function git.patchuncommittedchanges() {
 # and compare with the remote origin master / lsb/master
 # *** CAUTION ToDo: Doesn't handle new files as of now. ***
 function git.patchallchanges() {
+  if ! git.isinagitrepo
+  then
+    print_error "Not in a git repository"
+    return 1
+  fi
+
   echo "Refreshing tags..."
   git fetch origin --tags --force --prune
   local path=$(git.getpatchfilepath "$@")
@@ -420,12 +438,24 @@ function git.patchallchanges() {
 # Applies a patch and creates .rej files for the changes
 # that it could not apply.
 function git.applypatch() {
+  if ! git.isinagitrepo
+  then
+    print_error "Not in a git repository"
+    return 1
+  fi
+
   git apply --reject --whitespace=fix "$1" # patch file path
 }
 
 # Pass the upstream branch name, followed by remoteName if
 # other than "origin"
 function git.setupstream() {
+  if ! git.isinagitrepo
+  then
+    print_error "Not in a git repository"
+    return 1
+  fi
+
   local branchNameToPush="$1"
   local remoteName="$2"
 
@@ -444,6 +474,12 @@ function git.setupstream() {
 }
 
 function git.unsetupstream() {
+  if ! git.isinagitrepo
+  then
+    print_error "Not in a git repository"
+    return 1
+  fi
+
   git branch --unset-upstream
 }
 
@@ -451,10 +487,22 @@ function git.unsetupstream() {
 # the current one. As expected, calling it twice should
 # bring you back to the same branch.
 function git.checkoutpreviousbranch() {
+  if ! git.isinagitrepo
+  then
+    print_error "Not in a git repository"
+    return 1
+  fi
+
   git checkout -
 }
 
 function git.deletecurrentbranch() {
+  if ! git.isinagitrepo
+  then
+    print_error "Not in a git repository"
+    return 1
+  fi
+
   local noConfirmationArg="$1"
   local currentbranch=$(git.getcurrentbranch)
   if string.equals "$noConfirmationArg" "--no-confirmation" || general.inputyesorno "Are you sure you want to delete the current branch ($currentbranch)"
@@ -465,6 +513,12 @@ function git.deletecurrentbranch() {
 }
 
 function git.setglobalignorefile() {
+  if ! git.isinagitrepo
+  then
+    print_error "Not in a git repository"
+    return 1
+  fi
+
   if string.isemptyorblank $1
   then
     git config --global core.excludesfile $globalgitignorefile
@@ -477,6 +531,12 @@ function git.setglobalignorefile() {
 # id of the merge commit in the given branch. Default
 # branch is master
 function git.getmergecommit() {
+  if ! git.isinagitrepo
+  then
+    print_error "Not in a git repository"
+    return 1
+  fi
+
   if string.isemptyorblank $(which git-get-merge)
   then
     echo "git-get-merge utility not found. Please install from https://github.com/jianli/git-get-merge"
@@ -487,6 +547,12 @@ function git.getmergecommit() {
 }
 
 function git.deletebranch() {
+  if ! git.isinagitrepo
+  then
+    print_error "Not in a git repository"
+    return 1
+  fi
+
   local branchToDelete="$1"
   if string.isemptyorblank "$branchToDelete" || string.equals "$(git.getcurrentbranch)" "$branchToDelete"
   then
@@ -619,9 +685,12 @@ function git.pastefileswithfolderstructure() {
   echo "Total $totalFilesSuccessfullyCopied files from $sourceDirectory have been copied to $destinationDirectory"
 }
 
-# Function to find all branches that have changed a given file
-# Written using LLM Coding agents, seems to work fine,
-# but please be careful.
+# Function to find all branches that have UNIQUE commits changing a given file.
+# "Unique" means commits that are in the branch but not in its base (origin/master).
+# This excludes inherited commits from the base branch.
+# By default searches local branches only, but can search remote branches too.
+# For remote branches, origin/master is assumed as the base.
+# For local branches, merge-base with origin/master is used.
 git.findbrancheswithfilechanges() {
     local file_path=""
     local time_limit=""
@@ -695,7 +764,9 @@ git.findbrancheswithfilechanges() {
         cat << 'EOF'
 Usage: git.findbrancheswithfilechanges [OPTIONS] <file_path>
 
-Find all branches that have changes to a specific file.
+Find all branches that have UNIQUE commits changing a specific file.
+"Unique" means commits in the branch but not in origin/master (the base).
+This excludes changes inherited from the base branch.
 
 OPTIONS:
     -f, --file FILE         File path to search for (can also be passed as positional arg)
@@ -811,16 +882,24 @@ EOF
 
         [[ "$verbose" == true ]] && echo "Checking branch $checked_count/$total_branches: $branch"
 
-        # Build git log command with time limit if specified
-        local log_cmd="git log --oneline"
-        if [[ -n "$time_limit" ]]; then
-            log_cmd="$log_cmd --since=\"$time_limit\""
+        # Determine base reference for this branch
+        # Remote branches: use origin/master as base
+        # Local branches: use merge-base with origin/master
+        local base_ref
+        if [[ "$branch" =~ ^(origin/|remotes/) ]]; then
+            base_ref="origin/master"
+        else
+            base_ref=$(git merge-base "$branch" origin/master 2>/dev/null)
         fi
-        log_cmd="$log_cmd -- \"$file_path\""
 
-        # Check if branch has commits affecting the file
+        if [[ -z "$base_ref" ]]; then
+            [[ "$verbose" == true ]] && echo "  ! Could not determine base for $branch, skipping"
+            continue
+        fi
+
+        # Check if branch has UNIQUE commits (not in base) affecting the file
         local commits
-        commits=$(git log --oneline ${time_limit:+--since="$time_limit"} "$branch" -- "$file_path" 2>/dev/null)
+        commits=$(git log --oneline ${time_limit:+--since="$time_limit"} "$base_ref..$branch" -- "$file_path" 2>/dev/null)
         local exit_code=$?
 
         if [[ $exit_code -eq 0 ]] && [[ -n "$commits" ]]; then
@@ -856,6 +935,209 @@ EOF
 }
 
 
+# Compact commit viewer shared by finder helpers
+function git.showcommit() {
+  local commit="$1"
+  if string.isemptyorblank "$commit"
+  then
+    return 1
+  fi
+
+  local commitDate commitMessage filesChanged
+  commitDate=$(git show -s --format="%cd" --date=short "$commit")
+  commitMessage=$(git show -s --format="%s" "$commit")
+  commitMessage=$(string.trim "$commitMessage")
+  commitMessage=$(string.truncate "$commitMessage" 100)
+  filesChanged=$(git show --pretty="" --name-only "$commit" | sed '/^$/d')
+
+  echo "$commit"
+  echo "  date : $commitDate"
+  echo "  Summary  : $commitMessage"
+  if string.isnotemptyorblank "$filesChanged"
+  then
+    echo "  files:"
+    echo "$filesChanged" | sed 's/^/    - /'
+  else
+    echo "  files: (none)"
+  fi
+  echo "--------------------------------------------------------------------------------"
+  echo "--------------------------------------------------------------------------------"
+
+}
+
+function git.findcommitbymessage() {
+  if ! git.isinagitrepo
+  then
+    print_error "Not in a git repository"
+    return 1
+  fi
+
+  local limit=""
+  local argCount=$#
+  if [[ $argCount -ge 2 ]]
+  then
+    local lastArg="${!argCount}"
+    if [[ "$lastArg" =~ ^[0-9]+$ ]]
+    then
+      limit="$lastArg"
+      argCount=$((argCount-1))
+      set -- "${@:1:$argCount}"
+    fi
+  fi
+
+  local search="$*"
+  if string.isemptyorblank "$search"
+  then
+    echo "Usage: git.findcommitbymessage <search string>"
+    return 1
+  fi
+
+  local commits
+  commits=$(git log -i --grep="$search" --fixed-strings --pretty=format:"%H" ${limit:+-n $limit})
+
+  if string.isemptyorblank "$commits"
+  then
+    echo "No commits found matching message: $search"
+    return 0
+  fi
+
+  echo "Commits matching message: $search"
+  if string.isnotemptyorblank "$limit"
+  then
+    echo "(showing newest $limit)"
+  fi
+  echo ""
+  echo "$commits" | while read -r commitId
+  do
+    git.showcommit "$commitId"
+  done
+}
+
+function git.findcommitbyauthor() {
+  if ! git.isinagitrepo
+  then
+    print_error "Not in a git repository"
+    return 1
+  fi
+
+  local limit=""
+  local argCount=$#
+  if [[ $argCount -ge 2 ]]
+  then
+    local lastArg="${!argCount}"
+    if [[ "$lastArg" =~ ^[0-9]+$ ]]
+    then
+      limit="$lastArg"
+      argCount=$((argCount-1))
+      set -- "${@:1:$argCount}"
+    fi
+  fi
+
+  local search="$*"
+  if string.isemptyorblank "$search"
+  then
+    echo "Usage: git.findcommitbyauthor <author substring>"
+    return 1
+  fi
+
+  local commits
+  commits=$(git log -i --author="$search" --pretty=format:"%H" ${limit:+-n $limit})
+
+  if string.isemptyorblank "$commits"
+  then
+    echo "No commits found matching author: $search"
+    return 0
+  fi
+
+  echo "Commits matching author: $search"
+  if string.isnotemptyorblank "$limit"
+  then
+    echo "(showing newest $limit)"
+  fi
+  echo ""
+  echo "$commits" | while read -r commitId
+  do
+    git.showcommit "$commitId"
+  done
+}
+
+
+
+# Helper function to determine the base reference for comparison
+function __get_base_ref() {
+    local current_branch
+    local upstream_branch
+    local default_branch
+    local base_ref
+
+    current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    if [ -z "$current_branch" ]; then
+        echo "Error: Not in a git repository" >&2
+        return 1
+    fi
+
+    # Strategy 1: Check if upstream tracking branch is set
+    upstream_branch=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)
+    if [ -n "$upstream_branch" ]; then
+        echo "$upstream_branch"
+        return 0
+    fi
+
+    # Strategy 2: Check if remote branch with same name exists
+    if git show-ref --verify --quiet "refs/remotes/origin/$current_branch"; then
+        echo "origin/$current_branch"
+        return 0
+    fi
+
+    # Strategy 3: Use merge-base with default branch
+    default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/@@')
+    if [ -z "$default_branch" ]; then
+        # Fallback: try common default branches
+        if git show-ref --verify --quiet refs/remotes/origin/master; then
+            default_branch="origin/master"
+        elif git show-ref --verify --quiet refs/remotes/origin/main; then
+            default_branch="origin/main"
+        else
+            echo "Error: Cannot determine default branch" >&2
+            return 1
+        fi
+    fi
+
+    base_ref=$(git merge-base HEAD "$default_branch" 2>/dev/null)
+    if [ -z "$base_ref" ]; then
+        echo "Error: Cannot find merge-base with $default_branch" >&2
+        return 1
+    fi
+
+    echo "$base_ref"
+    return 0
+}
+
+# Function to show commits that this branch has that are not in the base reference
+# (e.g. master or upstream tracking branch)
+function git.finduniquecommits() {
+    local base_ref
+    base_ref=$(__get_base_ref)
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
+    # Show the commits
+    git log "$base_ref..HEAD" "$@"
+}
+
+# Lightweight function to count local commits
+function git.uniquecommitscount() {
+    local base_ref
+    base_ref=$(__get_base_ref)
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
+    # Use rev-list --count which is more efficient than git log + wc
+    git rev-list --count "$base_ref..HEAD"
+}
+
 
 
 # Show your git branches sorted by latest commit
@@ -878,3 +1160,5 @@ alias git.findmergecommit='git.getmergecommit'
 alias git.parentcommit='git.getmergecommit'
 alias git.mergecommit='git.getmergecommit'
 alias git.createfolderstructurefromcommit='git.copyfilesincommit'
+alias git.showlocalcommits='git.finduniquecommits'
+alias git.showuniquecommits='git.finduniquecommits'

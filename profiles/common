@@ -169,7 +169,29 @@ alias appbundleid='findappbundleid'
 ## Auto Completion
 ## Please ensure bash-completion is installed by calling
 ## brew install bash-completion
-[ -f /usr/local/etc/bash_completion ] && . /usr/local/etc/bash_completion
+## Support both Intel (/usr/local) and Apple Silicon (/opt/homebrew) paths
+if [ -f /opt/homebrew/etc/bash_completion ]; then
+    . /opt/homebrew/etc/bash_completion
+elif [ -f /usr/local/etc/bash_completion ]; then
+    . /usr/local/etc/bash_completion
+else
+    # Fallback: enable basic completion if bash-completion not installed
+    # This enables Ctrl-D file completion and basic command history
+    bind 'set enable-bracketed-paste on' 2>/dev/null
+fi
+
+# Configure readline for proper terminal interaction
+# This fixes Tab completion and backspace issues in xterm.js
+if [[ -t 0 ]]; then
+    # Only configure readline for interactive terminals
+    bind 'set completion-display-width 160' 2>/dev/null
+    bind 'set completion-prefix-display-length 3' 2>/dev/null
+    bind 'set colored-completion-prefix on' 2>/dev/null
+    bind 'set mark-symlinked-directories on' 2>/dev/null
+    # Ensure backspace key works correctly (fixes character corruption issue)
+    bind 'Control-h: backward-delete-char' 2>/dev/null
+    bind 'Control-?: backward-delete-char' 2>/dev/null
+fi
 
 # IDEs
 alias wstorm='webstorm'
